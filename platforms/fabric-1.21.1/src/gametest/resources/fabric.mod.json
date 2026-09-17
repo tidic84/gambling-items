@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "gamblingitems_test",
+  "version": "1.0.0",
+  "name": "Gambling Items integration tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": ["dev.gamblingitems.fabric.upgrade.UpgradeGameTests"]
+  }
+}

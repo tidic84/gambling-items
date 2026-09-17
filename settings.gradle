@@ -1,0 +1,12 @@
+rootProject.name = 'gambling-items-core'
+
+// Only load Minecraft tooling when a platform task is requested from this build.
+// The Fabric build already includes this core, so do not include it again from a child build.
+def platformTasks = ['runClient', 'runServer', 'buildFabric']
+if (gradle.parent == null && gradle.startParameter.taskNames.any {
+    platformTasks.contains(it.tokenize(':').last())
+}) {
+    includeBuild('platforms/fabric-1.21.1') {
+        name = 'fabric-1.21.1'
+    }
+}

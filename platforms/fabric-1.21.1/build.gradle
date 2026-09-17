@@ -1,0 +1,74 @@
+plugins {
+    id 'fabric-loom' version "${loom_version}"
+}
+
+def sharedProperties = new Properties()
+file('../../gradle.properties').withInputStream { sharedProperties.load(it) }
+group = 'dev.gamblingitems'
+version = sharedProperties.getProperty('version')
+
+base {
+    archivesName = 'gambling-items-fabric-1.21.1'
+}
+
+repositories {
+    mavenCentral()
+}
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        gamblingitems {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+    implementation "dev.gamblingitems:gambling-items-core:${version}"
+    include "dev.gamblingitems:gambling-items-core:${version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand version: project.version
+    }
+}
+
+// Building the adapter also verifies the shared rules.
+tasks.named('check') {
+    dependsOn gradle.includedBuild('gambling-items-core').task(':check')
+}
+
+fabricApi.configureTests {
+    createSourceSet = true
+    modId = 'gamblingitems_test'
+    enableGameTests = true
+    enableClientGameTests = false
+    eula = false
+    clearRunDirectory = false
+}
+
+loom.runs.gameTest {
+    property 'fabric-api.gametest.report-file', file('build/test-results/gametest.xml').absolutePath
+}
+
+tasks.named('runGameTest') {
+    doFirst { file('build/test-results').mkdirs() }
+}

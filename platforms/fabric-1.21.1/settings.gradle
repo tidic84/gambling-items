@@ -1,0 +1,19 @@
+pluginManagement {
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'gambling-items-fabric-1.21.1'
+
+// Gradle 8 does not automatically propagate --dry-run to included builds.
+// Keep root launch previews from executing this build's tasks.
+if (gradle.parent != null && gradle.parent.startParameter.dryRun) {
+    gradle.startParameter.dryRun = true
+}
+
+// Substitute the pure Java library from source, without requiring a local Maven publication.
+includeBuild('../..') {
+    name = 'gambling-items-core'
+}

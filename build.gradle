@@ -1,0 +1,46 @@
+plugins {
+    id 'java-library'
+}
+
+group = 'dev.gamblingitems'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+sourceSets {
+    main.java.srcDirs = ['core/src/main/java']
+    test.java.srcDirs = ['core/src/test/java']
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+[
+    runClient: ['runClient', 'Launch the Fabric 1.21.1 development client.'],
+    runServer: ['runServer', 'Launch the Fabric 1.21.1 development server.'],
+    buildFabric: ['build', 'Build the Fabric 1.21.1 mod and verify the shared core.']
+].each { alias, target ->
+    tasks.register(alias) {
+        group = 'fabric'
+        description = target[1]
+        dependsOn { gradle.includedBuild('fabric-1.21.1').task(":${target[0]}") }
+    }
+}

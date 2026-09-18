@@ -1,7 +1,10 @@
 package dev.gamblingitems.fabric.upgrade;
 
 import dev.gamblingitems.fabric.ModContent;
-import dev.gamblingitems.fabric.block.UpgradeStationEntity;
+import dev.gamblingitems.core.GameMode;
+import dev.gamblingitems.fabric.block.GameStationBlock;
+import dev.gamblingitems.fabric.block.GameStationEntity;
+import dev.gamblingitems.fabric.value.ValueCatalog;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import net.minecraft.server.level.ServerPlayer;
@@ -23,33 +26,33 @@ public final class UpgradeMenu extends AbstractContainerMenu {
     private final Player owner;
     private final Container vault;
     private final ContainerLevelAccess access;
-    private final UpgradeCatalog catalog;
+    private final UpgradeSetup setup;
     private final java.util.function.DoubleSupplier draw;
     // selection, animation ticks, result (0 none / 1 win / 2 loss), frozen chance, cooldown
     private final SimpleContainerData data = new SimpleContainerData(5);
     private long animationEnd;
 
-    public UpgradeMenu(int syncId, Inventory inventory, UpgradeCatalog catalog) {
-        this(syncId, inventory, catalog, new SimpleContainer(2), ContainerLevelAccess.NULL);
+    public UpgradeMenu(int syncId, Inventory inventory, UpgradeSetup setup) {
+        this(syncId, inventory, setup, new SimpleContainer(2), ContainerLevelAccess.NULL);
     }
 
-    public UpgradeMenu(int syncId, Inventory inventory, UpgradeCatalog catalog,
+    public UpgradeMenu(int syncId, Inventory inventory, UpgradeSetup setup,
                        Container vault, ContainerLevelAccess access) {
-        this(syncId, inventory, catalog, vault, access, RANDOM::nextDouble);
+        this(syncId, inventory, setup, vault, access, RANDOM::nextDouble);
     }
 
-    UpgradeMenu(int syncId, Inventory inventory, UpgradeCatalog catalog,
+    UpgradeMenu(int syncId, Inventory inventory, UpgradeSetup setup,
                 Container vault, ContainerLevelAccess access, java.util.function.DoubleSupplier draw) {
         super(ModContent.UPGRADER_MENU, syncId);
         this.owner = inventory.player;
-        this.catalog = catalog;
+        this.setup = setup;
         this.vault = vault;
         this.access = access;
         this.draw = draw;
         data.set(0, -1);
         addDataSlots(data);
         addSlot(new Slot(vault, 0, 20, 62) {
-            @Override public boolean mayPlace(ItemStack stack) { return !isAnimating() && catalog.valueOf(stack) > 0; }
+            @Override public boolean mayPlace(ItemStack stack) { return !isAnimating() && setup.catalog().valueOf(stack) > 0; }
             @Override public boolean mayPickup(Player player) { return !isAnimating(); }
         });
         addSlot(new Slot(vault, 1, 146, 62) {
@@ -63,22 +66,23 @@ public final class UpgradeMenu extends AbstractContainerMenu {
         for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, col, 79 + col * 18, 213));
     }
 
-    public UpgradeCatalog catalog() { return catalog; }
+    public UpgradeSetup setup() { return setup; }
+    public ValueCatalog catalog() { return setup.catalog(); }
     public int selectedIndex() { return data.get(0); }
     public int remainingTicks() { return data.get(1); }
     public int result() { return data.get(2); }
     public boolean isAnimating() { return remainingTicks() > 0; }
-    public long inputValue() { return catalog.valueOf(vault.getItem(0)); }
-    public UpgradeCatalog.Entry selected() {
-        return selectedIndex() < 0 || selectedIndex() >= catalog.entries().size()
-                ? null : catalog.entries().get(selectedIndex());
+    public long inputValue() { return setup.catalog().valueOf(vault.getItem(0)); }
+    public ValueCatalog.Entry selected() {
+        return selectedIndex() < 0 || selectedIndex() >= setup.catalog().entries().size()
+                ? null : setup.catalog().entries().get(selectedIndex());
     }
     public double chance() {
         if (isAnimating() || (inputValue() == 0 && result() != 0)) return data.get(3) / 10_000.0;
         var target = selected();
         long input = inputValue();
         return target == null || input <= 0 || target.value() <= input ? 0
-                : catalog.rules().chance(input, target.value()).doubleValue();
+                : setup.rules().chance(input, target.value()).doubleValue();
     }
     public boolean canSpin() {
         var target = selected();
@@ -88,7 +92,7 @@ public final class UpgradeMenu extends AbstractContainerMenu {
 
     @Override public boolean clickMenuButton(Player player, int button) {
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) return false;
-        if (button >= 0 && button < catalog.entries().size() && !isAnimating()) {
+        if (button >= 0 && button < setup.catalog().entries().size() && !isAnimating()) {
             data.set(0, button);
             data.set(2, 0);
             broadcastChanges();
@@ -97,9 +101,9 @@ public final class UpgradeMenu extends AbstractContainerMenu {
         if (button != SPIN_BUTTON || !canSpin() || player.getCooldowns().isOnCooldown(ModContent.TERMINAL)) return false;
         long value = inputValue();
         var target = selected();
-        boolean won = catalog.rules().wins(value, target.value(), BigDecimal.valueOf(draw.getAsDouble()));
+        boolean won = setup.rules().wins(value, target.value(), BigDecimal.valueOf(draw.getAsDouble()));
         // Resolve on the server once. The animation cannot change or repeat this payment.
-        data.set(3, catalog.rules().chance(value, target.value()).movePointRight(4).intValue());
+        data.set(3, setup.rules().chance(value, target.value()).movePointRight(4).intValue());
         data.set(2, won ? 1 : 2);
         animationEnd = player.level().getGameTime() + ANIMATION_TICKS;
         data.set(1, ANIMATION_TICKS);
@@ -108,8 +112,10 @@ public final class UpgradeMenu extends AbstractContainerMenu {
         vault.setItem(0, ItemStack.EMPTY);
         if (won) vault.setItem(1, target.stack());
         access.execute((level, pos) -> {
-            if (level.getBlockEntity(pos) instanceof UpgradeStationEntity station)
-                station.showResult(target.id(), data.get(3), won, player.getName().getString());
+            if (level.getBlockEntity(pos) instanceof GameStationEntity station)
+                station.show(player.getName().getString(),
+                        java.math.BigDecimal.valueOf(data.get(3), 2).toPlainString() + "%",
+                        won ? "won" : "lost", won ? target.id().toString() : "", won, ANIMATION_TICKS);
         });
         broadcastChanges();
         return true;
@@ -126,7 +132,8 @@ public final class UpgradeMenu extends AbstractContainerMenu {
     @Override public boolean stillValid(Player player) {
         if (player.level().isClientSide) return player == owner;
         return player == owner && player.isAlive() && access.evaluate(
-                (level, pos) -> level.getBlockState(pos).is(ModContent.STATION)
+                (level, pos) -> level.getBlockState(pos).getBlock() instanceof GameStationBlock station
+                        && station.mode() == GameMode.UPGRADER
                         && player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64,
                 player.getInventory().contains(new ItemStack(ModContent.TERMINAL)));
     }

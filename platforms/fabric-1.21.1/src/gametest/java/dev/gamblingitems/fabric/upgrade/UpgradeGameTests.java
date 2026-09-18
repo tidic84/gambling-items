@@ -1,6 +1,9 @@
 package dev.gamblingitems.fabric.upgrade;
 
 import dev.gamblingitems.fabric.ModContent;
+import dev.gamblingitems.fabric.value.ValueCatalog;
+import dev.gamblingitems.fabric.vault.PlayerVaults;
+import dev.gamblingitems.fabric.vault.VaultSection;
 import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
@@ -19,10 +22,10 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 
 public class UpgradeGameTests implements FabricGameTest {
-    private UpgradeCatalog catalog() {
-        return new UpgradeCatalog(List.of(
-                new UpgradeCatalog.Entry(ResourceLocation.withDefaultNamespace("iron_ingot"), 1000),
-                new UpgradeCatalog.Entry(ResourceLocation.withDefaultNamespace("diamond"), 10000)), 9000, 9000);
+    private UpgradeSetup setup() {
+        return new UpgradeSetup(new ValueCatalog(List.of(
+                new ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("iron_ingot"), 1000),
+                new ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("diamond"), 10000))), 9000, 9000);
     }
     private ServerPlayer player(GameTestHelper helper) {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
@@ -30,7 +33,7 @@ public class UpgradeGameTests implements FabricGameTest {
         return player;
     }
     private UpgradeMenu menu(ServerPlayer player, SimpleContainer vault, double draw) {
-        return new UpgradeMenu(1, player.getInventory(), catalog(), vault, ContainerLevelAccess.NULL, () -> draw);
+        return new UpgradeMenu(1, player.getInventory(), setup(), vault, ContainerLevelAccess.NULL, () -> draw);
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
@@ -115,26 +118,32 @@ public class UpgradeGameTests implements FabricGameTest {
     public void vaultRoundTripKeepsPlayersSeparate(GameTestHelper helper) {
         PlayerVaults vaults = new PlayerVaults();
         UUID first = UUID.randomUUID(), second = UUID.randomUUID();
-        vaults.forPlayer(first).setItem(1, new ItemStack(Items.DIAMOND));
-        vaults.forPlayer(second).setItem(0, new ItemStack(Items.IRON_INGOT, 7));
+        vaults.forPlayer(first, VaultSection.UPGRADER).setItem(1, new ItemStack(Items.DIAMOND));
+        vaults.forPlayer(second, VaultSection.UPGRADER).setItem(0, new ItemStack(Items.IRON_INGOT, 7));
+        vaults.forPlayer(first, VaultSection.TRADE_UP).setItem(2, new ItemStack(Items.EMERALD, 3));
         var registries = helper.getLevel().registryAccess();
         PlayerVaults restored = PlayerVaults.load(vaults.save(new CompoundTag(), registries), registries);
-        helper.assertTrue(restored.forPlayer(first).getItem(1).is(Items.DIAMOND), "Reward restored");
-        helper.assertTrue(restored.forPlayer(second).getItem(0).getCount() == 7, "Input restored");
-        helper.assertTrue(restored.forPlayer(second).getItem(1).isEmpty(), "Players do not share rewards");
+        helper.assertTrue(restored.forPlayer(first, VaultSection.UPGRADER).getItem(1).is(Items.DIAMOND), "Reward restored");
+        helper.assertTrue(restored.forPlayer(second, VaultSection.UPGRADER).getItem(0).getCount() == 7, "Input restored");
+        helper.assertTrue(restored.forPlayer(second, VaultSection.UPGRADER).getItem(1).isEmpty(),
+                "Players do not share rewards");
+        helper.assertTrue(restored.forPlayer(first, VaultSection.TRADE_UP).getItem(2).getCount() == 3,
+                "Each game keeps its own slots");
+        helper.assertTrue(restored.forPlayer(first, VaultSection.UPGRADER).getItem(0).isEmpty(),
+                "Games do not share slots");
         helper.succeed();
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
     public void destroyedStationCannotAcceptWagers(GameTestHelper helper) {
         BlockPos relative = new BlockPos(1, 1, 1);
-        helper.setBlock(relative, ModContent.STATION);
+        helper.setBlock(relative, ModContent.UPGRADE_STATION);
         BlockPos pos = helper.absolutePos(relative);
         ServerPlayer player = player(helper);
         player.setPos(pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5);
         SimpleContainer vault = new SimpleContainer(2);
         vault.setItem(0, new ItemStack(Items.IRON_INGOT));
-        UpgradeMenu menu = new UpgradeMenu(1, player.getInventory(), catalog(), vault,
+        UpgradeMenu menu = new UpgradeMenu(1, player.getInventory(), setup(), vault,
                 ContainerLevelAccess.create(helper.getLevel(), pos), () -> 0);
         helper.assertTrue(menu.stillValid(player), "Nearby station accessible");
         menu.clickMenuButton(player, 1);

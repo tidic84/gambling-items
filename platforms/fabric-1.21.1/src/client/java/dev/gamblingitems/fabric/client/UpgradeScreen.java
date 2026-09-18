@@ -1,6 +1,6 @@
 package dev.gamblingitems.fabric.client;
 
-import dev.gamblingitems.fabric.upgrade.UpgradeCatalog;
+import dev.gamblingitems.fabric.value.ValueCatalog;
 import dev.gamblingitems.fabric.upgrade.UpgradeMenu;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -62,7 +62,7 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
         filtered.clear();
         String query = search.getValue().toLowerCase(Locale.ROOT);
         for (int i = 0; i < menu.catalog().entries().size(); i++) {
-            UpgradeCatalog.Entry entry = menu.catalog().entries().get(i);
+            ValueCatalog.Entry entry = menu.catalog().entries().get(i);
             if (entry.id().toString().contains(query)
                     || entry.stack().getHoverName().getString().toLowerCase(Locale.ROOT).contains(query)) filtered.add(i);
         }
@@ -189,7 +189,7 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
         }
         @Override protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float delta) {
             if (entryIndex < 0) return;
-            UpgradeCatalog.Entry entry = menu.catalog().entries().get(entryIndex);
+            ValueCatalog.Entry entry = menu.catalog().entries().get(entryIndex);
             boolean selected = menu.selectedIndex() == entryIndex;
             g.fill(getX(), getY(), getX() + width, getY() + height, isHoveredOrFocused() ? 0xff2a3b4e : PANEL);
             if (selected) g.fill(getX(), getY(), getX() + 2, getY() + height, GOLD);

@@ -6,9 +6,25 @@ Le projet prépare un mod avec Upgrader, Crash, Trade Up, caisses animées, roul
 
 ## État actuel
 
-Socle technique uniquement : cœur Java indépendant, règle de probabilité d'upgrade testable, identifiants des six modes et initialisation Fabric avec commande `/gamblingitems info`.
+Cinq jeux sont jouables : **l'Upgrader**, le **Trade Up**, les **caisses**, le **Crash** et la **roulette**. Le terminal portable ouvre un menu d'accueil listant les six modes ; seules les battles y sont affichées mais désactivées. Chaque jeu dispose aussi de sa borne posable, dont l'écran montre le tirage aux joueurs proches.
 
-**Les jeux, GUI, blocs, mises, paiements et sauvegardes ne sont pas encore implémentés.** La commande d'information liste les modes prévus ; elle n'ouvre pas d'interface et ne consomme aucun objet. Aucun support NeoForge ou 26.2 n'est livré pour le moment.
+- **Upgrader** : une mise, une cible choisie dans le catalogue, une chance affichée avant l'engagement.
+- **Trade Up** : cinq objets de valeur comparable (rapport 1,25 au maximum) contre un gain tiré dans un contrat affiché avant l'échange. Chaque gain possible vaut plus qu'un objet déposé, sans forcément valoir leur somme.
+- **Caisses** : un prix annoncé en objets, une table de gains pondérée et un ruban qui s'arrête sur le tirage. Les chances affichées sont calculées à partir des poids configurés ; les trois caisses par défaut rendent environ 90 % du prix en moyenne.
+- **Crash** : une manche commune hébergée par une borne. Chacun mise dans la matière de la table (diamant par défaut), voit la même courbe et encaisse quand il veut. Le seuil de crash reste secret jusqu'au crash et chaque seuil de retrait rend la même part configurée (95 % par défaut). Il n'y a pas de mise maximale fixe : la limite est ce que le serveur peut te payer, c'est-à-dire la place restante dans tes gains.
+- **Roulette** : une roue commune de 15 cases (7 rouges, 7 noires, 1 verte) hébergée par une borne. Rouge et noir paient 2×, vert paie 14×, mise comprise ; les trois paris rendent la même part, 14/15 soit 93,33 %. Les paris sont verrouillés avant la rotation et le résultat est commun à tous.
+
+Le serveur décide de chaque résultat avant l'animation, consomme la mise une seule fois et garde les gains non récupérés dans un coffre par joueur et par jeu, accessible depuis n'importe quel terminal ou borne.
+
+Les manches de Crash et de roulette appartiennent au serveur, pas au bloc : décharger le chunk d'une borne ou la casser n'interrompt pas un vol et ne libère aucune mise. Un arrêt du serveur annule une manche non réglée et rend chaque mise engagée une seule fois. Le terminal portable rejoint une table annoncée par une borne à moins de 64 blocs ; il n'en crée jamais.
+
+Les valeurs des objets, les réglages des jeux et les caisses sont dans `config/gamblingitems/games.json`, créé au premier démarrage. Un fichier écrit par une version précédente est migré au démarrage sans perdre les valeurs ni les réglages existants ; un ancien `upgrader.json` est également repris pour conserver les prix d'un monde existant.
+
+Chaque caisse y déclare son identifiant, son nom, son prix (objet et quantité) et sa table : objet, quantité et poids relatif. Les poids sont normalisés au chargement et les probabilités affichées en découlent. Le prix et chaque gain doivent être cotés dans `values`, sinon le fichier est refusé avec le nom de l'objet fautif.
+
+La section `crash` fixe la matière des mises, la mise minimale, le rendement, le multiplicateur maximal, la croissance par tick et les durées des phases. La section `roulette` fixe la matière, la mise minimale, le nombre de cases de chaque couleur, leurs multiplicateurs et les durées des phases. Une table dont la plus petite mise ne pourrait pas être payée est refusée au chargement.
+
+**Les battles de caisses ne sont pas encore implémentées.** Aucun support NeoForge ou 26.2 n'est livré pour le moment.
 
 ## Développement
 

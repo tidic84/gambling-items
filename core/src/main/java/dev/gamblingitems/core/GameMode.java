@@ -18,5 +18,13 @@ public enum GameMode {
     public String id() {
         return id;
     }
+
+    /** Reads a stored identifier. Never read a mode from an enum ordinal. */
+    public static GameMode fromId(String id) {
+        for (GameMode mode : values()) {
+            if (mode.id.equals(id)) return mode;
+        }
+        throw new IllegalArgumentException("Unknown game mode: " + id);
+    }
 }
 

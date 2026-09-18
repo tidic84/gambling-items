@@ -1,6 +1,6 @@
 # Gambling Items — proposition de conception
 
-Statut : mécaniques proposées ; socle de développement Fabric 1.21.1 créé, aucun mode jouable à ce stade.
+Statut : mécaniques proposées ; sur Fabric 1.21.1, l'Upgrader, le Trade Up, les caisses, le Crash et la roulette sont implémentés et testés. Les battles restent à développer.
 
 ## Objectif
 
@@ -53,9 +53,9 @@ Une borne héberge une manche commune : inscriptions, vol, crash, résultats. Ch
 
 Le multiplicateur démarre à 1× et augmente jusqu'au crash. Un retrait validé avant le crash rapporte `mise × multiplicateur` ; une mise encore engagée au crash est perdue.
 
-Pour la première implémentation, utiliser une seule matière par table : diamant, émeraude, or ou autre objet configuré. Une mise de 5 diamants encaissée à 2,4× rapporte 12 diamants au total, mise comprise. Le total versé est arrondi vers le bas ; afficher cette règle. Éviter de mélanger directement outils et minerais dans un paiement fractionnaire.
+Pour la première implémentation, utiliser une seule matière par table : diamant, émeraude, or ou autre objet configuré. Une mise de 5 diamants encaissée à 2,4× rapporte 12 diamants au total, mise comprise. Aucune mise maximale n'est fixée : une mise est refusée seulement si son gain le plus élevé ne tiendrait pas dans les gains à récupérer du joueur. Le total versé est arrondi vers le bas ; afficher cette règle. Éviter de mélanger directement outils et minerais dans un paiement fractionnaire.
 
-Le joueur peut programmer un retrait automatique avant le lancement. Il reste actif après déconnexion. Sans retrait automatique, une déconnexion ne retire ni ne rembourse la mise.
+Retenu à l'implémentation : pas de retrait automatique. Un retrait est toujours une action du joueur pendant le vol ; une déconnexion ne retire ni ne rembourse la mise.
 
 Le serveur utilise ses ticks pour le vol. Tous voient le même multiplicateur et le même crash. Un retrait reçu au tick du crash est refusé : cette priorité doit être constante, documentée et testée. L'instant d'un clic côté client n'est pas une preuve d'antériorité.
 
@@ -93,7 +93,7 @@ Les caisses sont configurables. Les données d'une ouverture en cours sont figé
 
 ## 5. Roulette
 
-Le type de roulette reste à choisir. Proposition initiale : une roulette courte à 15 cases, avec 7 rouges, 7 noires et 1 verte.
+Retenu à l'implémentation : la roulette courte à 15 cases, avec 7 rouges, 7 noires et 1 verte. La roue complète à numéros reste une évolution possible.
 
 Les paris rouge et noir versent 2× la mise, et le vert verse 14×. Ces multiplicateurs incluent la mise initiale. Sur des cases équiprobables, les trois paris ont un retour moyen de 14/15, soit environ 93,33 %, avant tout autre ajustement.
 

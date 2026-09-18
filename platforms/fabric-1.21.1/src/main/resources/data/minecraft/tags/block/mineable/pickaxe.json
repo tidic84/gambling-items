@@ -1,6 +1,10 @@
 {
   "replace": false,
   "values": [
-    "gamblingitems:upgrade_station"
+    "gamblingitems:upgrade_station",
+    "gamblingitems:trade_up_station",
+    "gamblingitems:case_station",
+    "gamblingitems:crash_station",
+    "gamblingitems:roulette_station"
   ]
 }

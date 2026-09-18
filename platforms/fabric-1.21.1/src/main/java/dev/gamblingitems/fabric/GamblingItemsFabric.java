@@ -28,6 +28,8 @@ public final class GamblingItemsFabric implements ModInitializer {
         // Shared rounds live on the server, not in a block: a flight survives an unloaded chunk.
         ServerTickEvents.END_SERVER_TICK.register(CrashGames::tick);
         ServerTickEvents.END_SERVER_TICK.register(RouletteGames::tick);
+        ServerTickEvents.END_SERVER_TICK.register(dev.gamblingitems.fabric.block.StationInteractions::tick);
+        ServerLifecycleEvents.SERVER_STOPPING.register(dev.gamblingitems.fabric.block.StationInteractions::stop);
         // An interrupted round is cancelled and every engaged stake is given back exactly once.
         ServerLifecycleEvents.SERVER_STOPPING.register(CrashGames::stopping);
         ServerLifecycleEvents.SERVER_STOPPING.register(RouletteGames::stopping);

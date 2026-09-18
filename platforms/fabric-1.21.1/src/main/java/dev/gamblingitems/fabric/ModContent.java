@@ -68,7 +68,8 @@ public final class ModContent {
 
     private static GameStationBlock station(String path, GameMode mode) {
         return Registry.register(BuiltInRegistries.BLOCK, id(path), new GameStationBlock(mode,
-                BlockBehaviour.Properties.of().strength(3.5F).sound(SoundType.METAL).noOcclusion()));
+                BlockBehaviour.Properties.of().strength(3.5F).sound(SoundType.METAL).noOcclusion()
+                        .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK)));
     }
 
     private static Item stationItem(String path, GameStationBlock block) {

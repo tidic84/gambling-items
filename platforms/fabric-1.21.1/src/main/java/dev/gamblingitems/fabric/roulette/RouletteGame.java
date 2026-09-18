@@ -251,6 +251,17 @@ public final class RouletteGame {
             case SPINNING -> ".".repeat((phaseTicks / 5 % 3) + 1);
             default -> settings.rules().colourAt(lastResultSlot).id().toUpperCase(java.util.Locale.ROOT);
         };
+        entity.phase = phase.id();
+        entity.targetSlot = resultSlot;
+        entity.animationTicks = settings.spinTicks();
+        entity.phaseEnd = level.getGameTime() + phaseTicks;
+        entity.wheelColours = java.util.stream.IntStream.range(0, settings.rules().slots())
+                .mapToObj(i -> settings.rules().colourAt(i).id()).collect(java.util.stream.Collectors.joining(","));
+        entity.publicBets = bets.entrySet().stream().map(entry -> {
+            var player = level.getServer().getPlayerList().getPlayer(entry.getKey());
+            String name = player == null ? entry.getKey().toString().substring(0, 8) : player.getGameProfile().getName();
+            return name + " : " + entry.getValue().stake() + " " + entry.getValue().colour().id();
+        }).collect(java.util.stream.Collectors.joining("\n"));
         entity.show(participants() + " / " + pot(), text, "roulette_result", "",
                 phase == Phase.RESULT, STATION_REFRESH_TICKS * 2);
     }

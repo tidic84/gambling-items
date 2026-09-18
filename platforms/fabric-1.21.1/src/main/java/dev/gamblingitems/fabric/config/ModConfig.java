@@ -34,7 +34,7 @@ import net.minecraft.world.item.Items;
 
 /** Server-side settings. Item values are shared by every game; each game keeps its own tuning. */
 public final class ModConfig {
-    public static final int SCHEMA_VERSION = 7;
+    public static final int SCHEMA_VERSION = 8;
     private static ValueCatalog values;
     private static UpgradeSetup upgrader;
     private static TradeUpSetup tradeUp;
@@ -76,7 +76,7 @@ public final class ModConfig {
         Files.writeString(path, new GsonBuilder().setPrettyPrinting().create().toJson(json), StandardCharsets.UTF_8);
     }
 
-    /** Brings an older file to the current schema. Existing values and tuning are always kept. */
+    /** Brings an older file to the current schema. Custom tuning is kept; obsolete defaults can be migrated. */
     private static boolean migrate(JsonObject json) {
         int schema = json.get("schemaVersion").getAsInt();
         if (schema == SCHEMA_VERSION) return false;
@@ -93,6 +93,13 @@ public final class ModConfig {
             JsonObject crashJson = json.getAsJsonObject("crash");
             crashJson.remove("stakeItem");
             crashJson.add("minimumStake", defaultCrash().get("minimumStake"));
+        }
+        // Schema 8 shortens the old default betting countdown, preserving custom durations.
+        if (schema < 8) {
+            for (String game : List.of("roulette", "crash")) {
+                JsonObject settings = json.getAsJsonObject(game);
+                if (settings.get("bettingTicks").getAsInt() == 200) settings.addProperty("bettingTicks", 60);
+            }
         }
         json.addProperty("schemaVersion", SCHEMA_VERSION);
         return true;
@@ -246,13 +253,13 @@ public final class ModConfig {
         json.addProperty("greenSlots", 1);
         json.addProperty("colourPayout", 2);
         json.addProperty("greenPayout", 14);
-        json.addProperty("bettingTicks", 200);
+        json.addProperty("bettingTicks", 60);
         json.addProperty("spinTicks", 60);
         json.addProperty("resultTicks", 60);
         return json;
     }
 
-    /** Bets in value, a ten second betting window and a flight that doubles every two seconds. */
+    /** Bets in value, a three second betting window and a flight that doubles every two seconds. */
     private static JsonObject defaultCrash() {
         JsonObject json = new JsonObject();
         // One iron ingot in the default catalogue.
@@ -260,7 +267,7 @@ public final class ModConfig {
         json.addProperty("returnBasisPoints", 9_500);
         json.addProperty("maximumMultiplier", 5_000);
         json.addProperty("growthBasisPoints", 10_200);
-        json.addProperty("bettingTicks", 200);
+        json.addProperty("bettingTicks", 60);
         json.addProperty("resultTicks", 100);
         return json;
     }

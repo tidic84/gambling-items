@@ -22,6 +22,8 @@ Les valeurs des objets, les réglages des jeux et les caisses sont dans `config/
 
 Chaque caisse y déclare son identifiant, son nom, son prix (objet et quantité) et sa table : objet, quantité et poids relatif. Les poids sont normalisés au chargement et les probabilités affichées en découlent. Le prix et chaque gain doivent être cotés dans `values`, sinon le fichier est refusé avec le nom de l'objet fautif.
 
+Le d�lai de mise par d�faut de la roulette et du Crash est de **3 secondes** (60 ticks). Au premier d�marrage avec le sch�ma 8, les anciennes dur�es de 200 ticks passent � 60 ; les autres dur�es personnalis�es sont conserv�es.
+
 La section `crash` fixe la matière des mises, la mise minimale, le rendement, le multiplicateur maximal, la croissance par tick et les durées des phases. La section `roulette` fixe la matière, la mise minimale, le nombre de cases de chaque couleur, leurs multiplicateurs et les durées des phases. Une table dont la plus petite mise ne pourrait pas être payée est refusée au chargement.
 
 **Les battles de caisses ne sont pas encore implémentées.** Aucun support NeoForge ou 26.2 n'est livré pour le moment.

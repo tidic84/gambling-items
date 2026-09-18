@@ -21,6 +21,19 @@ public final class GameStationEntity extends BlockEntity {
     public boolean highlight;
     public long startedAt;
     public int durationTicks;
+    public String reelItems = "", wheelColours = "";
+    public int phase = -1, targetSlot = -1, animationTicks, multiplier = 100;
+    public long phaseEnd;
+    public String previewPlayer = "", previewText = "", publicBets = "";
+
+    public boolean animating() { return level != null && level.getGameTime() < startedAt + durationTicks; }
+
+    public void preview(String player, String text) {
+        previewPlayer = player;
+        previewText = text;
+        setChanged();
+        level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+    }
 
     public GameStationEntity(BlockPos pos, BlockState state) { super(ModContent.STATION_ENTITY, pos, state); }
 
@@ -52,6 +65,8 @@ public final class GameStationEntity extends BlockEntity {
         highlight = false;
         durationTicks = 0;
         startedAt = 0;
+        publicBets = "";
+        phase = -1;
         setChanged();
         level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
     }
@@ -65,6 +80,16 @@ public final class GameStationEntity extends BlockEntity {
         tag.putBoolean("highlight", highlight);
         tag.putLong("startedAt", startedAt);
         tag.putInt("duration", durationTicks);
+        tag.putString("previewPlayer", previewPlayer);
+        tag.putString("previewText", previewText);
+        tag.putString("publicBets", publicBets);
+        tag.putString("reelItems", reelItems);
+        tag.putString("wheelColours", wheelColours);
+        tag.putInt("phase", phase);
+        tag.putInt("targetSlot", targetSlot);
+        tag.putInt("animationTicks", animationTicks);
+        tag.putInt("multiplier", multiplier);
+        tag.putLong("phaseEnd", phaseEnd);
     }
 
     @Override protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
@@ -76,6 +101,16 @@ public final class GameStationEntity extends BlockEntity {
         highlight = tag.getBoolean("highlight");
         startedAt = tag.getLong("startedAt");
         durationTicks = tag.getInt("duration");
+        previewPlayer = tag.getString("previewPlayer");
+        previewText = tag.getString("previewText");
+        publicBets = tag.getString("publicBets");
+        reelItems = tag.getString("reelItems");
+        wheelColours = tag.getString("wheelColours");
+        phase = tag.contains("phase") ? tag.getInt("phase") : -1;
+        targetSlot = tag.contains("targetSlot") ? tag.getInt("targetSlot") : -1;
+        animationTicks = tag.getInt("animationTicks");
+        multiplier = tag.getInt("multiplier");
+        phaseEnd = tag.getLong("phaseEnd");
     }
 
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider registries) { return saveWithoutMetadata(registries); }

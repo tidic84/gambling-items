@@ -104,6 +104,8 @@ public final class TradeUpMenu extends AbstractContainerMenu {
 
     @Override public boolean clickMenuButton(Player player, int button) {
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) return false;
+        if (access.evaluate((level, pos) -> level.getBlockEntity(pos) instanceof GameStationEntity station
+                && station.animating(), false)) return false;
         if (button != SPIN_BUTTON || !canSpin() || player.getCooldowns().isOnCooldown(ModContent.TERMINAL)) return false;
         TradeUpTable table = table().orElse(null);
         if (table == null) return false;
@@ -119,6 +121,8 @@ public final class TradeUpMenu extends AbstractContainerMenu {
         player.getCooldowns().addCooldown(ModContent.TERMINAL, ANIMATION_TICKS);
         access.execute((level, pos) -> {
             if (level.getBlockEntity(pos) instanceof GameStationEntity station) {
+                station.reelItems = table.rewards().stream().map(entry -> entry.id().toString())
+                        .collect(java.util.stream.Collectors.joining(","));
                 station.show(player.getName().getString(), table.percentOf(index).setScale(2,
                                 java.math.RoundingMode.HALF_UP).toPlainString() + "%",
                         "trade_up_result", reward.id().toString(), true, ANIMATION_TICKS);

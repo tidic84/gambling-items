@@ -21,6 +21,7 @@ public final class GameMenus {
 
     public static boolean open(ServerPlayer player, GameMode mode, ContainerLevelAccess access) {
         if (player.isSpectator() || !AVAILABLE.contains(mode)) return false;
+        dev.gamblingitems.fabric.block.StationInteractions.close(player.getUUID());
         switch (mode) {
             case UPGRADER -> UpgradeMenus.open(player, access);
             case TRADE_UP -> TradeUpMenus.open(player, access);

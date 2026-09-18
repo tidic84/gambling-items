@@ -98,6 +98,8 @@ public final class UpgradeMenu extends AbstractContainerMenu {
             broadcastChanges();
             return true;
         }
+        if (access.evaluate((level, pos) -> level.getBlockEntity(pos) instanceof GameStationEntity station
+                && station.animating(), false)) return false;
         if (button != SPIN_BUTTON || !canSpin() || player.getCooldowns().isOnCooldown(ModContent.TERMINAL)) return false;
         long value = inputValue();
         var target = selected();

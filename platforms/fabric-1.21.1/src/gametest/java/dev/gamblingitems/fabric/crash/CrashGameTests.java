@@ -15,18 +15,75 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 
 public class CrashGameTests implements FabricGameTest {
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void worldCashOutTransfersWinningsOnceAndKeepsOverflow(GameTestHelper helper) {
+        verifyWorldCashOut(helper, false);
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void worldCashOutWithFullInventoryCanBeCollectedLater(GameTestHelper helper) {
+        verifyWorldCashOut(helper, true);
+    }
+
+    private static void verifyWorldCashOut(GameTestHelper helper, boolean full) {
+        var game = game(helper, DRAW_250);
+        helper.setBlock(new BlockPos(1, 1, 1), ModContent.CRASH_STATION);
+        var station = (dev.gamblingitems.fabric.block.GameStationEntity) helper.getLevel().getBlockEntity(game.station());
+        var player = helper.makeMockServerPlayerInLevel();
+        player.setPos(game.station().getCenter());
+        var vault = staked(game, player.getUUID(), 0);
+        CrashGames.register(game);
+        try {
+            player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND, 5));
+            player.setShiftKeyDown(true);
+            dev.gamblingitems.fabric.block.StationInteractions.click(player, station, 0);
+            player.setShiftKeyDown(false);
+            helper.assertTrue(game.stagedValue(player.getUUID()) == 5, "Shift deposits the held stack");
+            dev.gamblingitems.fabric.block.StationInteractions.click(player, station, 4);
+            helper.assertTrue(station.phase == CrashGame.Phase.BETTING.id(), "Betting is immediately public");
+            tick(game, BETTING_TICKS);
+            helper.assertTrue(station.phase == CrashGame.Phase.FLYING.id(), "The cash out control appears on takeoff");
+            tick(game, 10);
+            if (full) for (int i = 0; i < 36; i++) player.getInventory().setItem(i, new ItemStack(Items.COBBLESTONE, 64));
+            long expected = settings().rules().payout(5, game.publicMultiplier());
+            dev.gamblingitems.fabric.block.StationInteractions.click(player, station, 4);
+            helper.assertTrue(game.betOf(player.getUUID()).paid() == expected, "The world action settles the bet");
+            helper.assertTrue(winnings(vault) == (full ? expected : 0), "Only inventory overflow stays in the vault");
+            helper.assertTrue(player.getInventory().countItem(Items.DIAMOND) == (full ? 0 : expected), "Cash out delivers winnings directly");
+            dev.gamblingitems.fabric.block.StationInteractions.click(player, station, 4);
+            helper.assertTrue(game.betOf(player.getUUID()).paid() == expected, "Repeated clicks do not pay twice");
+            if (full) {
+                player.getInventory().setItem(0, ItemStack.EMPTY);
+                dev.gamblingitems.fabric.block.StationInteractions.click(player, station, 6);
+            }
+            helper.assertTrue(winnings(vault) == 0 && player.getInventory().countItem(Items.DIAMOND) == expected,
+                    "All winnings are recovered exactly once");
+            while (game.phase() == CrashGame.Phase.FLYING) game.tick();
+            helper.assertTrue(station.phase == CrashGame.Phase.CRASHED.id(), "Crash disables the action immediately");
+            dev.gamblingitems.fabric.block.StationInteractions.click(player, station, 4);
+            helper.assertTrue(player.getInventory().countItem(Items.DIAMOND) == expected, "Late clicks cannot pay again");
+            helper.assertTrue(player.containerMenu == player.inventoryMenu, "The entire flow stays on the world screen");
+        } finally {
+            dev.gamblingitems.fabric.block.StationInteractions.close(player.getUUID());
+            game.cancel();
+            CrashGames.clear();
+        }
+        helper.succeed();
+    }
+
     private static final int BETTING_TICKS = 40, RESULT_TICKS = 20;
     /** Draws are uniform in [0, DRAW_BOUND): this one lands the flight exactly on 2.50x. */
     private static final long DRAW_250 = 95L * CrashGame.DRAW_BOUND / 250 - 1;
     private static final long DRAW_INSTANT = CrashGame.DRAW_BOUND - 1;
 
     private static CrashSettings settings() {
-        return new CrashSettings(ResourceLocation.withDefaultNamespace("diamond"), 1,
+        return new CrashSettings(1,
                 9_500, 5_000, 10_200, BETTING_TICKS, RESULT_TICKS);
     }
 
     private static CrashGame game(GameTestHelper helper, long draw) {
-        return new CrashGame(helper.getLevel(), helper.absolutePos(new BlockPos(1, 1, 1)), settings(), () -> draw);
+        return new CrashGame(helper.getLevel(), helper.absolutePos(new BlockPos(1, 1, 1)), new CrashSetup(new dev.gamblingitems.fabric.value.ValueCatalog(java.util.List.of(
+                new dev.gamblingitems.fabric.value.ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("diamond"), 1))), settings()), () -> draw);
     }
 
     private static Container staked(CrashGame game, UUID player, int count) {
@@ -53,9 +110,9 @@ public class CrashGameTests implements FabricGameTest {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         CrashGame game = game(helper, 0);
         UUID uuid = player.getUUID();
-        Container vault = staked(game, uuid, 7);
+        Container vault = staked(game, uuid, 5);
         helper.assertTrue(game.place(uuid, 5), "A bet inside the limits is accepted");
-        helper.assertTrue(vault.getItem(CrashSettings.INPUT_SLOT).getCount() == 2, "Only the stake is engaged");
+        helper.assertTrue(vault.getItem(CrashSettings.INPUT_SLOT).isEmpty(), "The prepared stake is engaged");
         helper.assertTrue(vault.getItem(CrashSettings.ENGAGED_SLOT).getCount() == 5, "The stake waits in the vault");
         helper.assertFalse(game.place(uuid, 2), "One bet per player and per round");
         helper.assertTrue(game.phase() == CrashGame.Phase.BETTING, "The first bet opens the window");
@@ -122,7 +179,7 @@ public class CrashGameTests implements FabricGameTest {
         CrashGame game = game(helper, 0);
         UUID uuid = player.getUUID();
         Container vault = staked(game, uuid, 4);
-        helper.assertTrue(game.largestStake(uuid) == 64, "Empty winnings allow a full stack");
+        helper.assertTrue(game.isPayable(uuid, 64), "Empty winnings allow a full stack");
         helper.assertFalse(game.place(uuid, 65), "More than one stack is refused");
         helper.assertFalse(game.place(uuid, 0), "Below the minimum stake");
         helper.assertFalse(game.place(uuid, 5), "More than the vault holds");
@@ -148,7 +205,7 @@ public class CrashGameTests implements FabricGameTest {
             vault.setItem(slot, new ItemStack(Items.DIAMOND, 64));
         }
         helper.assertTrue(game.winnings(vault) == CrashSettings.PAYOUT_SLOTS * 64, "The winnings are full");
-        helper.assertTrue(game.largestStake(uuid) == 0, "Nothing more could be paid");
+        helper.assertTrue(!game.isPayable(uuid, 8), "Nothing more could be paid");
         helper.assertFalse(game.place(uuid, 8), "A win that could not be stored is refused before the bet");
         helper.assertTrue(vault.getItem(CrashSettings.INPUT_SLOT).getCount() == 8, "Nothing is engaged");
         for (int slot = CrashSettings.FIRST_PAYOUT_SLOT; slot < CrashSettings.VAULT_SIZE; slot++) {
@@ -171,11 +228,11 @@ public class CrashGameTests implements FabricGameTest {
         long paid = settings().rules().payout(6, game.publicMultiplier());
         helper.assertTrue(game.cashOut(cashed), "One player cashed out before the interruption");
         game.cancel();
-        helper.assertTrue(winnings(engagedVault) == 6, "The engaged stake comes back once");
+        helper.assertTrue(engagedVault.getItem(CrashSettings.INPUT_SLOT).getCount() == 6, "The engaged stake comes back once");
         helper.assertTrue(engagedVault.getItem(CrashSettings.ENGAGED_SLOT).isEmpty(), "Nothing stays engaged");
         helper.assertTrue(winnings(cashedVault) == paid, "A settled cash out is not paid a second time");
         game.cancel();
-        helper.assertTrue(winnings(engagedVault) == 6, "Cancelling twice refunds once");
+        helper.assertTrue(engagedVault.getItem(CrashSettings.INPUT_SLOT).getCount() == 6, "Cancelling twice refunds once");
         helper.assertTrue(game.phase() == CrashGame.Phase.WAITING, "The table is free again");
         helper.succeed();
     }

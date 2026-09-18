@@ -102,6 +102,8 @@ public final class CaseMenu extends AbstractContainerMenu {
             broadcastChanges();
             return true;
         }
+        if (access.evaluate((level, pos) -> level.getBlockEntity(pos) instanceof GameStationEntity station
+                && station.animating(), false)) return false;
         if (button != OPEN_BUTTON || !canOpen() || player.getCooldowns().isOnCooldown(ModContent.TERMINAL)) return false;
         // The opening keeps this definition: a later configuration change cannot alter it.
         CaseDefinition definition = selected();
@@ -117,6 +119,8 @@ public final class CaseMenu extends AbstractContainerMenu {
         player.getCooldowns().addCooldown(ModContent.TERMINAL, ANIMATION_TICKS);
         access.execute((level, pos) -> {
             if (level.getBlockEntity(pos) instanceof GameStationEntity station) {
+                station.reelItems = definition.rewards().stream().map(entry -> entry.item().toString())
+                        .collect(java.util.stream.Collectors.joining(","));
                 station.show(player.getName().getString(),
                         definition.percentOf(index).setScale(2, RoundingMode.HALF_UP).toPlainString() + "%",
                         "case_result", reward.item().toString(), true, ANIMATION_TICKS);

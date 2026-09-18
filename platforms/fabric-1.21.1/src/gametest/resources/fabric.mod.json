@@ -10,7 +10,8 @@
       "dev.gamblingitems.fabric.tradeup.TradeUpGameTests",
       "dev.gamblingitems.fabric.cases.CaseGameTests",
       "dev.gamblingitems.fabric.crash.CrashGameTests",
-      "dev.gamblingitems.fabric.roulette.RouletteGameTests"
+      "dev.gamblingitems.fabric.roulette.RouletteGameTests",
+      "dev.gamblingitems.fabric.block.StationGameTests"
     ]
   }
 }

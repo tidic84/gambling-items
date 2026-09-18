@@ -154,6 +154,8 @@ public final class CrashGame {
             phase = Phase.BETTING;
             phaseTicks = settings().bettingTicks();
         }
+        stationTicks = 0;
+        refreshStation();
         return true;
     }
 
@@ -166,10 +168,13 @@ public final class CrashGame {
         Bet bet = bets.get(player);
         if (bet == null || !bet.engaged()) return false;
         settle(player, bet, settings().rules().multiplierAt(flightTick));
+        stationTicks = 0;
+        refreshStation();
         return true;
     }
 
     public void tick() {
+        Phase previousPhase = phase;
         switch (phase) {
             case WAITING -> idleTicks++;
             case CRASHED -> {
@@ -180,6 +185,7 @@ public final class CrashGame {
             }
             case FLYING -> advance();
         }
+        if (phase != previousPhase) stationTicks = 0;
         refreshStation();
     }
 
@@ -218,6 +224,7 @@ public final class CrashGame {
 
     private void reset() {
         if (level.isLoaded(station) && level.getBlockEntity(station) instanceof GameStationEntity entity) {
+            entity.multiplier = CrashRules.START;
             entity.clear();
         }
         phase = Phase.WAITING;
@@ -276,6 +283,14 @@ public final class CrashGame {
         if (!level.isLoaded(station)) return;
         if (!(level.getBlockEntity(station) instanceof GameStationEntity entity)) return;
         String multiplier = BigDecimal.valueOf(publicMultiplier(), 2).toPlainString() + "x";
+        entity.phase = phase.id();
+        entity.multiplier = publicMultiplier();
+        entity.phaseEnd = level.getGameTime() + phaseTicks;
+        entity.publicBets = bets.entrySet().stream().map(entry -> {
+            var player = level.getServer().getPlayerList().getPlayer(entry.getKey());
+            String name = player == null ? entry.getKey().toString().substring(0, 8) : player.getGameProfile().getName();
+            return name + " : " + entry.getValue().stake() + (entry.getValue().engaged() ? "" : " -> " + entry.getValue().paid());
+        }).collect(java.util.stream.Collectors.joining("\n"));
         entity.show(participants() + " / " + BigDecimal.valueOf(pot(), 3).stripTrailingZeros().toPlainString(),
                 phase == Phase.BETTING ? String.valueOf((phaseTicks + 19) / 20) : multiplier,
                 "crash_result", "", phase != Phase.CRASHED, STATION_REFRESH_TICKS * 2);

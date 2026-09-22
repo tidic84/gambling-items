@@ -11,7 +11,17 @@
       "dev.gamblingitems.fabric.cases.CaseGameTests",
       "dev.gamblingitems.fabric.crash.CrashGameTests",
       "dev.gamblingitems.fabric.roulette.RouletteGameTests",
-      "dev.gamblingitems.fabric.block.StationGameTests"
+      "dev.gamblingitems.fabric.loot.KeyGameTests",
+      "dev.gamblingitems.fabric.blackjack.BlackjackGameTests",
+      "dev.gamblingitems.fabric.battle.BattleGameTests",
+      "dev.gamblingitems.fabric.bingo.BingoGameTests",
+      "dev.gamblingitems.fabric.slots.SlotGameTests",
+      "dev.gamblingitems.fabric.block.StationGameTests",
+      "dev.gamblingitems.fabric.block.PanelReachGameTests",
+      "dev.gamblingitems.fabric.block.TableGameTests",
+      "dev.gamblingitems.fabric.menu.ValueSyncGameTests",
+      "dev.gamblingitems.fabric.menu.LayoutGameTests",
+      "dev.gamblingitems.fabric.ContentGameTests"
     ]
   }
 }

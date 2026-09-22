@@ -8,6 +8,9 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import dev.gamblingitems.fabric.crash.CrashGames;
+import dev.gamblingitems.fabric.battle.BattleLobbies;
+import dev.gamblingitems.fabric.bingo.BingoGames;
+import dev.gamblingitems.fabric.blackjack.BlackjackTables;
 import dev.gamblingitems.fabric.roulette.RouletteGames;
 import dev.gamblingitems.fabric.config.ModConfig;
 import dev.gamblingitems.fabric.menu.GameMenus;
@@ -24,18 +27,29 @@ public final class GamblingItemsFabric implements ModInitializer {
     @Override
     public void onInitialize() {
         ModContent.initialize();
+        // Keys are found on mobs, so the cases have a price that is played for, not bought.
+        dev.gamblingitems.fabric.loot.KeyDrops.initialize();
         ServerLifecycleEvents.SERVER_STARTING.register(server -> ModConfig.load());
         // Shared rounds live on the server, not in a block: a flight survives an unloaded chunk.
         ServerTickEvents.END_SERVER_TICK.register(CrashGames::tick);
         ServerTickEvents.END_SERVER_TICK.register(RouletteGames::tick);
+        ServerTickEvents.END_SERVER_TICK.register(BlackjackTables::tick);
+        ServerTickEvents.END_SERVER_TICK.register(BattleLobbies::tick);
+        ServerTickEvents.END_SERVER_TICK.register(BingoGames::tick);
         ServerTickEvents.END_SERVER_TICK.register(dev.gamblingitems.fabric.block.StationInteractions::tick);
         ServerLifecycleEvents.SERVER_STOPPING.register(dev.gamblingitems.fabric.block.StationInteractions::stop);
         // An interrupted round is cancelled and every engaged stake is given back exactly once.
         ServerLifecycleEvents.SERVER_STOPPING.register(CrashGames::stopping);
         ServerLifecycleEvents.SERVER_STOPPING.register(RouletteGames::stopping);
+        ServerLifecycleEvents.SERVER_STOPPING.register(BlackjackTables::stopping);
+        ServerLifecycleEvents.SERVER_STOPPING.register(BattleLobbies::stopping);
+        ServerLifecycleEvents.SERVER_STOPPING.register(BingoGames::stopping);
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             CrashGames.clear();
             RouletteGames.clear();
+            BlackjackTables.clear();
+            BattleLobbies.clear();
+            BingoGames.clear();
         });
         String availableModes = GameMenus.AVAILABLE.stream().map(GameMode::id).collect(Collectors.joining(", "));
         String plannedModes = Arrays.stream(GameMode.values())

@@ -29,7 +29,7 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /** One placed machine per game. Its screen shows the running draw to nearby players. */
-public final class GameStationBlock extends BaseEntityBlock {
+public final class GameStationBlock extends BaseEntityBlock implements GameSurface {
     public static final net.minecraft.world.level.block.state.properties.IntegerProperty PART = net.minecraft.world.level.block.state.properties.IntegerProperty.create("part", 0, 5);
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final MapCodec<GameStationBlock> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
@@ -45,7 +45,7 @@ public final class GameStationBlock extends BaseEntityBlock {
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(PART, 1));
     }
 
-    public GameMode mode() { return mode; }
+    @Override public GameMode mode() { return mode; }
 
     @Override protected MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
 

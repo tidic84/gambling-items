@@ -27,8 +27,21 @@ public final class CrashScreen extends AbstractContainerScreen<CrashMenu> {
         imageHeight = 238;
     }
 
+    /** Every game explains itself, in the language of the player. */
+    private final GameRules rules = new GameRules("crash");
+
+    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // While the rules are up they take every click, so nothing is played by accident.
+        if (rules.open()) {
+            rules.close();
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
     @Override protected void init() {
         super.init();
+        addRenderableWidget(rules.button(leftPos + imageWidth - 30, topPos + 6));
         bet = addRenderableWidget(Button.builder(tr("bet"), button -> click(CrashMenu.BET_BUTTON))
                 .bounds(leftPos + 182, topPos + 104, 60, 18).build());
         cashOut = addRenderableWidget(Button.builder(tr("cash_out"), button -> click(CrashMenu.CASH_OUT_BUTTON))
@@ -67,6 +80,10 @@ public final class CrashScreen extends AbstractContainerScreen<CrashMenu> {
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
+        if (rules.open()) {
+            rules.render(graphics, font, width, height);
+            return;
+        }
         renderTooltip(graphics, mouseX, mouseY);
     }
 

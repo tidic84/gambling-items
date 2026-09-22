@@ -86,12 +86,13 @@ Le [guide Fabric 26.2](https://docs.fabricmc.net/develop/porting/) couvre le pas
 ## Ce qui existe aujourd'hui
 
 - Identifiants stables des six modes dans le cœur, lisibles depuis une sauvegarde par leur identifiant.
-- Règles pures et testées de l'Upgrader, du Trade Up, des tables pondérées des caisses, du Crash et de la roulette, sans dépendance Minecraft.
+- Règles pures et testées de l'Upgrader, du Trade Up, des caisses, du Crash, de la roulette, du blackjack, des battles et du rendu de monnaie en objets, sans dépendance Minecraft.
 - Catalogue de valeurs commun aux jeux, chargé côté serveur et envoyé à l'ouverture d'un menu.
 - Coffres persistants par joueur et par jeu, avec migration explicite depuis le premier format.
 - Terminal portable menant à un menu d'accueil, et une borne par jeu avec son écran public.
-- Manches partagées de Crash et de roulette tenues par le serveur, indépendantes des blocs et des chunks chargés.
-- Build Fabric 1.21.1, inclusion du cœur, tests unitaires du cœur et tests en jeu des cinq jeux.
+- Manches partagées de Crash, de roulette et de battles tenues par le serveur, indépendantes des blocs et des chunks chargés.
+- Mises en valeur d'objets : un pari est un ensemble d'objets cotés, un gain est rendu en objets du catalogue.
+- Build Fabric 1.21.1, inclusion du cœur, tests unitaires du cœur et tests en jeu des sept jeux et des bornes.
 
 La table du Trade Up est reconstruite des deux côtés à partir des mêmes règles pures et des mêmes objets déposés : l'écran affiche donc les chances réelles sans protocole supplémentaire. Le serveur la reconstruit lui-même avant d'accepter l'échange ; l'affichage n'est jamais une source de vérité.
 
@@ -99,4 +100,4 @@ Les tables pondérées des caisses sont normalisées une seule fois au chargemen
 
 Le Crash sépare nettement ce qui est public de ce qui ne l'est pas : le multiplicateur et la mise totale sont envoyés à tous, le seuil de crash reste dans le serveur jusqu'au crash. La mise engagée reste dans le coffre du joueur jusqu'au règlement, si bien qu'un arrêt brutal la laisse à son propriétaire au lieu de la perdre. La roulette reprend ce moteur de phases : mises, verrouillage, rotation, paiement. Son tirage est fait au verrouillage et envoyé aux clients, dont la roue ne fait que le rejouer ; seul le Crash garde une valeur secrète, parce qu'il est le seul où l'on peut encore agir pendant la manche.
 
-Les battles de caisses restent à développer. Cette architecture facilite leur réutilisation ; elle n'est pas une promesse de portage automatique ni un support déjà testé de NeoForge ou de 26.2.
+Les sept jeux sont en place ; ce qui reste porte sur l'équilibrage, les visuels et les portages. Cette architecture facilite leur réutilisation ; elle n'est pas une promesse de portage automatique ni un support déjà testé de NeoForge ou de 26.2.

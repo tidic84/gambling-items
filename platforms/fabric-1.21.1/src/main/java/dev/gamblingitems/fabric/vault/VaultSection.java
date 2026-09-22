@@ -9,7 +9,11 @@ public enum VaultSection {
     TRADE_UP("trade_up", 6),
     CASE_OPENING("case_opening", 2),
     CRASH("crash", CrashSettings.VAULT_SIZE),
-    ROULETTE("roulette", RouletteSettings.VAULT_SIZE);
+    ROULETTE("roulette", RouletteSettings.VAULT_SIZE),
+    BLACKJACK("blackjack", dev.gamblingitems.fabric.blackjack.BlackjackSettings.VAULT_SIZE),
+    CASE_BATTLE("case_battle", dev.gamblingitems.fabric.battle.BattleSettings.VAULT_SIZE),
+    BINGO("bingo", dev.gamblingitems.fabric.bingo.BingoSettings.VAULT_SIZE),
+    SLOT_MACHINE("slot_machine", dev.gamblingitems.fabric.slots.SlotSettings.VAULT_SIZE);
 
     private final String id;
     private final int size;

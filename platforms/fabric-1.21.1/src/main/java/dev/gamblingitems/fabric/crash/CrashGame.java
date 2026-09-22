@@ -238,10 +238,15 @@ public final class CrashGame {
     private void settle(UUID player, Bet bet, int multiplier) {
         long total = settings().rules().payout(bet.stake(), multiplier);
         Container vault = vault(player);
-        clearEngaged(vault);
-        // The room was checked when the bet was accepted; what is below the cheapest item of the
-        // catalogue is the rounding the screen announces.
-        ItemBank.store(catalog(), vault, CrashSettings.FIRST_PAYOUT_SLOT, CrashSettings.VAULT_SIZE, total);
+        // The staked items come back as they are; only the winnings are made up in change.
+        long left = ItemBank.handBack(catalog(), vault, CrashSettings.ENGAGED_SLOT,
+                CrashSettings.FIRST_PAYOUT_SLOT, CrashSettings.FIRST_PAYOUT_SLOT, CrashSettings.VAULT_SIZE);
+        long profit = Math.max(0, total - bet.stake()) + left;
+        if (profit > 0) {
+            // The room was checked when the bet was accepted; what is below the cheapest item of the
+            // catalogue is the rounding the screen announces.
+            ItemBank.store(catalog(), vault, CrashSettings.FIRST_PAYOUT_SLOT, CrashSettings.VAULT_SIZE, profit);
+        }
         bet.settledMultiplier = multiplier;
         bet.paid = total;
     }

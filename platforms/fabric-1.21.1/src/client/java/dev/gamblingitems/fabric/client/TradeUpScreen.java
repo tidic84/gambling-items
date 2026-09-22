@@ -28,8 +28,21 @@ public final class TradeUpScreen extends AbstractContainerScreen<TradeUpMenu> {
         imageHeight = 238;
     }
 
+    /** Every game explains itself, in the language of the player. */
+    private final GameRules rules = new GameRules("trade_up");
+
+    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // While the rules are up they take every click, so nothing is played by accident.
+        if (rules.open()) {
+            rules.close();
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
     @Override protected void init() {
         super.init();
+        addRenderableWidget(rules.button(leftPos + imageWidth - 30, topPos + 6));
         trade = addRenderableWidget(Button.builder(tr("trade"), button -> {
             if (minecraft.gameMode != null) {
                 minecraft.gameMode.handleInventoryButtonClick(menu.containerId, TradeUpMenu.SPIN_BUTTON);
@@ -56,6 +69,10 @@ public final class TradeUpScreen extends AbstractContainerScreen<TradeUpMenu> {
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
+        if (rules.open()) {
+            rules.render(graphics, font, width, height);
+            return;
+        }
         renderTooltip(graphics, mouseX, mouseY);
     }
 

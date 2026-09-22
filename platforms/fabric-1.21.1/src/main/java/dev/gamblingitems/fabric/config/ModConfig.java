@@ -5,7 +5,16 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import dev.gamblingitems.core.cases.CaseRarity;
 import dev.gamblingitems.core.cases.CaseRules;
+import dev.gamblingitems.fabric.battle.BattleSettings;
+import dev.gamblingitems.fabric.bingo.BingoSettings;
+import dev.gamblingitems.fabric.bingo.BingoSetup;
+import dev.gamblingitems.fabric.slots.SlotSettings;
+import dev.gamblingitems.fabric.slots.SlotSetup;
+import dev.gamblingitems.fabric.battle.BattleSetup;
+import dev.gamblingitems.fabric.blackjack.BlackjackSettings;
+import dev.gamblingitems.fabric.blackjack.BlackjackSetup;
 import dev.gamblingitems.fabric.cases.CaseCatalog;
 import dev.gamblingitems.fabric.cases.CaseDefinition;
 import dev.gamblingitems.fabric.cases.CaseReward;
@@ -13,6 +22,7 @@ import dev.gamblingitems.fabric.cases.CaseSetup;
 import dev.gamblingitems.fabric.crash.CrashSettings;
 import dev.gamblingitems.fabric.crash.CrashSetup;
 import dev.gamblingitems.fabric.roulette.RouletteSettings;
+import dev.gamblingitems.fabric.roulette.RouletteSetup;
 import dev.gamblingitems.fabric.tradeup.TradeUpSettings;
 import dev.gamblingitems.fabric.tradeup.TradeUpSetup;
 import dev.gamblingitems.fabric.upgrade.UpgradeSetup;
@@ -34,13 +44,17 @@ import net.minecraft.world.item.Items;
 
 /** Server-side settings. Item values are shared by every game; each game keeps its own tuning. */
 public final class ModConfig {
-    public static final int SCHEMA_VERSION = 8;
+    public static final int SCHEMA_VERSION = 16;
     private static ValueCatalog values;
     private static UpgradeSetup upgrader;
     private static TradeUpSetup tradeUp;
     private static CaseSetup cases;
     private static CrashSetup crash;
-    private static RouletteSettings roulette;
+    private static RouletteSetup roulette;
+    private static BlackjackSetup blackjack;
+    private static BattleSetup battle;
+    private static BingoSetup bingo;
+    private static SlotSetup slots;
 
     private ModConfig() {}
 
@@ -49,7 +63,11 @@ public final class ModConfig {
     public static TradeUpSetup tradeUp() { return require(tradeUp); }
     public static CaseSetup cases() { return require(cases); }
     public static CrashSetup crash() { return require(crash); }
-    public static RouletteSettings roulette() { return require(roulette); }
+    public static RouletteSetup roulette() { return require(roulette); }
+    public static BlackjackSetup blackjack() { return require(blackjack); }
+    public static BattleSetup battle() { return require(battle); }
+    public static BingoSetup bingo() { return require(bingo); }
+    public static SlotSetup slots() { return require(slots); }
 
     private static <T> T require(T loaded) {
         if (loaded == null) throw new IllegalStateException("Gambling Items configuration has not loaded");
@@ -101,6 +119,29 @@ public final class ModConfig {
                 if (settings.get("bettingTicks").getAsInt() == 200) settings.addProperty("bettingTicks", 60);
             }
         }
+        // Schema 14 lets the wheel turn three seconds longer, keeping a custom duration.
+        if (schema < 14) {
+            JsonObject wheel = json.getAsJsonObject("roulette");
+            if (wheel.get("spinTicks").getAsInt() == 60) wheel.addProperty("spinTicks", 120);
+        }
+        // Schema 16 shortens the old bingo countdown to five seconds, keeping a custom one.
+        if (schema < 16) {
+            JsonObject drum = json.getAsJsonObject("bingo");
+            if (drum.get("bettingTicks").getAsInt() == 400) drum.addProperty("bettingTicks", 100);
+        }
+        // Schema 15 adds the slot machine cabinets.
+        if (schema < 15) json.add("slotMachine", defaultSlots());
+        // Schema 13 adds the bingo tables.
+        if (schema < 13) json.add("bingo", defaultBingo());
+        // Schema 12 adds the case battle lobbies.
+        if (schema < 12) json.add("caseBattle", defaultBattle());
+        // Schema 11 adds the blackjack table.
+        if (schema < 11) json.add("blackjack", defaultBlackjack());
+        // Schema 10: cases are opened with keys found on mobs, one per rarity.
+        if (schema < 10) json.add("cases", migratedCases(json.getAsJsonArray("cases")));
+        // Schema 9: the roulette is the real wheel, 0 to 36, and a bet is any priced item.
+        // Its payouts are the ones printed on a felt, so the file no longer configures them.
+        if (schema < 9) json.add("roulette", defaultRoulette());
         json.addProperty("schemaVersion", SCHEMA_VERSION);
         return true;
     }
@@ -121,6 +162,10 @@ public final class ModConfig {
         CaseCatalog caseCatalog = readCases(json.getAsJsonArray("cases"), catalog);
         CrashSettings crashSettings = readCrash(json.getAsJsonObject("crash"));
         RouletteSettings rouletteSettings = readRoulette(json.getAsJsonObject("roulette"));
+        JsonObject blackjackJson = json.getAsJsonObject("blackjack");
+        JsonObject battleJson = json.getAsJsonObject("caseBattle");
+        JsonObject bingoJson = json.getAsJsonObject("bingo");
+        JsonObject slotsJson = json.getAsJsonObject("slotMachine");
         values = catalog;
         upgrader = new UpgradeSetup(catalog, upgraderJson.get("returnBasisPoints").getAsInt(),
                 upgraderJson.get("maximumChanceBasisPoints").getAsInt());
@@ -131,8 +176,27 @@ public final class ModConfig {
                 tradeUpJson.get("maximumRewardRatioBasisPoints").getAsInt(),
                 tradeUpJson.get("rewardCount").getAsInt()));
         cases = new CaseSetup(catalog, caseCatalog);
+        bingo = new BingoSetup(catalog, new BingoSettings(
+                bingoJson.get("cardPrice").getAsLong(),
+                bingoJson.get("returnBasisPoints").getAsInt(),
+                bingoJson.get("bettingTicks").getAsInt(),
+                bingoJson.get("drawTicks").getAsInt(),
+                bingoJson.get("resultTicks").getAsInt()));
+        slots = new SlotSetup(catalog, new SlotSettings(
+                slotsJson.get("minimumStake").getAsLong(),
+                slotsJson.get("returnBasisPoints").getAsInt(),
+                slotsJson.get("spinTicks").getAsInt(),
+                slotsJson.get("resultTicks").getAsInt()));
+        battle = new BattleSetup(cases, new BattleSettings(
+                battleJson.get("lobbyTicks").getAsInt(),
+                battleJson.get("roundTicks").getAsInt(),
+                battleJson.get("resultTicks").getAsInt()));
         crash = new CrashSetup(catalog, crashSettings);
-        roulette = rouletteSettings;
+        roulette = new RouletteSetup(catalog, rouletteSettings);
+        blackjack = new BlackjackSetup(catalog, new BlackjackSettings(
+                blackjackJson.get("minimumStake").getAsLong(),
+                blackjackJson.get("dealerDelayTicks").getAsInt(),
+                blackjackJson.get("resultTicks").getAsInt()));
     }
 
     /**
@@ -144,9 +208,10 @@ public final class ModConfig {
         for (JsonElement element : casesJson) {
             JsonObject caseJson = element.getAsJsonObject();
             String id = caseJson.get("id").getAsString();
-            ResourceLocation priceItem = item(caseJson.get("priceItem").getAsString());
+            ResourceLocation priceItem = priceItem(caseJson.get("priceItem").getAsString());
             int priceCount = caseJson.get("priceCount").getAsInt();
-            requireValued(catalog, priceItem, priceCount, id);
+            // A key has no market value: it is found, not bought. Any other price must be valued.
+            if (!isKey(priceItem)) requireValued(catalog, priceItem, priceCount, id);
             JsonArray rewardsJson = caseJson.getAsJsonArray("rewards");
             List<ResourceLocation> items = new ArrayList<>();
             List<Integer> counts = new ArrayList<>();
@@ -179,19 +244,27 @@ public final class ModConfig {
                 json.get("bettingTicks").getAsInt(), json.get("resultTicks").getAsInt());
     }
 
-    /** The wheel itself is validated by the pure rules; the table must also be payable. */
+    /** The smallest bet is a value, so any priced item may be played on the felt. */
     private static RouletteSettings readRoulette(JsonObject json) {
-        RouletteSettings settings = new RouletteSettings(item(json.get("stakeItem").getAsString()),
-                json.get("minimumStake").getAsInt(),
-                json.get("redSlots").getAsInt(), json.get("blackSlots").getAsInt(),
-                json.get("greenSlots").getAsInt(),
-                json.get("colourPayout").getAsInt(), json.get("greenPayout").getAsInt(),
+        return new RouletteSettings(json.get("minimumStake").getAsLong(),
                 json.get("bettingTicks").getAsInt(), json.get("spinTicks").getAsInt(),
                 json.get("resultTicks").getAsInt());
-        if (!settings.isPayable()) {
-            throw new IllegalArgumentException("A roulette table whose smallest bet could not be paid");
+    }
+
+    /** True for one of this mod's keys, the only item of the mod a case may ask for. */
+    private static boolean isKey(ResourceLocation id) {
+        if (!id.getNamespace().equals("gamblingitems")) return false;
+        for (CaseRarity rarity : CaseRarity.values()) {
+            if (id.getPath().equals(rarity.keyPath())) return true;
         }
-        return settings;
+        return false;
+    }
+
+    /** The price of a case: any priced item, or a key of this mod. */
+    private static ResourceLocation priceItem(String raw) {
+        ResourceLocation id = ResourceLocation.parse(raw);
+        if (isKey(id)) return id;
+        return item(raw);
     }
 
     private static ResourceLocation item(String raw) {
@@ -240,21 +313,60 @@ public final class ModConfig {
         json.add("cases", defaultCases());
         json.add("crash", defaultCrash());
         json.add("roulette", defaultRoulette());
+        json.add("blackjack", defaultBlackjack());
+        json.add("caseBattle", defaultBattle());
+        json.add("bingo", defaultBingo());
+        json.add("slotMachine", defaultSlots());
         return json;
     }
 
-    /** The short wheel proposed in the design: seven red, seven black, one green paying fourteen. */
+    /** The smallest pull is one iron ingot, and the reels take two seconds to stop. */
+    private static JsonObject defaultSlots() {
+        JsonObject json = new JsonObject();
+        json.addProperty("minimumStake", 1_000);
+        json.addProperty("returnBasisPoints", 10_000);
+        json.addProperty("spinTicks", 40);
+        json.addProperty("resultTicks", 60);
+        return json;
+    }
+
+    /** A card costs one iron ingot, five seconds to buy one, a number every two seconds. */
+    private static JsonObject defaultBingo() {
+        JsonObject json = new JsonObject();
+        json.addProperty("cardPrice", 1_000);
+        json.addProperty("returnBasisPoints", 9_000);
+        json.addProperty("bettingTicks", 100);
+        json.addProperty("drawTicks", 40);
+        json.addProperty("resultTicks", 120);
+        return json;
+    }
+
+    /** How long a lobby waits for its seats, and how fast the rounds are opened. */
+    private static JsonObject defaultBattle() {
+        JsonObject json = new JsonObject();
+        json.addProperty("lobbyTicks", 1_200);
+        json.addProperty("roundTicks", 40);
+        json.addProperty("resultTicks", 120);
+        return json;
+    }
+
+    /** The dealer rules are the printed ones; only the pace and the smallest bet are tuned here. */
+    private static JsonObject defaultBlackjack() {
+        JsonObject json = new JsonObject();
+        // One iron ingot in the default catalogue.
+        json.addProperty("minimumStake", 1_000);
+        json.addProperty("dealerDelayTicks", 12);
+        json.addProperty("resultTicks", 60);
+        return json;
+    }
+
+    /** The real wheel, 0 to 36. Its payouts are printed on the felt and are not configurable. */
     private static JsonObject defaultRoulette() {
         JsonObject json = new JsonObject();
-        json.addProperty("stakeItem", "minecraft:gold_ingot");
-        json.addProperty("minimumStake", 1);
-        json.addProperty("redSlots", 7);
-        json.addProperty("blackSlots", 7);
-        json.addProperty("greenSlots", 1);
-        json.addProperty("colourPayout", 2);
-        json.addProperty("greenPayout", 14);
-        json.addProperty("bettingTicks", 60);
-        json.addProperty("spinTicks", 60);
+        // One iron ingot in the default catalogue.
+        json.addProperty("minimumStake", 1_000);
+        json.addProperty("bettingTicks", 200);
+        json.addProperty("spinTicks", 120);
         json.addProperty("resultTicks", 60);
         return json;
     }
@@ -273,33 +385,75 @@ public final class ModConfig {
     }
 
     /**
-     * Starting tables, balanced against the default values to return roughly nine tenths of the price.
-     * Weights are relative: an administrator may rewrite them freely, the odds shown follow.
+     * Keeps whatever an administrator wrote, and makes sure the six key cases exist.
+     * The three tables shipped before keys existed are replaced, since nothing could pay for them
+     * any more; a table that was edited is kept as it is.
+     */
+    private static JsonArray migratedCases(JsonArray existing) {
+        JsonArray migrated = new JsonArray();
+        List<String> shipped = List.of("starter", "miner", "nether");
+        for (JsonElement element : existing) {
+            JsonObject caseJson = element.getAsJsonObject();
+            if (!shipped.contains(caseJson.get("id").getAsString())) migrated.add(caseJson);
+        }
+        for (JsonElement element : defaultCases()) migrated.add(element);
+        return migrated;
+    }
+
+    /**
+     * One case per key rarity. The weights are relative: an administrator may rewrite them freely,
+     * and the odds shown on the screen follow from them.
      */
     private static JsonArray defaultCases() {
         JsonArray cases = new JsonArray();
-        cases.add(caseJson("starter", "Starter case", "minecraft:iron_ingot", 1, new String[][] {
-                {"minecraft:coal", "4", "440"},
-                {"minecraft:redstone", "4", "220"},
-                {"minecraft:copper_ingot", "8", "150"},
-                {"minecraft:lapis_lazuli", "6", "100"},
-                {"minecraft:iron_ingot", "2", "80"},
-                {"minecraft:emerald", "1", "10"}}));
-        cases.add(caseJson("miner", "Miner case", "minecraft:iron_ingot", 5, new String[][] {
-                {"minecraft:coal", "8", "220"},
-                {"minecraft:copper_ingot", "16", "200"},
+        cases.add(caseJson(CaseRarity.COMMON, "Common case", new String[][] {
+                {"minecraft:coal", "8", "380"},
+                {"minecraft:copper_ingot", "16", "260"},
+                {"minecraft:iron_ingot", "3", "200"},
+                {"minecraft:gold_ingot", "2", "110"},
+                {"minecraft:diamond", "1", "45"},
+                {"minecraft:emerald_block", "1", "5"}}));
+        cases.add(caseJson(CaseRarity.UNCOMMON, "Uncommon case", new String[][] {
                 {"minecraft:iron_ingot", "4", "350"},
-                {"minecraft:gold_ingot", "3", "150"},
-                {"minecraft:diamond", "1", "70"},
+                {"minecraft:quartz", "5", "250"},
+                {"minecraft:gold_ingot", "4", "200"},
+                {"minecraft:diamond", "1", "130"},
+                {"minecraft:iron_block", "3", "60"},
                 {"minecraft:diamond_block", "1", "10"}}));
-        cases.add(caseJson("nether", "Nether case", "minecraft:gold_block", 2, new String[][] {
-                {"minecraft:blaze_rod", "3", "380"},
-                {"minecraft:quartz", "24", "250"},
-                {"minecraft:ender_pearl", "6", "250"},
-                {"minecraft:netherite_scrap", "1", "100"},
-                {"minecraft:netherite_ingot", "1", "18"},
-                {"minecraft:nether_star", "1", "2"}}));
+        cases.add(caseJson(CaseRarity.RARE, "Rare case", new String[][] {
+                {"minecraft:gold_ingot", "6", "330"},
+                {"minecraft:diamond", "2", "260"},
+                {"minecraft:emerald", "5", "200"},
+                {"minecraft:diamond_pickaxe", "1", "140"},
+                {"minecraft:diamond_block", "1", "60"},
+                {"minecraft:netherite_ingot", "1", "10"}}));
+        cases.add(caseJson(CaseRarity.EPIC, "Epic case", new String[][] {
+                {"minecraft:diamond", "5", "320"},
+                {"minecraft:diamond_chestplate", "1", "260"},
+                {"minecraft:diamond_block", "1", "220"},
+                {"minecraft:netherite_scrap", "3", "150"},
+                {"minecraft:netherite_ingot", "1", "45"},
+                {"minecraft:nether_star", "1", "5"}}));
+        cases.add(caseJson(CaseRarity.LEGENDARY, "Legendary case", new String[][] {
+                {"minecraft:diamond_block", "2", "340"},
+                {"minecraft:netherite_ingot", "1", "280"},
+                {"minecraft:netherite_sword", "1", "200"},
+                {"minecraft:netherite_chestplate", "1", "130"},
+                {"minecraft:nether_star", "1", "45"},
+                {"minecraft:netherite_ingot", "4", "5"}}));
+        cases.add(caseJson(CaseRarity.MYTHIC, "Mythic case", new String[][] {
+                {"minecraft:netherite_chestplate", "1", "330"},
+                {"minecraft:netherite_ingot", "2", "260"},
+                {"minecraft:nether_star", "1", "200"},
+                {"minecraft:nether_star", "2", "150"},
+                {"minecraft:netherite_ingot", "8", "55"},
+                {"minecraft:nether_star", "5", "5"}}));
         return cases;
+    }
+
+    /** A case of one rarity, opened by the key of that rarity and by nothing else. */
+    private static JsonObject caseJson(CaseRarity rarity, String name, String[][] rewards) {
+        return caseJson(rarity.caseId(), name, "gamblingitems:" + rarity.keyPath(), 1, rewards);
     }
 
     private static JsonObject caseJson(String id, String name, String priceItem, int priceCount, String[][] rewards) {

@@ -7,7 +7,10 @@ public enum GameMode {
     TRADE_UP("trade_up"),
     CASE_OPENING("case_opening"),
     ROULETTE("roulette"),
-    CASE_BATTLE("case_battle");
+    CASE_BATTLE("case_battle"),
+    BLACKJACK("blackjack"),
+    BINGO("bingo"),
+    SLOT_MACHINE("slot_machine");
 
     private final String id;
 

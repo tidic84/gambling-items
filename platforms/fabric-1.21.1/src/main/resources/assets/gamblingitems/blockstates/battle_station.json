@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "gamblingitems:block/battle_station",
+      "y": 0
+    },
+    "facing=east": {
+      "model": "gamblingitems:block/battle_station",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "gamblingitems:block/battle_station",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "gamblingitems:block/battle_station",
+      "y": 270
+    }
+  }
+}

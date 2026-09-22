@@ -19,7 +19,9 @@ public class StationGameTests implements FabricGameTest {
     public void crashControlsMatchTheirWholeSurfaceInEveryOrientation(GameTestHelper helper) {
         BlockPos anchor = new BlockPos(3, 4, 5);
         var mode = dev.gamblingitems.core.GameMode.CRASH;
-        helper.assertTrue(StationPanel.controls(mode, 2).size() == 3, "Crash has only three controls");
+        helper.assertTrue(StationPanel.controls(mode, 2).size()
+                == StationPanel.controls(dev.gamblingitems.core.GameMode.ROULETTE, 2).size(),
+                "Every game offers the same panel, so a player learns it once");
         for (Direction facing : Direction.Plane.HORIZONTAL) {
             for (var control : StationPanel.controls(mode, 2)) {
                 for (double dx : new double[]{0.1, control.width() / 2.0, control.width() - 0.1}) {
@@ -86,9 +88,10 @@ public class StationGameTests implements FabricGameTest {
     public void controlsMatchEveryOrientationAndRejectBackAndGaps(GameTestHelper helper) {
         BlockPos pos = new BlockPos(3, 4, 5);
         for (Direction facing : Direction.Plane.HORIZONTAL) {
-            for (int button = 0; button < 9; button++) {
-                double u = 0.5 + (StationPanel.LEFT + button % 3 * StationPanel.CELL_WIDTH + 10) / 128.0;
-                double y = 0.5 - (StationPanel.TOP + button / 3 * StationPanel.ROW_HEIGHT + 6) / 128.0;
+            // Whatever the panel holds today, the middle of a control must press that control.
+            for (var control : StationPanel.controls(dev.gamblingitems.core.GameMode.ROULETTE, 0)) {
+                double u = 0.5 + (control.x() + control.width() / 2.0) / 128.0;
+                double y = 0.5 - (control.y() + control.height() / 2.0) / 128.0;
                 Vec3 point = switch (facing) {
                     case NORTH -> new Vec3(1 - u, y, 0);
                     case SOUTH -> new Vec3(u, y, 1);
@@ -97,12 +100,13 @@ public class StationGameTests implements FabricGameTest {
                 };
                 BlockPos tile = GameStationBlock.partPos(pos, facing, (int) Math.floor(u) + 1 + 3 * (int) Math.floor(y));
                 var hit = new BlockHitResult(point.add(pos.getX(), pos.getY(), pos.getZ()), facing, tile, false);
-                helper.assertTrue(StationPanel.button(facing, hit, pos) == button, "Rendered button maps to the same server action");
+                helper.assertTrue(StationPanel.button(facing, hit, pos) == control.action(), "Rendered button maps to the same server action");
                 helper.assertTrue(StationPanel.button(facing.getOpposite(), hit, pos) == -1, "Back of screen cannot activate controls");
             }
         }
-        var gap = new BlockHitResult(new Vec3(3 + 0.5 - (StationPanel.LEFT + StationPanel.CELL_WIDTH - 1) / 128.0, 4.5 - (StationPanel.TOP + 6) / 128.0, 5), Direction.NORTH, pos, false);
-        helper.assertTrue(StationPanel.button(Direction.NORTH, gap) == -1, "Control gutters are inactive");
+        // Just outside the last control of the moves row: the panel must answer nothing there.
+        var gap = new BlockHitResult(new Vec3(3 + 0.5 - (StationPanel.LEFT - 4) / 128.0, 4.5 - (StationPanel.TOP + 6) / 128.0, 5), Direction.NORTH, pos, false);
+        helper.assertTrue(StationPanel.button(Direction.NORTH, gap) == -1, "Outside the controls, nothing answers");
         helper.succeed();
     }
 
@@ -115,7 +119,7 @@ public class StationGameTests implements FabricGameTest {
         var second = helper.makeMockServerPlayerInLevel();
         for (var player : new net.minecraft.server.level.ServerPlayer[]{first, second}) {
             player.setPos(station.getBlockPos().getCenter());
-            player.setItemInHand(InteractionHand.MAIN_HAND, ModConfig.roulette().stakeStack(10));
+            player.setItemInHand(InteractionHand.MAIN_HAND, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_INGOT, 10));
         }
         var game = RouletteGames.host(helper.getLevel(), station.getBlockPos());
         try {
@@ -125,12 +129,12 @@ public class StationGameTests implements FabricGameTest {
             helper.assertTrue(second.getMainHandItem().isEmpty(), "The stack is deposited");
             StationInteractions.click(first, station, 3);
             StationInteractions.click(second, station, 4);
-            helper.assertTrue(game.participants() == 2 && game.pot() == 11, "Both seats share one round");
+            helper.assertTrue(game.participants() == 2 && game.pot() == 11_000, "Both seats share one round");
             helper.assertTrue(first.containerMenu == first.inventoryMenu && second.containerMenu == second.inventoryMenu,
                     "Playing on a station does not open a GUI");
             StationInteractions.click(first, station, 2);
             StationInteractions.click(first, station, 3);
-            helper.assertTrue(game.pot() == 11, "An engaged stake cannot be withdrawn or duplicated");
+            helper.assertTrue(game.pot() == 11_000, "An engaged stake cannot be withdrawn or duplicated");
             game.tick();
             helper.assertTrue(station.publicBets.contains("red") && station.publicBets.contains("black"), "Bets are broadcast to spectators");
             first.setPos(station.getBlockPos().getCenter().add(20, 0, 0));

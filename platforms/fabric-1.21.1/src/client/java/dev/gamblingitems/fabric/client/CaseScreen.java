@@ -27,8 +27,21 @@ public final class CaseScreen extends AbstractContainerScreen<CaseMenu> {
         imageHeight = 238;
     }
 
+    /** Every game explains itself, in the language of the player. */
+    private final GameRules rules = new GameRules("case_opening");
+
+    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // While the rules are up they take every click, so nothing is played by accident.
+        if (rules.open()) {
+            rules.close();
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
     @Override protected void init() {
         super.init();
+        addRenderableWidget(rules.button(leftPos + imageWidth - 30, topPos + 6));
         previous = addRenderableWidget(Button.builder(Component.literal("<"), button -> select(-1))
                 .bounds(leftPos + 14, topPos + 76, 18, 18).build());
         next = addRenderableWidget(Button.builder(Component.literal(">"), button -> select(1))
@@ -63,6 +76,10 @@ public final class CaseScreen extends AbstractContainerScreen<CaseMenu> {
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
+        if (rules.open()) {
+            rules.render(graphics, font, width, height);
+            return;
+        }
         renderTooltip(graphics, mouseX, mouseY);
     }
 
@@ -77,7 +94,7 @@ public final class CaseScreen extends AbstractContainerScreen<CaseMenu> {
         g.fill(x + 8, y + 34, x + 174, y + 150, PANEL);
         g.fill(x + 178, y + 32, x + 310, y + 150, PANEL);
         renderReel(g, x, y, definition, partialTick);
-        g.drawCenteredString(font, definition == null ? tr("no_case").getString() : definition.name(),
+        g.drawCenteredString(font, definition == null ? tr("no_case").getString() : definition.title().getString(),
                 x + 91, y + 81, GOLD);
         g.drawString(font, tr("price"), x + 16, y + 90, MUTED, false);
         g.drawString(font, tr("reward"), x + 140, y + 90, MUTED, false);
@@ -175,9 +192,13 @@ public final class CaseScreen extends AbstractContainerScreen<CaseMenu> {
             g.drawString(font, Component.translatable("gui.gamblingitems.more_rewards", rewards.size() - listed),
                     x + 183, y + 48 + listed * 13, MUTED, false);
         }
-        g.drawString(font, Component.translatable("gui.gamblingitems.average",
-                        value(definition.averageValue(menu.catalog()).setScale(0, RoundingMode.HALF_UP).longValueExact()),
-                        value(definition.priceValue(menu.catalog()))),
+        long price = definition.priceValue(menu.catalog());
+        String average = value(definition.averageValue(menu.catalog())
+                .setScale(0, RoundingMode.HALF_UP).longValueExact());
+        // A key has no market value, so there is no return to compare the average to.
+        g.drawString(font, price > 0
+                        ? Component.translatable("gui.gamblingitems.average", average, value(price))
+                        : Component.translatable("gui.gamblingitems.average_key", average),
                 x + 183, y + 138, MUTED, false);
     }
 

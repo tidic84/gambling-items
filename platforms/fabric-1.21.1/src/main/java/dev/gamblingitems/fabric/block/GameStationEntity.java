@@ -25,6 +25,17 @@ public final class GameStationEntity extends BlockEntity {
     public int phase = -1, targetSlot = -1, animationTicks, multiplier = 100;
     public long phaseEnd;
     public String previewPlayer = "", previewText = "", publicBets = "";
+    /** Cards on the felt: the hand, then the dealer, "12,25|7?" with ? for the hole card. */
+    public String cards = "";
+    /** Numbers already called by a bingo drum, oldest first. */
+    public String drawn = "";
+    /** The line a slot machine has just drawn, as "0,4,7". */
+    public String reels = "";
+    /** The items staked on a table, as "minecraft:diamond*3", laid out on its felt. */
+    public String stakeItems = "";
+    /** Client side only: what the felt last drew, and when, so a new card can be dealt in. */
+    public String seenCards = "";
+    public long cardsChangedAt;
 
     public boolean animating() { return level != null && level.getGameTime() < startedAt + durationTicks; }
 
@@ -38,7 +49,7 @@ public final class GameStationEntity extends BlockEntity {
     public GameStationEntity(BlockPos pos, BlockState state) { super(ModContent.STATION_ENTITY, pos, state); }
 
     public GameMode mode() {
-        return getBlockState().getBlock() instanceof GameStationBlock station ? station.mode() : GameMode.UPGRADER;
+        return getBlockState().getBlock() instanceof GameSurface surface ? surface.mode() : GameMode.UPGRADER;
     }
 
     public boolean idle() { return resultKey.isEmpty(); }
@@ -66,6 +77,10 @@ public final class GameStationEntity extends BlockEntity {
         durationTicks = 0;
         startedAt = 0;
         publicBets = "";
+        cards = "";
+        drawn = "";
+        reels = "";
+        stakeItems = "";
         phase = -1;
         setChanged();
         level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
@@ -83,6 +98,10 @@ public final class GameStationEntity extends BlockEntity {
         tag.putString("previewPlayer", previewPlayer);
         tag.putString("previewText", previewText);
         tag.putString("publicBets", publicBets);
+        tag.putString("cards", cards);
+        tag.putString("drawn", drawn);
+        tag.putString("reels", reels);
+        tag.putString("stakeItems", stakeItems);
         tag.putString("reelItems", reelItems);
         tag.putString("wheelColours", wheelColours);
         tag.putInt("phase", phase);
@@ -104,6 +123,10 @@ public final class GameStationEntity extends BlockEntity {
         previewPlayer = tag.getString("previewPlayer");
         previewText = tag.getString("previewText");
         publicBets = tag.getString("publicBets");
+        cards = tag.getString("cards");
+        drawn = tag.getString("drawn");
+        reels = tag.getString("reels");
+        stakeItems = tag.getString("stakeItems");
         reelItems = tag.getString("reelItems");
         wheelColours = tag.getString("wheelColours");
         phase = tag.contains("phase") ? tag.getInt("phase") : -1;

@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "gamblingitems:blackjack_table",
+    "gamblingitems:roulette_table",
+    "gamblingitems:bingo_table"
+  ]
+}

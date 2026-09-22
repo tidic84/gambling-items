@@ -104,6 +104,55 @@ public final class ItemBank {
         return unpaid;
     }
 
+    /**
+     * Moves the stacks of a range into the free slots of another and returns the value of whatever
+     * did not fit. Used to give a stake back as the very items that were staked, rather than as
+     * change: a player who ties a hand gets their own diamonds back, not an item of equal value.
+     */
+    public static long handBack(ValueCatalog catalog, Container container, int fromStart, int fromEnd,
+                                int toStart, int toEnd) {
+        long left = 0;
+        for (int slot = fromStart; slot < fromEnd; slot++) {
+            ItemStack stack = container.getItem(slot);
+            if (stack.isEmpty()) continue;
+            boolean moved = false;
+            for (int target = toStart; target < toEnd && !moved; target++) {
+                ItemStack destination = container.getItem(target);
+                if (destination.isEmpty()) {
+                    container.setItem(target, stack.copy());
+                    moved = true;
+                } else if (ItemStack.isSameItemSameComponents(destination, stack)
+                        && destination.getCount() + stack.getCount() <= destination.getMaxStackSize()) {
+                    destination.grow(stack.getCount());
+                    moved = true;
+                }
+            }
+            // What has nowhere to go is paid in change instead, never dropped.
+            if (!moved) left += catalog.valueOf(stack);
+            container.setItem(slot, ItemStack.EMPTY);
+        }
+        container.setChanged();
+        return left;
+    }
+
+    /**
+     * The stacks of a range, written as "item*count", so a table can lay the very items that were
+     * staked on its felt. It is a public description, never a way to reach an inventory.
+     */
+    public static String describe(Container container, int from, int to, int most) {
+        StringBuilder text = new StringBuilder();
+        int written = 0;
+        for (int slot = from; slot < to && written < most; slot++) {
+            ItemStack stack = container.getItem(slot);
+            if (stack.isEmpty()) continue;
+            if (text.length() > 0) text.append(',');
+            text.append(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()))
+                    .append('*').append(stack.getCount());
+            written++;
+        }
+        return text.toString();
+    }
+
     /** Moves every stack of a range into another one, slot by slot. Used to engage or return a stake. */
     public static void move(Container container, int fromStart, int toStart, int count) {
         for (int offset = 0; offset < count; offset++) {

@@ -35,6 +35,21 @@ public record CaseDefinition(String id, String name, ResourceLocation priceItem,
 
     public ItemStack priceStack() { return new ItemStack(BuiltInRegistries.ITEM.get(priceItem), priceCount); }
 
+    /**
+     * How this case is called on a screen: translated when it is one of the cases this mod ships,
+     * and otherwise exactly the name an administrator wrote in the configuration.
+     */
+    public net.minecraft.network.chat.Component title() {
+        for (dev.gamblingitems.core.cases.CaseRarity rarity
+                : dev.gamblingitems.core.cases.CaseRarity.values()) {
+            if (rarity.caseId().equals(id)) {
+                return net.minecraft.network.chat.Component.translatable(
+                        "gui.gamblingitems.case." + rarity.id());
+            }
+        }
+        return net.minecraft.network.chat.Component.literal(name);
+    }
+
     /** True for a stack that pays for one opening; a partial stack is refused, never partly taken. */
     public boolean pays(ItemStack stack) {
         return !stack.isEmpty() && stack.getCount() >= priceCount

@@ -29,14 +29,14 @@ public final class RouletteMenus {
         }
         RouletteGames.join(game, player.getUUID());
         // The round keeps the settings it started with, whatever the configuration says now.
-        RouletteSettings settings = game.settings();
-        player.openMenu(new ExtendedScreenHandlerFactory<RouletteSettings>() {
-            @Override public RouletteSettings getScreenOpeningData(ServerPlayer ignored) { return settings; }
+        RouletteSetup setup = game.setup();
+        player.openMenu(new ExtendedScreenHandlerFactory<RouletteSetup>() {
+            @Override public RouletteSetup getScreenOpeningData(ServerPlayer ignored) { return setup; }
             @Override public Component getDisplayName() {
                 return Component.translatable("screen.gamblingitems.roulette");
             }
             @Override public AbstractContainerMenu createMenu(int id, Inventory inventory, Player ignored) {
-                return new RouletteMenu(id, inventory, settings,
+                return new RouletteMenu(id, inventory, setup,
                         PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.ROULETTE), game);
             }
         });

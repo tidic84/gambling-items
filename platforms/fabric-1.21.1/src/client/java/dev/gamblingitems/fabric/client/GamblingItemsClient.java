@@ -13,6 +13,10 @@ public final class GamblingItemsClient implements ClientModInitializer {
         MenuScreens.register(ModContent.CASE_MENU, CaseScreen::new);
         MenuScreens.register(ModContent.CRASH_MENU, CrashScreen::new);
         MenuScreens.register(ModContent.ROULETTE_MENU, RouletteScreen::new);
+        MenuScreens.register(ModContent.BLACKJACK_MENU, BlackjackScreen::new);
+        MenuScreens.register(ModContent.BATTLE_MENU, BattleScreen::new);
+        MenuScreens.register(ModContent.BINGO_MENU, BingoScreen::new);
+        MenuScreens.register(ModContent.SLOT_MENU, SlotScreen::new);
         BlockEntityRenderers.register(ModContent.STATION_ENTITY, GameStationRenderer::new);
     }
 }

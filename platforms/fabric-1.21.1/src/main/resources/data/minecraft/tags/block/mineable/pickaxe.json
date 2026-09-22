@@ -5,6 +5,10 @@
     "gamblingitems:trade_up_station",
     "gamblingitems:case_station",
     "gamblingitems:crash_station",
-    "gamblingitems:roulette_station"
+    "gamblingitems:roulette_station",
+    "gamblingitems:blackjack_station",
+    "gamblingitems:battle_station",
+    "gamblingitems:bingo_station",
+    "gamblingitems:slot_machine"
   ]
 }

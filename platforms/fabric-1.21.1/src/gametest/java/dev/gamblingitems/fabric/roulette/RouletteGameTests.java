@@ -1,7 +1,11 @@
 package dev.gamblingitems.fabric.roulette;
 
-import dev.gamblingitems.core.roulette.RouletteRules.Colour;
+import dev.gamblingitems.core.roulette.RouletteWheel;
+import dev.gamblingitems.core.roulette.RouletteWheel.Bet;
+import dev.gamblingitems.core.roulette.RouletteWheel.BetType;
 import dev.gamblingitems.fabric.ModContent;
+import dev.gamblingitems.fabric.value.ValueCatalog;
+import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.core.BlockPos;
@@ -16,152 +20,161 @@ import net.minecraft.world.level.block.Blocks;
 
 public class RouletteGameTests implements FabricGameTest {
     private static final int BETTING_TICKS = 40, SPIN_TICKS = 20, RESULT_TICKS = 20;
-    /** The wheel holds fifteen slots: green first, then red and black alternating. */
-    private static final long DRAW_GREEN = 0;
-    private static final long DRAW_RED = drawForSlot(1);
-    private static final long DRAW_BLACK = drawForSlot(2);
+    private static final long IRON = 1_000;
+    /** Draws are uniform over the pockets: these land the ball on a chosen number. */
+    private static final long DRAW_ZERO = drawFor(0);
+    private static final long DRAW_RED_ONE = drawFor(1);
+    private static final long DRAW_BLACK_TWO = drawFor(2);
 
-    private static long drawForSlot(int slot) {
-        return slot * RouletteGame.DRAW_BOUND / 15 + 10;
+    private static long drawFor(int number) {
+        return (long) RouletteWheel.pocketOf(number) * RouletteGame.DRAW_BOUND / RouletteWheel.POCKETS + 5;
     }
 
-    private static RouletteSettings settings() {
-        return new RouletteSettings(ResourceLocation.withDefaultNamespace("gold_ingot"), 1,
-                7, 7, 1, 2, 14, BETTING_TICKS, SPIN_TICKS, RESULT_TICKS);
+    private static ValueCatalog catalog() {
+        return new ValueCatalog(List.of(
+                new ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("copper_ingot"), 100),
+                new ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("iron_ingot"), IRON),
+                new ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("diamond"), 10_000)));
+    }
+
+    private static RouletteSetup setup() {
+        return new RouletteSetup(catalog(),
+                new RouletteSettings(IRON, BETTING_TICKS, SPIN_TICKS, RESULT_TICKS));
     }
 
     private static RouletteGame game(GameTestHelper helper, long draw) {
-        return new RouletteGame(helper.getLevel(), helper.absolutePos(new BlockPos(1, 1, 1)),
-                settings(), () -> draw);
+        return new RouletteGame(helper.getLevel(), helper.absolutePos(new BlockPos(1, 1, 1)), setup(), () -> draw);
     }
 
-    private static Container staked(RouletteGame game, UUID player, int count) {
+    private static Container chips(RouletteGame game, UUID player, ItemStack stack) {
         Container vault = game.vault(player);
         for (int slot = 0; slot < RouletteSettings.VAULT_SIZE; slot++) vault.setItem(slot, ItemStack.EMPTY);
-        vault.setItem(RouletteSettings.INPUT_SLOT, new ItemStack(Items.GOLD_INGOT, count));
+        vault.setItem(RouletteSettings.INPUT_SLOT, stack);
         return vault;
     }
 
-    private static int winnings(Container vault) {
-        int total = 0;
-        for (int slot = RouletteSettings.FIRST_PAYOUT_SLOT; slot < RouletteSettings.VAULT_SIZE; slot++) {
-            total += vault.getItem(slot).getCount();
-        }
-        return total;
+    private static void prepare(RouletteGame game, UUID player, ItemStack stack) {
+        game.vault(player).setItem(RouletteSettings.INPUT_SLOT, stack);
+    }
+
+    private static long winnings(RouletteGame game, UUID player) {
+        return game.winnings(game.vault(player));
     }
 
     private static void tick(RouletteGame game, int times) {
         for (int index = 0; index < times; index++) game.tick();
     }
 
-    private static void playRound(RouletteGame game) {
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void anyPricedItemsCanBePlacedOnAnAreaOfTheTable(GameTestHelper helper) {
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        RouletteGame game = game(helper, DRAW_RED_ONE);
+        UUID uuid = player.getUUID();
+        Container vault = chips(game, uuid, new ItemStack(Items.IRON_INGOT, 3));
+        vault.setItem(RouletteSettings.INPUT_SLOT + 1, new ItemStack(Items.COPPER_INGOT, 5));
+        helper.assertTrue(game.stagedValue(uuid) == 3 * IRON + 500, "Chips are counted by value");
+        helper.assertTrue(game.place(uuid, new Bet(BetType.RED, 0), game.stagedValue(uuid)), "The bet is accepted");
+        helper.assertTrue(game.seatOf(uuid).total() == 3_500, "The whole prepared value is on the felt");
+        helper.assertTrue(game.stagedValue(uuid) == 0, "The chips left the preparation row");
+        helper.assertFalse(vault.getItem(RouletteSettings.ENGAGED_SLOT).isEmpty(), "They wait on the table");
+        helper.assertTrue(game.pot() == 3_500 && game.participants() == 1, "The table is public");
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void severalAreasCanBeCoveredAndEachIsPaidOnItsOwn(GameTestHelper helper) {
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        RouletteGame game = game(helper, DRAW_RED_ONE);
+        UUID uuid = player.getUUID();
+        chips(game, uuid, new ItemStack(Items.IRON_INGOT, 2));
+        helper.assertTrue(game.place(uuid, new Bet(BetType.RED, 0), 2 * IRON), "Red covered");
+        prepare(game, uuid, new ItemStack(Items.IRON_INGOT, 1));
+        helper.assertTrue(game.place(uuid, new Bet(BetType.STRAIGHT, 1), IRON), "The number one covered too");
+        prepare(game, uuid, new ItemStack(Items.IRON_INGOT, 1));
+        helper.assertTrue(game.place(uuid, new Bet(BetType.BLACK, 0), IRON), "And black, which will lose");
+        helper.assertTrue(game.seatOf(uuid).total() == 4 * IRON, "Everything is on the felt");
         tick(game, BETTING_TICKS + SPIN_TICKS);
+        helper.assertTrue(game.lastResultNumber() == 1, "The ball landed on one");
+        // Red pays twice two ingots, the number pays thirty six times one, black pays nothing.
+        helper.assertTrue(game.seatOf(uuid).paid() == 2 * 2 * IRON + 36 * IRON,
+                "Each area is settled on its own");
+        helper.assertTrue(winnings(game, uuid) == 40 * IRON, "The winnings hold what was paid");
+        helper.succeed();
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
-    public void aWinningColourPaysTheAnnouncedMultiplier(GameTestHelper helper) {
+    public void zeroTakesEveryOutsideBet(GameTestHelper helper) {
+        ServerPlayer outside = helper.makeMockServerPlayerInLevel();
+        ServerPlayer onZero = helper.makeMockServerPlayerInLevel();
+        RouletteGame game = game(helper, DRAW_ZERO);
+        UUID loser = outside.getUUID(), winner = onZero.getUUID();
+        chips(game, loser, new ItemStack(Items.IRON_INGOT, 2));
+        chips(game, winner, new ItemStack(Items.IRON_INGOT, 1));
+        helper.assertTrue(game.place(loser, new Bet(BetType.EVEN, 0), 2 * IRON), "An outside bet");
+        helper.assertTrue(game.place(winner, new Bet(BetType.STRAIGHT, 0), IRON), "A bet on zero");
+        tick(game, BETTING_TICKS + SPIN_TICKS);
+        helper.assertTrue(game.lastResultNumber() == 0, "The ball landed on zero");
+        helper.assertTrue(game.seatOf(loser).paid() == 0, "Even loses on zero");
+        helper.assertTrue(winnings(game, loser) == 0, "Nothing is paid to it");
+        helper.assertTrue(game.seatOf(winner).paid() == 36 * IRON, "Zero pays like any number");
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void betsAreRefusedOutsideTheWindowAndUnderTheMinimum(GameTestHelper helper) {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
-        RouletteGame game = game(helper, DRAW_RED);
+        RouletteGame game = game(helper, DRAW_BLACK_TWO);
         UUID uuid = player.getUUID();
-        Container vault = staked(game, uuid, 9);
-        helper.assertTrue(game.place(uuid, Colour.RED, 6), "A bet inside the limits is accepted");
-        helper.assertTrue(vault.getItem(RouletteSettings.INPUT_SLOT).getCount() == 3, "Only the stake is engaged");
-        helper.assertTrue(vault.getItem(RouletteSettings.ENGAGED_SLOT).getCount() == 6, "The stake waits in the vault");
-        helper.assertFalse(game.place(uuid, Colour.BLACK, 3), "One bet per player and per round");
+        Container vault = chips(game, uuid, new ItemStack(Items.COPPER_INGOT, 5));
+        helper.assertFalse(game.place(uuid, new Bet(BetType.RED, 0), 500), "Below the smallest bet");
+        helper.assertFalse(game.place(uuid, null, 500), "A bet needs an area");
+        vault.setItem(RouletteSettings.INPUT_SLOT, new ItemStack(Items.DIRT, 5));
+        helper.assertTrue(game.stagedValue(uuid) == 0, "An unpriced item is worth nothing");
+        helper.assertFalse(game.place(uuid, new Bet(BetType.RED, 0), 0), "So it cannot be played");
+        vault.setItem(RouletteSettings.INPUT_SLOT, new ItemStack(Items.IRON_INGOT, 2));
+        helper.assertTrue(game.place(uuid, new Bet(BetType.RED, 0), 2 * IRON), "A valid bet is accepted");
         tick(game, BETTING_TICKS);
-        helper.assertTrue(game.phase() == RouletteGame.Phase.SPINNING, "Bets close on their own");
-        helper.assertTrue(settings().rules().colourAt(game.resultSlot()) == Colour.RED, "This draw lands on red");
-        helper.assertTrue(winnings(vault) == 0, "Nothing is paid before the wheel stops");
-        tick(game, SPIN_TICKS);
-        helper.assertTrue(game.phase() == RouletteGame.Phase.RESULT, "The round settles itself");
-        helper.assertTrue(winnings(vault) == 12, "Red pays twice the stake, stake included");
-        helper.assertTrue(vault.getItem(RouletteSettings.ENGAGED_SLOT).isEmpty(), "The engaged stake is consumed");
-        tick(game, RESULT_TICKS);
-        helper.assertTrue(game.phase() == RouletteGame.Phase.WAITING, "The table reopens");
-        helper.assertTrue(settings().rules().colourAt(game.lastResultSlot()) == Colour.RED,
-                "The result stays public afterwards");
-        helper.succeed();
-    }
-
-    @GameTest(template = EMPTY_STRUCTURE)
-    public void greenPaysMoreAndTheOtherColoursLose(GameTestHelper helper) {
-        ServerPlayer lucky = helper.makeMockServerPlayerInLevel();
-        ServerPlayer other = helper.makeMockServerPlayerInLevel();
-        RouletteGame game = game(helper, DRAW_GREEN);
-        UUID green = lucky.getUUID(), red = other.getUUID();
-        Container greenVault = staked(game, green, 2);
-        Container redVault = staked(game, red, 2);
-        helper.assertTrue(game.place(green, Colour.GREEN, 2) && game.place(red, Colour.RED, 2), "Both bets accepted");
-        helper.assertTrue(game.participants() == 2 && game.pot() == 4, "The table is public");
-        playRound(game);
-        helper.assertTrue(settings().rules().colourAt(game.resultSlot()) == Colour.GREEN, "This draw lands on green");
-        helper.assertTrue(winnings(greenVault) == 28, "Green pays fourteen times the stake");
-        helper.assertTrue(winnings(redVault) == 0, "The losing colour is paid nothing");
-        helper.assertTrue(game.betOf(red).settled() && game.betOf(red).paid() == 0, "The losing bet is settled");
-        helper.assertTrue(redVault.getItem(RouletteSettings.ENGAGED_SLOT).isEmpty(), "Its stake is gone");
-        helper.succeed();
-    }
-
-    @GameTest(template = EMPTY_STRUCTURE)
-    public void betsAreLockedOnceTheWheelSpins(GameTestHelper helper) {
-        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        helper.assertTrue(game.phase() == RouletteGame.Phase.SPINNING, "The wheel is spinning");
         ServerPlayer late = helper.makeMockServerPlayerInLevel();
-        RouletteGame game = game(helper, DRAW_BLACK);
-        UUID uuid = player.getUUID(), lateUuid = late.getUUID();
-        staked(game, uuid, 4);
-        Container lateVault = staked(game, lateUuid, 4);
-        helper.assertTrue(game.place(uuid, Colour.BLACK, 4), "A bet before the lock is accepted");
-        tick(game, BETTING_TICKS);
-        helper.assertFalse(game.place(lateUuid, Colour.BLACK, 4), "A locked wheel accepts no new bet");
-        helper.assertTrue(lateVault.getItem(RouletteSettings.INPUT_SLOT).getCount() == 4, "Nothing is engaged");
-        tick(game, SPIN_TICKS);
-        helper.assertFalse(game.place(lateUuid, Colour.RED, 4), "The result phase accepts no bet either");
-        helper.assertTrue(settings().rules().colourAt(game.resultSlot()) == Colour.BLACK, "This draw lands on black");
+        chips(game, late.getUUID(), new ItemStack(Items.IRON_INGOT, 2));
+        helper.assertFalse(game.place(late.getUUID(), new Bet(BetType.RED, 0), 2 * IRON),
+                "A locked wheel accepts no new bet");
         helper.succeed();
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
-    public void betsAreRefusedOutsideTheLimitsAndInTheWrongMaterial(GameTestHelper helper) {
+    public void aSeatIsRefusedWhatItCouldNotBePaid(GameTestHelper helper) {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
-        RouletteGame game = game(helper, DRAW_RED);
+        RouletteGame game = game(helper, DRAW_RED_ONE);
         UUID uuid = player.getUUID();
-        Container vault = staked(game, uuid, 4);
-        helper.assertTrue(game.largestStake(uuid) == 64, "Empty winnings allow a full stack");
-        helper.assertFalse(game.place(uuid, Colour.RED, 0), "Below the minimum stake");
-        helper.assertFalse(game.place(uuid, Colour.RED, 5), "More than the vault holds");
-        helper.assertFalse(game.place(uuid, null, 4), "A bet needs a colour");
-        vault.setItem(RouletteSettings.INPUT_SLOT, new ItemStack(Items.DIAMOND, 8));
-        helper.assertFalse(game.place(uuid, Colour.RED, 4), "Another material is not this table");
-        vault.setItem(RouletteSettings.INPUT_SLOT, new ItemStack(Items.GOLD_INGOT, 4));
+        Container vault = chips(game, uuid, new ItemStack(Items.IRON_INGOT, 2));
         for (int slot = RouletteSettings.FIRST_PAYOUT_SLOT; slot < RouletteSettings.VAULT_SIZE; slot++) {
-            vault.setItem(slot, new ItemStack(Items.GOLD_INGOT, 64));
+            vault.setItem(slot, new ItemStack(Items.DIAMOND, 64));
         }
-        helper.assertTrue(game.largestStake(uuid) == 0, "Full winnings could not be paid");
-        helper.assertFalse(game.place(uuid, Colour.RED, 4), "So the bet is refused before anything is engaged");
+        helper.assertFalse(game.place(uuid, new Bet(BetType.STRAIGHT, 1), 2 * IRON),
+                "A win that could not be handed over is refused before the bet");
+        helper.assertTrue(game.stagedValue(uuid) == 2 * IRON, "Nothing is engaged");
+        for (int slot = RouletteSettings.FIRST_PAYOUT_SLOT; slot < RouletteSettings.VAULT_SIZE; slot++) {
+            vault.setItem(slot, ItemStack.EMPTY);
+        }
+        helper.assertTrue(game.place(uuid, new Bet(BetType.STRAIGHT, 1), 2 * IRON), "With room, it is accepted");
         helper.succeed();
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
-    public void anInterruptedRoundGivesEveryEngagedStakeBackOnce(GameTestHelper helper) {
+    public void anInterruptedRoundGivesEveryChipBackOnce(GameTestHelper helper) {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
-        RouletteGame game = game(helper, DRAW_RED);
+        RouletteGame game = game(helper, DRAW_RED_ONE);
         UUID uuid = player.getUUID();
-        Container vault = staked(game, uuid, 5);
-        helper.assertTrue(game.place(uuid, Colour.RED, 5), "Bet accepted");
+        Container vault = chips(game, uuid, new ItemStack(Items.IRON_INGOT, 4));
+        helper.assertTrue(game.place(uuid, new Bet(BetType.RED, 0), 4 * IRON), "Bet accepted");
         tick(game, 10);
         game.cancel();
-        helper.assertTrue(winnings(vault) == 5, "The engaged stake comes back once");
-        helper.assertTrue(vault.getItem(RouletteSettings.ENGAGED_SLOT).isEmpty(), "Nothing stays engaged");
+        helper.assertTrue(game.stagedValue(uuid) == 4 * IRON, "The chips come back where they were prepared");
+        helper.assertTrue(vault.getItem(RouletteSettings.ENGAGED_SLOT).isEmpty(), "Nothing stays on the table");
         game.cancel();
-        helper.assertTrue(winnings(vault) == 5, "Cancelling twice refunds once");
+        helper.assertTrue(game.stagedValue(uuid) == 4 * IRON, "Cancelling twice refunds once");
         helper.assertTrue(game.phase() == RouletteGame.Phase.WAITING, "The table is free again");
-        // A settled round owes nothing more, whatever happens to the server afterwards.
-        staked(game, uuid, 5);
-        helper.assertTrue(game.place(uuid, Colour.RED, 5), "A new round starts clean");
-        playRound(game);
-        int paid = winnings(vault);
-        game.cancel();
-        helper.assertTrue(winnings(vault) == paid, "A settled bet is never repaid");
         helper.succeed();
     }
 
@@ -170,16 +183,16 @@ public class RouletteGameTests implements FabricGameTest {
         BlockPos relative = new BlockPos(1, 1, 1);
         helper.setBlock(relative, ModContent.ROULETTE_STATION);
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
-        RouletteGame game = game(helper, DRAW_RED);
+        RouletteGame game = game(helper, DRAW_RED_ONE);
         UUID uuid = player.getUUID();
-        Container vault = staked(game, uuid, 3);
-        helper.assertTrue(game.place(uuid, Colour.RED, 3), "Bet accepted at the station");
+        chips(game, uuid, new ItemStack(Items.IRON_INGOT, 3));
+        helper.assertTrue(game.place(uuid, new Bet(BetType.RED, 0), 3 * IRON), "Bet accepted at the station");
         tick(game, BETTING_TICKS);
         helper.setBlock(relative, Blocks.AIR);
         // Breaking the station releases nothing: the spin belongs to the server.
         tick(game, SPIN_TICKS);
         helper.assertTrue(game.phase() == RouletteGame.Phase.RESULT, "The round settled anyway");
-        helper.assertTrue(winnings(vault) == 6, "The player is paid from the round, not from the block");
+        helper.assertTrue(winnings(game, uuid) == 6 * IRON, "Red paid twice the stake");
         helper.succeed();
     }
 

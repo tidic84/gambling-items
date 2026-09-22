@@ -1,9 +1,14 @@
 package dev.gamblingitems.fabric.roulette;
 
 import dev.gamblingitems.core.GameMode;
-import dev.gamblingitems.core.roulette.RouletteRules.Colour;
+import dev.gamblingitems.core.roulette.RouletteWheel;
+import dev.gamblingitems.core.roulette.RouletteWheel.Bet;
+import dev.gamblingitems.core.roulette.RouletteWheel.BetType;
 import dev.gamblingitems.fabric.ModContent;
-import dev.gamblingitems.fabric.block.GameStationBlock;
+import dev.gamblingitems.fabric.block.GameSurface;
+import dev.gamblingitems.fabric.menu.ValueSync;
+import dev.gamblingitems.fabric.value.ValueCatalog;
+import java.util.Map;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -16,77 +21,108 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * One player's seat at a shared roulette. It sends intentions only: the spin, the slot and every
+ * One player's seat at a shared roulette. It sends intentions only: the spin, the number and every
  * payment belong to {@link RouletteGame} on the server.
+ *
+ * <p>Clicking an area of the table puts the prepared chips on it. Several areas may be covered.
  */
 public final class RouletteMenu extends AbstractContainerMenu {
-    /** One button per colour, then the button that empties the winnings. */
-    public static final int BET_BUTTON = 1000, COLLECT_BUTTON = 1100;
-    public static final int INVENTORY_START = 2;
-    public static final int STATE_NONE = 0, STATE_ENGAGED = 1, STATE_WON = 2, STATE_LOST = 3;
+    /** A bet is sent as one button: its kind and, when it needs one, its number, dozen or column. */
+    public static final int BET_BUTTON = 2000, COLLECT_BUTTON = 1100;
+    public static final int STAKE_X = 16, ENGAGED_Y = 164, INPUT_Y = 192;
+    public static final int INVENTORY_START = 2 * RouletteSettings.STAKE_SLOTS;
+    // Small numbers first, then the values, which each need two slots to survive the packet.
+    private static final int PHASE = 0, PHASE_TICKS = 1, RESULT = 2, PLAYERS = 3, SETTLED = 4,
+            LAST_RESULT = 5, POT = 6, WINNINGS = 8, PLANNED = 10, STAKED = 12, PAID = 14;
+    /** Then one bet per pair of slots: the area it covers, and what it holds. */
+    private static final int FIRST_BET = 16;
+    private static final int BET_FIELDS = 1 + ValueSync.SLOTS;
+    private static final int DATA_SIZE = FIRST_BET + BET_FIELDS * RouletteGame.MAX_BETS;
 
     private final Player owner;
     private final Container vault;
-    private final RouletteSettings settings;
+    private final RouletteSetup setup;
     private final RouletteGame game;
-    // phase, phase ticks, result slot plus one, my stake, my colour plus one, what I was paid,
-    // players, pot, my winnings, my largest bet, previous result plus one, my state
-    private final SimpleContainerData data = new SimpleContainerData(12);
+    private final SimpleContainerData data = new SimpleContainerData(DATA_SIZE);
 
-    public RouletteMenu(int syncId, Inventory inventory, RouletteSettings settings) {
-        this(syncId, inventory, settings, new SimpleContainer(RouletteSettings.VAULT_SIZE), null);
+    public RouletteMenu(int syncId, Inventory inventory, RouletteSetup setup) {
+        this(syncId, inventory, setup, new SimpleContainer(RouletteSettings.VAULT_SIZE), null);
     }
 
-    public RouletteMenu(int syncId, Inventory inventory, RouletteSettings settings,
+    public RouletteMenu(int syncId, Inventory inventory, RouletteSetup setup,
                         Container vault, RouletteGame game) {
         super(ModContent.ROULETTE_MENU, syncId);
         this.owner = inventory.player;
-        this.settings = settings;
+        this.setup = setup;
         this.vault = vault;
         this.game = game;
         addDataSlots(data);
-        addSlot(new Slot(vault, RouletteSettings.INPUT_SLOT, 20, 128) {
-            @Override public boolean mayPlace(ItemStack stack) { return settings.isStake(stack); }
-        });
-        addSlot(new Slot(vault, RouletteSettings.ENGAGED_SLOT, 50, 128) {
-            @Override public boolean mayPlace(ItemStack stack) { return false; }
-            // An engaged stake belongs to the round. What an interrupted round left behind does not.
-            @Override public boolean mayPickup(Player player) { return !engagedNow(player); }
-        });
+        for (int index = 0; index < RouletteSettings.STAKE_SLOTS; index++) {
+            addSlot(new Slot(vault, RouletteSettings.INPUT_SLOT + index, STAKE_X + index * 18, INPUT_Y) {
+                // Any priced item may be played; what is unpriced could not be paid fairly.
+                @Override public boolean mayPlace(ItemStack stack) { return setup.catalog().valueOf(stack) > 0; }
+                @Override public boolean mayPickup(Player player) { return !engagedNow(player); }
+            });
+        }
+        for (int index = 0; index < RouletteSettings.STAKE_SLOTS; index++) {
+            addSlot(new Slot(vault, RouletteSettings.ENGAGED_SLOT + index, STAKE_X + index * 18, ENGAGED_Y) {
+                @Override public boolean mayPlace(ItemStack stack) { return false; }
+                // Chips on the table belong to the round. What an interrupted round left does not.
+                @Override public boolean mayPickup(Player player) { return !engagedNow(player); }
+            });
+        }
         for (int row = 0; row < 3; row++)
             for (int col = 0; col < 9; col++)
-                addSlot(new Slot(inventory, col + row * 9 + 9, 79 + col * 18, 155 + row * 18));
-        for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, col, 79 + col * 18, 213));
+                addSlot(new Slot(inventory, col + row * 9 + 9, 139 + col * 18, 213 + row * 18));
+        for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, col, 139 + col * 18, 271));
     }
 
-    public RouletteSettings settings() { return settings; }
-    public RouletteGame.Phase phase() { return RouletteGame.Phase.fromId(data.get(0)); }
-    public int phaseTicks() { return data.get(1); }
-    public int resultSlot() { return data.get(2) - 1; }
-    public int stake() { return data.get(3); }
-    public Colour colour() { return data.get(4) == 0 ? null : Colour.values()[data.get(4) - 1]; }
-    public int paid() { return data.get(5); }
-    public int participants() { return data.get(6); }
-    public int pot() { return data.get(7); }
-    public int winnings() { return data.get(8); }
-    public int largestStake() { return data.get(9); }
-    public int lastResultSlot() { return data.get(10) - 1; }
-    public int state() { return data.get(11); }
-    public boolean isEngaged() { return state() == STATE_ENGAGED; }
+    public RouletteSetup setup() { return setup; }
+    public RouletteSettings settings() { return setup.settings(); }
+    public ValueCatalog catalog() { return setup.catalog(); }
+    public RouletteGame.Phase phase() { return RouletteGame.Phase.fromId(data.get(PHASE)); }
+    public int phaseTicks() { return data.get(PHASE_TICKS); }
+    public int resultNumber() { return data.get(RESULT) - 1; }
+    public int participants() { return data.get(PLAYERS); }
+    public long pot() { return ValueSync.read(data, POT); }
+    public long winnings() { return ValueSync.read(data, WINNINGS); }
+    /** Value prepared in the chip slots, as the server counts it. */
+    public long plannedStake() { return ValueSync.read(data, PLANNED); }
+    public long staked() { return ValueSync.read(data, STAKED); }
+    public long paid() { return ValueSync.read(data, PAID); }
+    public boolean settled() { return data.get(SETTLED) != 0; }
+    public int lastResultNumber() { return data.get(LAST_RESULT) - 1; }
+
+    /** What this player has on a given area of the table, in value. */
+    public long stakeOn(Bet bet) {
+        int code = code(bet);
+        for (int index = 0; index < RouletteGame.MAX_BETS; index++) {
+            int slot = FIRST_BET + index * BET_FIELDS;
+            if (data.get(slot) == code) return ValueSync.read(data, slot + 1);
+        }
+        return 0;
+    }
+
+    public static int code(Bet bet) { return bet.type().ordinal() * 64 + bet.choice() + 1; }
+
+    public static Bet decode(int code) {
+        if (code <= 0) return null;
+        int value = code - 1;
+        int type = value / 64;
+        int choice = value % 64;
+        BetType[] types = BetType.values();
+        if (type >= types.length || choice >= types[type].choices()) return null;
+        return new Bet(types[type], choice);
+    }
 
     private boolean engagedNow(Player player) {
-        if (game == null) return isEngaged();
-        RouletteGame.Bet bet = game.betOf(player.getUUID());
-        return bet != null && bet.engaged();
-    }
-
-    /** How many items the next bet would engage, given the bet slot and what a win would need. */
-    public int plannedStake() {
-        return Math.min(vault.getItem(RouletteSettings.INPUT_SLOT).getCount(), largestStake());
+        if (game == null) return staked() > 0 && !settled();
+        RouletteGame.Seat seat = game.seatOf(player.getUUID());
+        return seat != null && seat.engaged();
     }
 
     public boolean canBet() {
-        return state() == STATE_NONE && plannedStake() >= settings.minimumStake()
+        return plannedStake() >= settings().minimumStake()
                 && (phase() == RouletteGame.Phase.WAITING || phase() == RouletteGame.Phase.BETTING);
     }
 
@@ -99,10 +135,8 @@ public final class RouletteMenu extends AbstractContainerMenu {
         if (button == COLLECT_BUTTON) {
             handled = collect(player);
         } else {
-            int colour = button - BET_BUTTON;
-            handled = colour >= 0 && colour < Colour.values().length
-                    && plannedStake() >= settings.minimumStake()
-                    && game.place(player.getUUID(), Colour.values()[colour], plannedStake());
+            Bet bet = decode(button - BET_BUTTON);
+            handled = bet != null && game.place(player.getUUID(), bet, game.stagedValue(player.getUUID()));
         }
         if (handled) broadcastChanges();
         return handled;
@@ -125,20 +159,33 @@ public final class RouletteMenu extends AbstractContainerMenu {
 
     @Override public void broadcastChanges() {
         if (!owner.level().isClientSide && game != null) {
-            RouletteGame.Bet bet = game.betOf(owner.getUUID());
-            data.set(0, game.phase().id());
-            data.set(1, game.remainingTicks());
-            data.set(2, game.resultSlot() + 1);
-            data.set(3, bet == null ? 0 : bet.stake());
-            data.set(4, bet == null ? 0 : bet.colour().ordinal() + 1);
-            data.set(5, bet == null ? 0 : (int) Math.min(Integer.MAX_VALUE, bet.paid()));
-            data.set(6, game.participants());
-            data.set(7, game.pot());
-            data.set(8, game.winnings(vault));
-            data.set(9, game.largestStake(owner.getUUID()));
-            data.set(10, game.lastResultSlot() + 1);
-            data.set(11, bet == null ? STATE_NONE
-                    : bet.engaged() ? STATE_ENGAGED : bet.paid() > 0 ? STATE_WON : STATE_LOST);
+            RouletteGame.Seat seat = game.seatOf(owner.getUUID());
+            data.set(PHASE, game.phase().id());
+            data.set(PHASE_TICKS, game.remainingTicks());
+            data.set(RESULT, game.resultNumber() + 1);
+            data.set(PLAYERS, game.participants());
+            data.set(SETTLED, seat != null && seat.settled() ? 1 : 0);
+            data.set(LAST_RESULT, game.lastResultNumber() + 1);
+            ValueSync.write(data, POT, game.pot());
+            ValueSync.write(data, WINNINGS, game.winnings(vault));
+            ValueSync.write(data, PLANNED, game.stagedValue(owner.getUUID()));
+            ValueSync.write(data, STAKED, seat == null ? 0 : seat.total());
+            ValueSync.write(data, PAID, seat == null ? 0 : seat.paid());
+            int index = 0;
+            if (seat != null) {
+                for (Map.Entry<Bet, Long> stake : seat.stakes().entrySet()) {
+                    if (index >= RouletteGame.MAX_BETS) break;
+                    int slot = FIRST_BET + index * BET_FIELDS;
+                    data.set(slot, code(stake.getKey()));
+                    ValueSync.write(data, slot + 1, stake.getValue());
+                    index++;
+                }
+            }
+            for (; index < RouletteGame.MAX_BETS; index++) {
+                int slot = FIRST_BET + index * BET_FIELDS;
+                data.set(slot, 0);
+                ValueSync.write(data, slot + 1, 0);
+            }
         }
         super.broadcastChanges();
     }
@@ -153,8 +200,8 @@ public final class RouletteMenu extends AbstractContainerMenu {
             return false;
         }
         return player.getInventory().contains(new ItemStack(ModContent.TERMINAL))
-                || (game.level().getBlockState(pos).getBlock() instanceof GameStationBlock station
-                        && station.mode() == GameMode.ROULETTE);
+                || (game.level().getBlockState(pos).getBlock() instanceof GameSurface surface
+                        && surface.mode() == GameMode.ROULETTE);
     }
 
     @Override public void clicked(int slot, int button, ClickType type, Player player) {
@@ -171,8 +218,8 @@ public final class RouletteMenu extends AbstractContainerMenu {
         if (index < INVENTORY_START) {
             if (!moveItemStackTo(stack, INVENTORY_START, slots.size(), true)) return ItemStack.EMPTY;
         } else {
-            if (!settings.isStake(stack)
-                    || !moveItemStackTo(stack, RouletteSettings.INPUT_SLOT, RouletteSettings.INPUT_SLOT + 1, false)) {
+            if (catalog().valueOf(stack) <= 0
+                    || !moveItemStackTo(stack, 0, RouletteSettings.STAKE_SLOTS, false)) {
                 return ItemStack.EMPTY;
             }
         }
@@ -185,13 +232,31 @@ public final class RouletteMenu extends AbstractContainerMenu {
     @Override public void removed(Player player) {
         super.removed(player);
         if (game != null) RouletteGames.leave(game, player.getUUID());
-        // An engaged stake stays with the round; only the items still being prepared come back.
+        // Chips on the table stay with the round; only what was being prepared comes back.
         if (player instanceof ServerPlayer && player.isAlive()) {
-            ItemStack staged = vault.getItem(RouletteSettings.INPUT_SLOT).copy();
-            if (!staged.isEmpty()) {
+            for (int index = 0; index < RouletteSettings.STAKE_SLOTS; index++) {
+                int slot = RouletteSettings.INPUT_SLOT + index;
+                ItemStack staged = vault.getItem(slot).copy();
+                if (staged.isEmpty()) continue;
                 moveItemStackTo(staged, INVENTORY_START, slots.size(), false);
-                vault.setItem(RouletteSettings.INPUT_SLOT, staged);
+                vault.setItem(slot, staged);
             }
         }
+    }
+
+    /** Every area of the table, in the order the felt shows them. */
+    public static Bet[] table() {
+        Bet[] bets = new Bet[RouletteWheel.POCKETS + 2 * 4 + 3 + 3];
+        int index = 0;
+        for (int number = 0; number < RouletteWheel.POCKETS; number++) {
+            bets[index++] = new Bet(BetType.STRAIGHT, number);
+        }
+        for (int choice = 0; choice < 3; choice++) bets[index++] = new Bet(BetType.DOZEN, choice);
+        for (int choice = 0; choice < 3; choice++) bets[index++] = new Bet(BetType.COLUMN, choice);
+        for (BetType type : new BetType[] {BetType.RED, BetType.BLACK, BetType.EVEN,
+                BetType.ODD, BetType.LOW, BetType.HIGH}) {
+            bets[index++] = new Bet(type, 0);
+        }
+        return java.util.Arrays.copyOf(bets, index);
     }
 }

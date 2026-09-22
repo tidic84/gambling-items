@@ -1,0 +1,7 @@
+{
+  "parent": "gamblingitems:item/key_base",
+  "textures": {
+    "metal": "minecraft:block/diamond_block",
+    "particle": "minecraft:block/diamond_block"
+  }
+}

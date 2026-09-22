@@ -1,6 +1,6 @@
 # Gambling Items — proposition de conception
 
-Statut : mécaniques proposées ; sur Fabric 1.21.1, l'Upgrader, le Trade Up, les caisses, le Crash et la roulette sont implémentés et testés. Les battles restent à développer.
+Statut : sur Fabric 1.21.1, les six modes proposés sont implémentés et testés, plus un blackjack ajouté depuis. Les décisions ouvertes tranchées à l'implémentation sont notées dans les sections concernées.
 
 ## Objectif
 
@@ -93,7 +93,7 @@ Les caisses sont configurables. Les données d'une ouverture en cours sont figé
 
 ## 5. Roulette
 
-Retenu à l'implémentation : la roulette courte à 15 cases, avec 7 rouges, 7 noires et 1 verte. La roue complète à numéros reste une évolution possible.
+Retenu à l'implémentation : la roue complète à numéros, 0 à 36, avec sa table de paris (numéro plein, rouge, noir, pair, impair, manque, passe, douzaines, colonnes). Chaque pari rend 36/37.
 
 Les paris rouge et noir versent 2× la mise, et le vert verse 14×. Ces multiplicateurs incluent la mise initiale. Sur des cases équiprobables, les trois paris ont un retour moyen de 14/15, soit environ 93,33 %, avant tout autre ajustement.
 

@@ -32,8 +32,21 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
         imageHeight = 238;
     }
 
+    /** Every game explains itself, in the language of the player. */
+    private final GameRules rules = new GameRules("upgrader");
+
+    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // While the rules are up they take every click, so nothing is played by accident.
+        if (rules.open()) {
+            rules.close();
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
     @Override protected void init() {
         super.init();
+        addRenderableWidget(rules.button(leftPos + imageWidth - 30, topPos + 6));
         rows.clear();
         search = new EditBox(font, leftPos + 181, topPos + 11, 126, 16, tr("search"));
         search.setMaxLength(64);
@@ -103,6 +116,10 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
+        if (rules.open()) {
+            rules.render(graphics, font, width, height);
+            return;
+        }
         renderTooltip(graphics, mouseX, mouseY);
         if (mouseX >= leftPos + 12 && mouseX <= leftPos + 166
                 && mouseY >= topPos + 142 && mouseY <= topPos + 154) {

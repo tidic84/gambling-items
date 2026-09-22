@@ -24,6 +24,16 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
 
     @Override public void render(GameStationEntity station, float partialTick, PoseStack pose,
                                  MultiBufferSource buffers, int light, int overlay) {
+        if (SlotCabinet.isCabinet(station)) {
+            // A cabinet has no monitor: its reels are drawn on its own front.
+            SlotCabinet.render(station, partialTick, pose, buffers, font);
+            return;
+        }
+        if (StationTables.hasTable(station)) {
+            // A table has no monitor: everything it shows is on its felt.
+            StationTables.render(station, partialTick, pose, buffers, font);
+            return;
+        }
         pose.pushPose();
         pose.translate(0.5, 0.5, 0.5);
         pose.mulPose(Axis.YP.rotationDegrees(-station.getBlockState().getValue(GameStationBlock.FACING).toYRot()));
@@ -62,9 +72,10 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
                 default -> 0xff293d52;
             };
             boolean locked = switch (station.mode()) {
-                case ROULETTE -> button >= 3 && button <= 5 && station.phase >= 2;
-                case CRASH -> button == 4 && station.phase == 3;
-                default -> button == 4 && station.animating();
+                case ROULETTE -> button >= StationPanel.FIRST_MOVE && button <= StationPanel.FIRST_MOVE + 2
+                        && station.phase >= 2;
+                case CRASH -> button == StationPanel.FIRST_MOVE + 1 && station.phase == 3;
+                default -> button == StationPanel.FIRST_MOVE + 1 && station.animating();
             };
             if (locked) color = 0xff1c2631;
             if (hovered == button && !locked) {

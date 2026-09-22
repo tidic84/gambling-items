@@ -1,0 +1,52 @@
+{
+  "variants": {
+    "facing=north,part=0": {
+      "model": "gamblingitems:block/slot_machine",
+      "y": 0
+    },
+    "facing=east,part=0": {
+      "model": "gamblingitems:block/slot_machine",
+      "y": 90
+    },
+    "facing=south,part=0": {
+      "model": "gamblingitems:block/slot_machine",
+      "y": 180
+    },
+    "facing=west,part=0": {
+      "model": "gamblingitems:block/slot_machine",
+      "y": 270
+    },
+    "facing=north,part=1": {
+      "model": "gamblingitems:block/slot_machine_reels",
+      "y": 0
+    },
+    "facing=east,part=1": {
+      "model": "gamblingitems:block/slot_machine_reels",
+      "y": 90
+    },
+    "facing=south,part=1": {
+      "model": "gamblingitems:block/slot_machine_reels",
+      "y": 180
+    },
+    "facing=west,part=1": {
+      "model": "gamblingitems:block/slot_machine_reels",
+      "y": 270
+    },
+    "facing=north,part=2": {
+      "model": "gamblingitems:block/slot_machine_top",
+      "y": 0
+    },
+    "facing=east,part=2": {
+      "model": "gamblingitems:block/slot_machine_top",
+      "y": 90
+    },
+    "facing=south,part=2": {
+      "model": "gamblingitems:block/slot_machine_top",
+      "y": 180
+    },
+    "facing=west,part=2": {
+      "model": "gamblingitems:block/slot_machine_top",
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "WWW",
+    "WTW",
+    "L L"
+  ],
+  "key": {
+    "W": {
+      "item": "minecraft:dark_oak_planks"
+    },
+    "T": {
+      "item": "gamblingitems:terminal"
+    },
+    "L": {
+      "item": "minecraft:dark_oak_log"
+    }
+  },
+  "result": {
+    "id": "gamblingitems:roulette_table",
+    "count": 1
+  }
+}

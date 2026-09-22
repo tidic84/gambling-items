@@ -3,7 +3,8 @@ package dev.gamblingitems.fabric.crash;
 import dev.gamblingitems.core.GameMode;
 import dev.gamblingitems.core.crash.CrashRules;
 import dev.gamblingitems.fabric.ModContent;
-import dev.gamblingitems.fabric.block.GameStationBlock;
+import dev.gamblingitems.fabric.block.GameSurface;
+import dev.gamblingitems.fabric.menu.ValueSync;
 import dev.gamblingitems.fabric.value.ValueCatalog;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -25,7 +26,7 @@ import net.minecraft.world.item.ItemStack;
 public final class CrashMenu extends AbstractContainerMenu {
     public static final int BET_BUTTON = 1000, CASH_OUT_BUTTON = 1001, COLLECT_BUTTON = 1002;
     /** Where the two rows of the wager sit, read by the screen so both sides cannot drift apart. */
-    public static final int STAKE_X = 16, ENGAGED_Y = 106, INPUT_Y = 128;
+    public static final int STAKE_X = 16, ENGAGED_Y = 96, INPUT_Y = 126;
     public static final int INVENTORY_START = 2 * CrashSettings.STAKE_SLOTS;
     public static final int STATE_NONE = 0, STATE_ENGAGED = 1, STATE_CASHED = 2, STATE_LOST = 3;
 
@@ -33,10 +34,12 @@ public final class CrashMenu extends AbstractContainerMenu {
     private final Container vault;
     private final CrashSetup setup;
     private final CrashGame game;
-    // phase, multiplier, phase ticks, my stake, my settlement multiplier, what I was paid,
-    // players, pot, my state, previous crash point, my winnings, flight tick, my staged value,
-    // whether that stake could be paid
-    private final SimpleContainerData data = new SimpleContainerData(14);
+    // Small numbers first, then the values, which each need two slots to survive the packet.
+    private static final int PHASE = 0, MULTIPLIER = 1, PHASE_TICKS = 2, SETTLEMENT = 3, PLAYERS = 4,
+            STATE = 5, LAST_POINT = 6, FLIGHT_TICK = 7, PAYABLE = 8,
+            STAKE = 9, PAID = 11, POT = 13, WINNINGS = 15, PLANNED = 17;
+    private static final int DATA_SIZE = 19;
+    private final SimpleContainerData data = new SimpleContainerData(DATA_SIZE);
 
     public CrashMenu(int syncId, Inventory inventory, CrashSetup setup) {
         this(syncId, inventory, setup, new SimpleContainer(CrashSettings.VAULT_SIZE), null);
@@ -48,7 +51,7 @@ public final class CrashMenu extends AbstractContainerMenu {
         this.setup = setup;
         this.vault = vault;
         this.game = game;
-        data.set(1, CrashRules.START);
+        data.set(MULTIPLIER, CrashRules.START);
         addDataSlots(data);
         for (int index = 0; index < CrashSettings.STAKE_SLOTS; index++) {
             addSlot(new Slot(vault, CrashSettings.INPUT_SLOT + index, STAKE_X + index * 18, INPUT_Y) {
@@ -73,21 +76,21 @@ public final class CrashMenu extends AbstractContainerMenu {
     public CrashSetup setup() { return setup; }
     public CrashSettings settings() { return setup.settings(); }
     public ValueCatalog catalog() { return setup.catalog(); }
-    public CrashGame.Phase phase() { return CrashGame.Phase.fromId(data.get(0)); }
-    public int multiplier() { return data.get(1); }
-    public int phaseTicks() { return data.get(2); }
-    public long stake() { return data.get(3); }
-    public int settlement() { return data.get(4); }
-    public long paid() { return data.get(5); }
-    public int participants() { return data.get(6); }
-    public long pot() { return data.get(7); }
-    public int state() { return data.get(8); }
-    public int lastCrashPoint() { return data.get(9); }
-    public long winnings() { return data.get(10); }
-    public int flightTick() { return data.get(11); }
+    public CrashGame.Phase phase() { return CrashGame.Phase.fromId(data.get(PHASE)); }
+    public int multiplier() { return data.get(MULTIPLIER); }
+    public int phaseTicks() { return data.get(PHASE_TICKS); }
+    public long stake() { return ValueSync.read(data, STAKE); }
+    public int settlement() { return data.get(SETTLEMENT); }
+    public long paid() { return ValueSync.read(data, PAID); }
+    public int participants() { return data.get(PLAYERS); }
+    public long pot() { return ValueSync.read(data, POT); }
+    public int state() { return data.get(STATE); }
+    public int lastCrashPoint() { return data.get(LAST_POINT); }
+    public long winnings() { return ValueSync.read(data, WINNINGS); }
+    public int flightTick() { return data.get(FLIGHT_TICK); }
     /** Value prepared in the bet row, as the server counts it. */
-    public long plannedStake() { return data.get(12); }
-    public boolean isPayable() { return data.get(13) != 0; }
+    public long plannedStake() { return ValueSync.read(data, PLANNED); }
+    public boolean isPayable() { return data.get(PAYABLE) != 0; }
     public boolean isEngaged() { return state() == STATE_ENGAGED; }
 
     /** The server answers from the round itself, the client from the state it was sent. */
@@ -138,21 +141,21 @@ public final class CrashMenu extends AbstractContainerMenu {
         if (!owner.level().isClientSide && game != null) {
             CrashGame.Bet bet = game.betOf(owner.getUUID());
             long staged = game.stagedValue(owner.getUUID());
-            data.set(0, game.phase().id());
-            data.set(1, game.publicMultiplier());
-            data.set(2, game.remainingTicks());
-            data.set(3, (int) Math.min(Integer.MAX_VALUE, bet == null ? 0 : bet.stake()));
-            data.set(4, bet == null ? 0 : bet.settledMultiplier());
-            data.set(5, (int) Math.min(Integer.MAX_VALUE, bet == null ? 0 : bet.paid()));
-            data.set(6, game.participants());
-            data.set(7, (int) Math.min(Integer.MAX_VALUE, game.pot()));
-            data.set(8, bet == null ? STATE_NONE
+            data.set(PHASE, game.phase().id());
+            data.set(MULTIPLIER, game.publicMultiplier());
+            data.set(PHASE_TICKS, game.remainingTicks());
+            data.set(SETTLEMENT, bet == null ? 0 : bet.settledMultiplier());
+            data.set(PLAYERS, game.participants());
+            data.set(STATE, bet == null ? STATE_NONE
                     : bet.engaged() ? STATE_ENGAGED : bet.lost() ? STATE_LOST : STATE_CASHED);
-            data.set(9, game.lastCrashPoint());
-            data.set(10, (int) Math.min(Integer.MAX_VALUE, game.winnings(vault)));
-            data.set(11, game.flightTick());
-            data.set(12, (int) Math.min(Integer.MAX_VALUE, staged));
-            data.set(13, game.isPayable(owner.getUUID(), staged) ? 1 : 0);
+            data.set(LAST_POINT, game.lastCrashPoint());
+            data.set(FLIGHT_TICK, game.flightTick());
+            data.set(PAYABLE, game.isPayable(owner.getUUID(), staged) ? 1 : 0);
+            ValueSync.write(data, STAKE, bet == null ? 0 : bet.stake());
+            ValueSync.write(data, PAID, bet == null ? 0 : bet.paid());
+            ValueSync.write(data, POT, game.pot());
+            ValueSync.write(data, WINNINGS, game.winnings(vault));
+            ValueSync.write(data, PLANNED, staged);
         }
         super.broadcastChanges();
     }
@@ -167,8 +170,8 @@ public final class CrashMenu extends AbstractContainerMenu {
             return false;
         }
         return player.getInventory().contains(new ItemStack(ModContent.TERMINAL))
-                || (game.level().getBlockState(pos).getBlock() instanceof GameStationBlock station
-                        && station.mode() == GameMode.CRASH);
+                || (game.level().getBlockState(pos).getBlock() instanceof GameSurface surface
+                        && surface.mode() == GameMode.CRASH);
     }
 
     @Override public void clicked(int slot, int button, ClickType type, Player player) {

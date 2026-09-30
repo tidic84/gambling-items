@@ -33,14 +33,32 @@ test {
     useJUnitPlatform()
 }
 
+tasks.named('jar') {
+    from('LICENSE')
+}
+
 [
     runClient: ['runClient', 'Launch the Fabric 1.21.1 development client.'],
     runServer: ['runServer', 'Launch the Fabric 1.21.1 development server.'],
-    buildFabric: ['build', 'Build the Fabric 1.21.1 mod and verify the shared core.']
+    buildFabric: ['build', 'Build the Fabric 1.21.1 mod and verify the shared core.'],
+    prepareCurseForge: ['prepareCurseForge', 'Build, verify and package the CurseForge upload files.']
 ].each { alias, target ->
     tasks.register(alias) {
         group = 'fabric'
         description = target[1]
         dependsOn { gradle.includedBuild('fabric-1.21.1').task(":${target[0]}") }
+    }
+}
+
+[
+    runNeoForgeClient: ['runClient', 'Launch the NeoForge 1.21.1 development client.'],
+    runNeoForgeServer: ['runServer', 'Launch the NeoForge 1.21.1 development server.'],
+    buildNeoForge: ['build', 'Build the NeoForge 1.21.1 mod and verify the shared core.']
+].each { alias, target ->
+    tasks.register(alias) {
+        group = 'neoforge'
+        description = target[1]
+        dependsOn { gradle.includedBuild('neoforge-1.21.1').task(":${target[0]}") }
+        if (alias == 'buildNeoForge') dependsOn tasks.named('check')
     }
 }

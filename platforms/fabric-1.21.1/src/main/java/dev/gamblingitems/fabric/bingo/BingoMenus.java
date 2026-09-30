@@ -1,14 +1,11 @@
 package dev.gamblingitems.fabric.bingo;
 
+import dev.gamblingitems.fabric.platform.Platform;
 import dev.gamblingitems.fabric.vault.PlayerVaults;
 import dev.gamblingitems.fabric.vault.VaultSection;
-import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 
 public final class BingoMenus {
@@ -34,13 +31,8 @@ public final class BingoMenus {
         BingoGame round = game;
         BingoGames.join(round, player.getUUID());
         BingoSetup setup = round.setup();
-        player.openMenu(new ExtendedScreenHandlerFactory<BingoSetup>() {
-            @Override public BingoSetup getScreenOpeningData(ServerPlayer ignored) { return setup; }
-            @Override public Component getDisplayName() { return Component.translatable("screen.gamblingitems.bingo"); }
-            @Override public AbstractContainerMenu createMenu(int id, Inventory inventory, Player ignored) {
-                return new BingoMenu(id, inventory, setup,
-                        PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.BINGO), round);
-            }
-        });
+        Platform.openMenu(player, Component.translatable("screen.gamblingitems.bingo"), setup, BingoSetup.CODEC,
+                (id, inventory, ignored) -> new BingoMenu(id, inventory, setup,
+                        PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.BINGO), round));
     }
 }

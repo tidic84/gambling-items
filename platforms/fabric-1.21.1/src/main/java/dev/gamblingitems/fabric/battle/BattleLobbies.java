@@ -35,7 +35,7 @@ public final class BattleLobbies {
                 key -> new BattleLobby(level, pos.immutable(), ModConfig.battle()));
     }
 
-    /** The lobby a portable terminal may join: an existing one, announced by a nearby station. */
+    /** Finds a nearby lobby, including lobbies created by handheld items. */
     public static BattleLobby nearest(ServerPlayer player) {
         BattleLobby best = null;
         double closest = REACH * REACH;

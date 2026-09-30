@@ -1,0 +1,86 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version "${moddev_version}"
+}
+
+def sharedProperties = new Properties()
+file('../../gradle.properties').withInputStream { sharedProperties.load(it) }
+group = 'dev.gamblingitems'
+version = sharedProperties.getProperty('version')
+
+base {
+    archivesName = 'gambling-items-neoforge-1.21.1'
+}
+
+repositories {
+    mavenCentral()
+}
+
+// The game itself is the code of the Fabric adapter, written against vanilla Minecraft.
+// Only its loader seams differ: they are left out here, and src/main/java provides the
+// NeoForge versions under the same names. The pure Java core is compiled into the mod.
+def fabricSources = file('../fabric-1.21.1/src')
+def fabricOnly = [
+    'dev/gamblingitems/fabric/GamblingItemsFabric.java',
+    'dev/gamblingitems/fabric/platform/Platform.java',
+    'dev/gamblingitems/fabric/client/GamblingItemsClient.java',
+    'fabric.mod.json',
+] as Set
+
+sourceSets.main {
+    java.srcDirs '../../core/src/main/java', "${fabricSources}/main/java", "${fabricSources}/client/java"
+    resources.srcDirs "${fabricSources}/main/resources"
+    [java, resources].each { set ->
+        set.exclude { element ->
+            element.file.toPath().startsWith(fabricSources.toPath())
+                    && fabricOnly.contains(element.relativePath.pathString)
+        }
+    }
+}
+
+neoForge {
+    version = neoforge_version
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        // Boots a server, runs the NeoForge smoke GameTests and stops: a startup check.
+        gameTestServer {
+            type = 'gameTestServer'
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'gamblingitems'
+        }
+    }
+
+    mods {
+        gamblingitems {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand version: project.version
+    }
+}
+
+tasks.named('jar') {
+    from('../../LICENSE')
+    exclude 'dev/gamblingitems/neoforge/gametest/**', 'data/gamblingitems/structure/**'
+}

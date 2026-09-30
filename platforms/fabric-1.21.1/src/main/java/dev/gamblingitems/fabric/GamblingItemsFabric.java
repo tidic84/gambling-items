@@ -7,15 +7,19 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import dev.gamblingitems.fabric.crash.CrashGames;
 import dev.gamblingitems.fabric.battle.BattleLobbies;
 import dev.gamblingitems.fabric.bingo.BingoGames;
 import dev.gamblingitems.fabric.blackjack.BlackjackTables;
 import dev.gamblingitems.fabric.roulette.RouletteGames;
 import dev.gamblingitems.fabric.config.ModConfig;
+import dev.gamblingitems.fabric.loot.KeyDrops;
 import dev.gamblingitems.fabric.menu.GameMenus;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.CreativeModeTabs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,9 +31,16 @@ public final class GamblingItemsFabric implements ModInitializer {
     @Override
     public void onInitialize() {
         ModContent.initialize();
+        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS)
+                .register(entries -> ModContent.creativeEntries().forEach(entries::accept));
         // Keys are found on mobs, so the cases have a price that is played for, not bought.
-        dev.gamblingitems.fabric.loot.KeyDrops.initialize();
-        ServerLifecycleEvents.SERVER_STARTING.register(server -> ModConfig.load());
+        LootTableEvents.MODIFY.register((key, builder, source, registries) -> {
+            if (source.isBuiltin()) KeyDrops.poolsFor(key).forEach(builder::withPool);
+        });
+        ServerLifecycleEvents.SERVER_STARTING.register(ModConfig::load);
+        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {
+            if (success) ModConfig.load(server);
+        });
         // Shared rounds live on the server, not in a block: a flight survives an unloaded chunk.
         ServerTickEvents.END_SERVER_TICK.register(CrashGames::tick);
         ServerTickEvents.END_SERVER_TICK.register(RouletteGames::tick);

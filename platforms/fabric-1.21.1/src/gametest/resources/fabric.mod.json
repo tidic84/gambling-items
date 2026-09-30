@@ -21,7 +21,8 @@
       "dev.gamblingitems.fabric.block.TableGameTests",
       "dev.gamblingitems.fabric.menu.ValueSyncGameTests",
       "dev.gamblingitems.fabric.menu.LayoutGameTests",
-      "dev.gamblingitems.fabric.ContentGameTests"
+      "dev.gamblingitems.fabric.ContentGameTests",
+      "dev.gamblingitems.fabric.PortableGameTests"
     ]
   }
 }

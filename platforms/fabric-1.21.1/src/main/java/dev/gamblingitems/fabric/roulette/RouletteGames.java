@@ -36,7 +36,7 @@ public final class RouletteGames {
                 key -> new RouletteGame(level, pos.immutable(), ModConfig.roulette()));
     }
 
-    /** The round a portable terminal may join; a terminal never opens a new table on its own. */
+    /** Finds a nearby round, including rounds created by handheld items. */
     public static RouletteGame nearest(ServerPlayer player) {
         RouletteGame best = null;
         double closest = REACH * REACH;

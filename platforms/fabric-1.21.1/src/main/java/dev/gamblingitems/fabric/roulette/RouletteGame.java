@@ -255,7 +255,8 @@ public final class RouletteGame {
     }
 
     private void reset() {
-        if (level.isLoaded(station) && level.getBlockEntity(station) instanceof GameStationEntity entity) {
+        if (level.isLoaded(station) && level.getBlockEntity(station) instanceof GameStationEntity entity
+                && entity.mode() == dev.gamblingitems.core.GameMode.ROULETTE) {
             entity.clear();
         }
         phase = Phase.WAITING;
@@ -301,7 +302,8 @@ public final class RouletteGame {
         if (phase == Phase.WAITING || --stationTicks > 0) return;
         stationTicks = STATION_REFRESH_TICKS;
         if (!level.isLoaded(station)) return;
-        if (!(level.getBlockEntity(station) instanceof GameStationEntity entity)) return;
+        if (!(level.getBlockEntity(station) instanceof GameStationEntity entity)
+                || entity.mode() != dev.gamblingitems.core.GameMode.ROULETTE) return;
         String text = switch (phase) {
             case BETTING -> String.valueOf((phaseTicks + 19) / 20);
             case SPINNING -> ".".repeat((phaseTicks / 5 % 3) + 1);

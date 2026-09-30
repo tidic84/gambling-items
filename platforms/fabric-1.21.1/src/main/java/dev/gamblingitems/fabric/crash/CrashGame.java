@@ -223,7 +223,8 @@ public final class CrashGame {
     }
 
     private void reset() {
-        if (level.isLoaded(station) && level.getBlockEntity(station) instanceof GameStationEntity entity) {
+        if (level.isLoaded(station) && level.getBlockEntity(station) instanceof GameStationEntity entity
+                && entity.mode() == dev.gamblingitems.core.GameMode.CRASH) {
             entity.multiplier = CrashRules.START;
             entity.clear();
         }
@@ -286,7 +287,8 @@ public final class CrashGame {
         if (phase == Phase.WAITING || --stationTicks > 0) return;
         stationTicks = STATION_REFRESH_TICKS;
         if (!level.isLoaded(station)) return;
-        if (!(level.getBlockEntity(station) instanceof GameStationEntity entity)) return;
+        if (!(level.getBlockEntity(station) instanceof GameStationEntity entity)
+                || entity.mode() != dev.gamblingitems.core.GameMode.CRASH) return;
         String multiplier = BigDecimal.valueOf(publicMultiplier(), 2).toPlainString() + "x";
         entity.phase = phase.id();
         entity.multiplier = publicMultiplier();

@@ -85,6 +85,32 @@ public class SlotGameTests implements FabricGameTest {
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
+    public void aCurrencyIsTheOnlyStakeAndTheOnlyPayment(GameTestHelper helper) {
+        ServerPlayer player = player(helper);
+        SimpleContainer vault = new SimpleContainer(SlotSettings.VAULT_SIZE);
+        // The catalogue a configured currency gives the casino: a nugget worth 1, an ingot worth 10.
+        ValueCatalog currency = new ValueCatalog(List.of(
+                new ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("gold_nugget"), IRON),
+                new ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("gold_ingot"), 10 * IRON)));
+        SlotSetup setup = new SlotSetup(currency, new SlotSettings(IRON, 10_000, 40, 60));
+        SlotMenu menu = new SlotMenu(1, player.getInventory(), setup, vault, ContainerLevelAccess.NULL, bound -> 0);
+        vault.setItem(SlotSettings.INPUT_SLOT, new ItemStack(Items.DIAMOND, 3));
+        helper.assertFalse(menu.canSpin(), "Anything but the currency is worth nothing here");
+        vault.setItem(SlotSettings.INPUT_SLOT, new ItemStack(Items.GOLD_NUGGET, 5));
+        helper.assertTrue(menu.clickMenuButton(player, SlotMenu.SPIN_BUTTON), "The lever answers");
+        int nuggets = 0, ingots = 0;
+        for (int slot = SlotSettings.FIRST_PAYOUT_SLOT; slot < SlotSettings.VAULT_SIZE; slot++) {
+            ItemStack stack = vault.getItem(slot);
+            if (stack.is(Items.GOLD_NUGGET)) nuggets += stack.getCount();
+            else if (stack.is(Items.GOLD_INGOT)) ingots += stack.getCount();
+            else helper.assertTrue(stack.isEmpty(), "A win is paid in the currency and nothing else");
+        }
+        helper.assertTrue(ingots == 1 && nuggets == 5,
+                "Five at four times leave fifteen of profit: the dearest coin first, then the change");
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
     public void twoAlikePayTheConsolationLine(GameTestHelper helper) {
         ServerPlayer player = player(helper);
         SimpleContainer vault = new SimpleContainer(SlotSettings.VAULT_SIZE);

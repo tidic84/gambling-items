@@ -1,0 +1,14 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        maven { url = 'https://maven.neoforged.net/releases' }
+    }
+}
+
+rootProject.name = 'gambling-items-neoforge-1.21.1'
+
+// Gradle 8 does not automatically propagate --dry-run to included builds.
+// Keep root launch previews from executing this build's tasks.
+if (gradle.parent != null && gradle.parent.startParameter.dryRun) {
+    gradle.startParameter.dryRun = true
+}

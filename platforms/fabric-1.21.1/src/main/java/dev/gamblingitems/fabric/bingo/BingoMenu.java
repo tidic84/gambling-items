@@ -201,7 +201,7 @@ public final class BingoMenu extends AbstractContainerMenu {
                 > BingoGames.REACH * BingoGames.REACH) {
             return false;
         }
-        return player.getInventory().contains(new ItemStack(ModContent.TERMINAL))
+        return dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.BINGO)
                 || (game.level().getBlockState(pos).getBlock() instanceof GameSurface surface
                         && surface.mode() == GameMode.BINGO);
     }

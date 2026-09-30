@@ -36,7 +36,7 @@ public final class BingoGames {
                 key -> new BingoGame(level, pos.immutable(), ModConfig.bingo()));
     }
 
-    /** The round a portable terminal may join; a terminal never opens a new table on its own. */
+    /** Finds a nearby round, including rounds created by handheld items. */
     public static BingoGame nearest(ServerPlayer player) {
         BingoGame best = null;
         double closest = REACH * REACH;

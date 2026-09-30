@@ -21,6 +21,7 @@ import dev.gamblingitems.fabric.cases.CaseReward;
 import dev.gamblingitems.fabric.cases.CaseSetup;
 import dev.gamblingitems.fabric.crash.CrashSettings;
 import dev.gamblingitems.fabric.crash.CrashSetup;
+import dev.gamblingitems.fabric.platform.Platform;
 import dev.gamblingitems.fabric.roulette.RouletteSettings;
 import dev.gamblingitems.fabric.roulette.RouletteSetup;
 import dev.gamblingitems.fabric.tradeup.TradeUpSettings;
@@ -36,7 +37,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -44,7 +44,11 @@ import net.minecraft.world.item.Items;
 
 /** Server-side settings. Item values are shared by every game; each game keeps its own tuning. */
 public final class ModConfig {
-    public static final int SCHEMA_VERSION = 16;
+    public static final int SCHEMA_VERSION = 19;
+    /** One displayed unit of currency, so every screen counts in the currency's own units. */
+    public static final long CURRENCY_UNIT = 1_000;
+    /** The casino games that can be switched to a currency. Upgrader, trade up, cases and battles never are. */
+    public static final List<String> CURRENCY_GAMES = List.of("crash", "roulette", "blackjack", "bingo", "slotMachine");
     private static ValueCatalog values;
     private static UpgradeSetup upgrader;
     private static TradeUpSetup tradeUp;
@@ -74,8 +78,8 @@ public final class ModConfig {
         return loaded;
     }
 
-    public static void load() {
-        Path directory = FabricLoader.getInstance().getConfigDir().resolve("gamblingitems");
+    public static void load(net.minecraft.server.MinecraftServer server) {
+        Path directory = Platform.configDir().resolve("gamblingitems");
         Path path = directory.resolve("games.json");
         try {
             if (!Files.exists(path)) {
@@ -84,7 +88,7 @@ public final class ModConfig {
             }
             JsonObject json = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
             if (migrate(json)) write(path, json);
-            read(json);
+            read(json, server, directory);
         } catch (IOException | RuntimeException exception) {
             throw new IllegalStateException("Cannot load " + path + ": " + exception.getMessage(), exception);
         }
@@ -119,34 +123,55 @@ public final class ModConfig {
                 if (settings.get("bettingTicks").getAsInt() == 200) settings.addProperty("bettingTicks", 60);
             }
         }
+        // Steps run in ascending order: a later step may read a section an earlier one added.
+        // Schema 9: the roulette is the real wheel, 0 to 36, and a bet is any priced item.
+        // Its payouts are the ones printed on a felt, so the file no longer configures them.
+        if (schema < 9) json.add("roulette", defaultRoulette());
+        // Schema 10: cases are opened with keys found on mobs, one per rarity.
+        if (schema < 10) json.add("cases", migratedCases(json.getAsJsonArray("cases")));
+        // Schema 11 adds the blackjack table.
+        if (schema < 11) json.add("blackjack", defaultBlackjack());
+        // Schema 12 adds the case battle lobbies.
+        if (schema < 12) json.add("caseBattle", defaultBattle());
+        // Schema 13 adds the bingo tables.
+        if (schema < 13) json.add("bingo", defaultBingo());
         // Schema 14 lets the wheel turn three seconds longer, keeping a custom duration.
         if (schema < 14) {
             JsonObject wheel = json.getAsJsonObject("roulette");
             if (wheel.get("spinTicks").getAsInt() == 60) wheel.addProperty("spinTicks", 120);
         }
+        // Schema 15 adds the slot machine cabinets.
+        if (schema < 15) json.add("slotMachine", defaultSlots());
         // Schema 16 shortens the old bingo countdown to five seconds, keeping a custom one.
         if (schema < 16) {
             JsonObject drum = json.getAsJsonObject("bingo");
             if (drum.get("bettingTicks").getAsInt() == 400) drum.addProperty("bettingTicks", 100);
         }
-        // Schema 15 adds the slot machine cabinets.
-        if (schema < 15) json.add("slotMachine", defaultSlots());
-        // Schema 13 adds the bingo tables.
-        if (schema < 13) json.add("bingo", defaultBingo());
-        // Schema 12 adds the case battle lobbies.
-        if (schema < 12) json.add("caseBattle", defaultBattle());
-        // Schema 11 adds the blackjack table.
-        if (schema < 11) json.add("blackjack", defaultBlackjack());
-        // Schema 10: cases are opened with keys found on mobs, one per rarity.
-        if (schema < 10) json.add("cases", migratedCases(json.getAsJsonArray("cases")));
-        // Schema 9: the roulette is the real wheel, 0 to 36, and a bet is any priced item.
-        // Its payouts are the ones printed on a felt, so the file no longer configures them.
-        if (schema < 9) json.add("roulette", defaultRoulette());
+        if (schema < 17) {
+            json.add("automaticValues", defaultAutomaticValues());
+            // Only fill new base materials; never overwrite the server owner's prices.
+            JsonObject configured = json.getAsJsonObject("values");
+            baseValues().forEach((id, value) -> {
+                if (!configured.has("minecraft:" + id)) configured.addProperty("minecraft:" + id, value);
+            });
+        }
+        // Schema 18 adds an optional currency for the casino games, off by default.
+        if (schema < 18) json.add("currency", defaultCurrency());
+        // Schema 19: a currency may have several items, each with its own worth. The single item
+        // of schema 18 becomes the unit.
+        if (schema < 19) {
+            JsonObject currency = json.getAsJsonObject("currency");
+            if (currency.has("item")) {
+                JsonObject items = new JsonObject();
+                items.addProperty(currency.remove("item").getAsString(), 1);
+                currency.add("items", items);
+            }
+        }
         json.addProperty("schemaVersion", SCHEMA_VERSION);
         return true;
     }
 
-    private static void read(JsonObject json) {
+    private static void read(JsonObject json, net.minecraft.server.MinecraftServer server, Path directory) throws IOException {
         if (json.get("schemaVersion").getAsInt() != SCHEMA_VERSION) {
             throw new IllegalArgumentException("Unknown config schema");
         }
@@ -156,7 +181,10 @@ public final class ModConfig {
                     pair.getValue().getAsBigDecimal().longValueExact()));
         }
         entries.sort(Comparator.comparingLong(ValueCatalog.Entry::value).thenComparing(entry -> entry.id().toString()));
-        ValueCatalog catalog = new ValueCatalog(entries);
+        var valuation = dev.gamblingitems.fabric.value.RecipeValuation.build(server, new ValueCatalog(entries),
+                json.getAsJsonObject("automaticValues"));
+        ValueCatalog catalog = valuation.catalog();
+        write(directory.resolve("resolved-values.json"), valuation.report());
         JsonObject upgraderJson = json.getAsJsonObject("upgrader");
         JsonObject tradeUpJson = json.getAsJsonObject("tradeUp");
         CaseCatalog caseCatalog = readCases(json.getAsJsonArray("cases"), catalog);
@@ -166,6 +194,7 @@ public final class ModConfig {
         JsonObject battleJson = json.getAsJsonObject("caseBattle");
         JsonObject bingoJson = json.getAsJsonObject("bingo");
         JsonObject slotsJson = json.getAsJsonObject("slotMachine");
+        Map<String, ValueCatalog> casino = readCurrency(json.getAsJsonObject("currency"), catalog);
         values = catalog;
         upgrader = new UpgradeSetup(catalog, upgraderJson.get("returnBasisPoints").getAsInt(),
                 upgraderJson.get("maximumChanceBasisPoints").getAsInt());
@@ -176,13 +205,13 @@ public final class ModConfig {
                 tradeUpJson.get("maximumRewardRatioBasisPoints").getAsInt(),
                 tradeUpJson.get("rewardCount").getAsInt()));
         cases = new CaseSetup(catalog, caseCatalog);
-        bingo = new BingoSetup(catalog, new BingoSettings(
+        bingo = new BingoSetup(casino.get("bingo"), new BingoSettings(
                 bingoJson.get("cardPrice").getAsLong(),
                 bingoJson.get("returnBasisPoints").getAsInt(),
                 bingoJson.get("bettingTicks").getAsInt(),
                 bingoJson.get("drawTicks").getAsInt(),
                 bingoJson.get("resultTicks").getAsInt()));
-        slots = new SlotSetup(catalog, new SlotSettings(
+        slots = new SlotSetup(casino.get("slotMachine"), new SlotSettings(
                 slotsJson.get("minimumStake").getAsLong(),
                 slotsJson.get("returnBasisPoints").getAsInt(),
                 slotsJson.get("spinTicks").getAsInt(),
@@ -191,9 +220,9 @@ public final class ModConfig {
                 battleJson.get("lobbyTicks").getAsInt(),
                 battleJson.get("roundTicks").getAsInt(),
                 battleJson.get("resultTicks").getAsInt()));
-        crash = new CrashSetup(catalog, crashSettings);
-        roulette = new RouletteSetup(catalog, rouletteSettings);
-        blackjack = new BlackjackSetup(catalog, new BlackjackSettings(
+        crash = new CrashSetup(casino.get("crash"), crashSettings);
+        roulette = new RouletteSetup(casino.get("roulette"), rouletteSettings);
+        blackjack = new BlackjackSetup(casino.get("blackjack"), new BlackjackSettings(
                 blackjackJson.get("minimumStake").getAsLong(),
                 blackjackJson.get("dealerDelayTicks").getAsInt(),
                 blackjackJson.get("resultTicks").getAsInt()));
@@ -236,6 +265,58 @@ public final class ModConfig {
         return new CaseCatalog(definitions);
     }
 
+    /**
+     * The catalogue each casino game plays with. Without a currency it is the shared one: any priced
+     * item is a stake and a win comes back as catalogue items. With a currency, the listed games know
+     * only its items, each worth its configured units of {@link #CURRENCY_UNIT}: nothing else can be
+     * staked and every win is paid in them, dearest coin first, never in random items.
+     */
+    private static Map<String, ValueCatalog> readCurrency(JsonObject json, ValueCatalog shared) {
+        Map<String, ValueCatalog> catalogs = new LinkedHashMap<>();
+        CURRENCY_GAMES.forEach(game -> catalogs.put(game, shared));
+        if (!json.get("enabled").getAsBoolean()) return catalogs;
+        List<ValueCatalog.Entry> coins = new ArrayList<>();
+        for (var pair : json.getAsJsonObject("items").entrySet()) {
+            // Worth is written in displayed units, so 0.5 is half a unit; finer than 0.001 cannot be held.
+            java.math.BigDecimal units = pair.getValue().getAsBigDecimal();
+            long worth;
+            try {
+                worth = units.multiply(java.math.BigDecimal.valueOf(CURRENCY_UNIT)).longValueExact();
+            } catch (ArithmeticException exception) {
+                throw new IllegalArgumentException("Invalid currency value for " + pair.getKey() + ": " + units);
+            }
+            if (worth <= 0 || worth > ValueCatalog.MAX_VALUE) {
+                throw new IllegalArgumentException("Invalid currency value for " + pair.getKey() + ": " + units);
+            }
+            coins.add(new ValueCatalog.Entry(item(pair.getKey()), worth));
+        }
+        if (coins.isEmpty()) throw new IllegalArgumentException("An enabled currency needs at least one item");
+        // Change is made from the cheapest coin upwards, as the shared catalogue is.
+        coins.sort(Comparator.comparingLong(ValueCatalog.Entry::value).thenComparing(entry -> entry.id().toString()));
+        ValueCatalog currency = new ValueCatalog(coins);
+        for (JsonElement element : json.getAsJsonArray("games")) {
+            String game = element.getAsString();
+            if (!CURRENCY_GAMES.contains(game)) {
+                throw new IllegalArgumentException("Unknown currency game: " + game + ", expected one of " + CURRENCY_GAMES);
+            }
+            catalogs.put(game, currency);
+        }
+        return catalogs;
+    }
+
+    /** Disabled: the casino plays with every priced item until an administrator names a currency. */
+    private static JsonObject defaultCurrency() {
+        JsonObject json = new JsonObject();
+        json.addProperty("enabled", false);
+        JsonObject items = new JsonObject();
+        items.addProperty("minecraft:emerald", 1);
+        json.add("items", items);
+        JsonArray games = new JsonArray();
+        CURRENCY_GAMES.forEach(games::add);
+        json.add("games", games);
+        return json;
+    }
+
     /** The smallest bet is a value, so any priced item may be staked at this table. */
     private static CrashSettings readCrash(JsonObject json) {
         return new CrashSettings(json.get("minimumStake").getAsLong(),
@@ -270,7 +351,7 @@ public final class ModConfig {
     private static ResourceLocation item(String raw) {
         ResourceLocation id = ResourceLocation.parse(raw);
         if (!BuiltInRegistries.ITEM.containsKey(id) || BuiltInRegistries.ITEM.get(id) == Items.AIR
-                || id.getNamespace().equals("gamblingitems")) {
+                || BuiltInRegistries.ITEM.get(id) instanceof dev.gamblingitems.fabric.item.KeyItem) {
             throw new IllegalArgumentException("Unsupported item: " + id);
         }
         return id;
@@ -308,6 +389,7 @@ public final class ModConfig {
         tradeUpJson.addProperty("maximumRewardRatioBasisPoints", 40_000);
         tradeUpJson.addProperty("rewardCount", 6);
         json.add("values", values);
+        json.add("automaticValues", defaultAutomaticValues());
         json.add("upgrader", upgraderJson);
         json.add("tradeUp", tradeUpJson);
         json.add("cases", defaultCases());
@@ -317,6 +399,7 @@ public final class ModConfig {
         json.add("caseBattle", defaultBattle());
         json.add("bingo", defaultBingo());
         json.add("slotMachine", defaultSlots());
+        json.add("currency", defaultCurrency());
         return json;
     }
 
@@ -476,6 +559,7 @@ public final class ModConfig {
 
     private static Map<String, Long> defaultValues() {
         Map<String, Long> items = new LinkedHashMap<>();
+        items.putAll(baseValues());
         items.put("copper_ingot", 100L);
         items.put("coal", 150L);
         items.put("redstone", 200L);
@@ -506,6 +590,38 @@ public final class ModConfig {
         items.put("netherite_pickaxe", 290000L);
         items.put("netherite_chestplate", 350000L);
         items.put("nether_star", 500000L);
+        return items;
+    }
+
+    private static JsonObject defaultAutomaticValues() {
+        JsonObject json = new JsonObject();
+        json.addProperty("enabled", true);
+        json.addProperty("fallbackValue", 1000);
+        JsonObject namespaces = new JsonObject();
+        namespaces.addProperty("minecraft", 100);
+        json.add("namespaceFallbackValues", namespaces);
+        json.add("excludedItems", new JsonArray());
+        return json;
+    }
+
+    private static Map<String, Long> baseValues() {
+        Map<String, Long> items = new LinkedHashMap<>();
+        for (String wood : List.of("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry")) {
+            items.put(wood + "_log", 160L);
+            items.put("stripped_" + wood + "_log", 160L);
+            items.put("stripped_" + wood + "_wood", 213L);
+        }
+        items.put("crimson_stem", 160L);
+        items.put("warped_stem", 160L);
+        items.put("stripped_crimson_stem", 160L);
+        items.put("stripped_warped_stem", 160L);
+        items.put("stripped_crimson_hyphae", 213L);
+        items.put("stripped_warped_hyphae", 213L);
+        for (String item : List.of("cobblestone", "cobbled_deepslate", "dirt", "sand", "red_sand", "gravel", "netherrack")) {
+            items.put(item, 20L);
+        }
+        for (String item : List.of("wheat", "sugar_cane", "bamboo", "kelp")) items.put(item, 40L);
+        for (String item : List.of("string", "leather", "feather", "bone", "clay_ball", "slime_ball")) items.put(item, 100L);
         return items;
     }
 }

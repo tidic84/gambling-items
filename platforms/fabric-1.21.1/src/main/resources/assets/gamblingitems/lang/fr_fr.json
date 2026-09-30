@@ -286,5 +286,14 @@
   "gui.gamblingitems.rules.blackjack": "Bats le croupier sans dépasser 21. L'as vaut un ou onze, une figure vaut dix. Le croupier tire jusqu'à seize et reste à dix-sept. Un gain paie deux fois la mise, un blackjack deux fois et demie, une égalité rend exactement les objets misés.",
   "gui.gamblingitems.rules.bingo": "Achète un carton, puis le tambour tire des numéros communs à tous. Ton carton se coche tout seul ; la case libre du milieu est toujours cochée. Les premiers cartons à compléter une ligne se partagent le pot. Un carton payé reste dans la manche jusqu'à son règlement.",
   "gui.gamblingitems.rules.slot_machine": "Prépare n'importe quels objets valorisés comme mise et tire le levier. Les trois rouleaux s'arrêtent l'un après l'autre : trois identiques paient la ligne de ce symbole, deux identiques paient 1,4 fois la mise, le reste la prend. Les objets joués reviennent en cas de gain et seul le bénéfice est rendu en monnaie.",
-  "gui.gamblingitems.slot_service": "ENTRETIEN"
+  "gui.gamblingitems.slot_service": "ENTRETIEN",
+  "item.gamblingitems.upgrader_item": "Upgrader portable",
+  "item.gamblingitems.trade_up_item": "Trade Up portable",
+  "item.gamblingitems.case_opening_item": "Ouvre-caisses portable",
+  "item.gamblingitems.crash_item": "Crash portable",
+  "item.gamblingitems.roulette_item": "Roulette portable",
+  "item.gamblingitems.blackjack_item": "Blackjack portable",
+  "item.gamblingitems.case_battle_item": "Battle de caisses portable",
+  "item.gamblingitems.bingo_item": "Bingo portable",
+  "item.gamblingitems.slot_machine_item": "Machine à sous portable"
 }

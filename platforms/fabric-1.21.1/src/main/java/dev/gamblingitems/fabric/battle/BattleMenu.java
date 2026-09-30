@@ -198,7 +198,7 @@ public final class BattleMenu extends AbstractContainerMenu {
                 > BattleLobbies.REACH * BattleLobbies.REACH) {
             return false;
         }
-        return player.getInventory().contains(new ItemStack(ModContent.TERMINAL))
+        return dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.CASE_BATTLE)
                 || (lobby.level().getBlockState(pos).getBlock() instanceof GameSurface surface
                         && surface.mode() == GameMode.CASE_BATTLE);
     }

@@ -209,7 +209,7 @@ public final class BlackjackMenu extends AbstractContainerMenu {
                 (level, pos) -> level.getBlockState(pos).getBlock() instanceof GameSurface surface
                         && surface.mode() == GameMode.BLACKJACK
                         && player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64,
-                player.getInventory().contains(new ItemStack(ModContent.TERMINAL)));
+                dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.BLACKJACK));
     }
 
     @Override public void clicked(int slot, int button, ClickType type, Player player) {

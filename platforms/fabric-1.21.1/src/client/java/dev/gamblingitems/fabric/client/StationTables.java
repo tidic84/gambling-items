@@ -21,7 +21,7 @@ import net.minecraft.network.chat.Component;
 /**
  * The felt of a table, drawn across the six blocks it occupies: the mat of a blackjack, the wheel
  * and layout of a roulette, or the board of a bingo. Raised pieces — the rail, the chip racks, the
- * shoe, the rim and turret of the wheel — are stacked quads, so a table reads as an object.
+ * shoe, the rim and turret of the wheel — have closed sides and shaded edges.
  *
  * <p>Nothing here decides anything: it draws what the block was told. Coordinates are the pixels
  * of the station panel, 128 to a block, so the surface runs from -192 to 192 across and -128 to
@@ -38,8 +38,6 @@ public final class StationTables {
     private static final float HEIGHT = 0.83f;
     /** The surface: three blocks across, two deep, the anchor block at the front middle. */
     private static final float HALF_WIDTH = TableLayout.HALF_WIDTH, HALF_DEPTH = TableLayout.HALF_DEPTH;
-    /** The hair of height between two pieces of the same fan, so none of them fight. */
-    private static final float SLICE = 0.006f;
     /** How many ticks a card takes to land on the felt. */
     private static final float DEAL_TICKS = 6;
 
@@ -61,7 +59,7 @@ public final class StationTables {
         // Lay the panel flat, keeping the handedness the station screen already uses.
         pose.mulPose(Axis.XP.rotationDegrees(-90));
         pose.scale(1f / 128, -1f / 128, 1f / 128);
-        cloth(pose, buffers);
+        cloth(pose, buffers, station.mode() != dev.gamblingitems.core.GameMode.BINGO);
         switch (station.mode()) {
             case BLACKJACK -> blackjack(station, partialTick, pose, buffers, font);
             case ROULETTE -> roulette(station, partialTick, pose, buffers, font);
@@ -74,13 +72,24 @@ public final class StationTables {
     }
 
     /** The felt itself, with the padded rail a player leans on at the front. */
-    private static void cloth(PoseStack pose, MultiBufferSource buffers) {
+    private static void cloth(PoseStack pose, MultiBufferSource buffers, boolean detailed) {
         quad(pose, buffers, -HALF_WIDTH, -HALF_DEPTH, HALF_WIDTH, HALF_DEPTH, FELT_EDGE, 1);
         quad(pose, buffers, -HALF_WIDTH + 3, -HALF_DEPTH + 3, HALF_WIDTH - 3, HALF_DEPTH - 14, FELT, 2);
-        for (int layer = 0; layer < 3; layer++) {
-            quad(pose, buffers, -HALF_WIDTH + 3 + layer, HALF_DEPTH - 14 + layer,
-                    HALF_WIDTH - 3 - layer, HALF_DEPTH - 3 - layer,
-                    layer % 2 == 0 ? RAIL : WOOD_LIGHT, 2 + layer);
+        if (!detailed) {
+            for (int layer = 0; layer < 3; layer++) {
+                quad(pose, buffers, -HALF_WIDTH + 3 + layer, HALF_DEPTH - 14 + layer,
+                        HALF_WIDTH - 3 - layer, HALF_DEPTH - 3 - layer,
+                        layer % 2 == 0 ? RAIL : WOOD_LIGHT, 2 + layer);
+            }
+            return;
+        }
+        // Fine woven stripes and a stitched leather armrest, clear of all hit areas.
+        for (int y = -120; y < 110; y += 4) {
+            quad(pose, buffers, -187, y, 187, y + 0.3f, 0xff174b30, 2.1f);
+        }
+        solidBox(pose, buffers, -189, 113, 189, 124, 2, 5, 0xff252329);
+        for (int x = -182; x < 184; x += 7) {
+            quad(pose, buffers, x, 115, x + 3, 115.5f, 0xff967b50, 5.1f);
         }
     }
 
@@ -134,30 +143,37 @@ public final class StationTables {
 
     /** The shoe the cards come out of, in the far right corner. */
     private static void shoe(PoseStack pose, MultiBufferSource buffers) {
-        for (int layer = 0; layer < 5; layer++) {
-            float inset = layer * 2f;
-            quad(pose, buffers, 120 + inset, -118 + inset, 176 - inset, -78 - inset,
-                    layer % 2 == 0 ? WOOD : WOOD_LIGHT, 3 + layer);
+        solidBox(pose, buffers, 122, -117, 177, -78, 2, 5, WOOD);
+        solidBox(pose, buffers, 124, -115, 129, -80, 5, 15, WOOD_LIGHT);
+        solidBox(pose, buffers, 170, -115, 175, -80, 5, 15, WOOD_LIGHT);
+        solidBox(pose, buffers, 129, -115, 170, -110, 5, 15, WOOD);
+        solidBox(pose, buffers, 131, -108, 168, -84, 5, 12, CARD);
+        for (int layer = 6; layer < 12; layer += 2) {
+            solidBox(pose, buffers, 131, -84.5f, 168, -84, layer, layer + .35f, SILVER);
         }
-        quad(pose, buffers, 128, -108, 168, -100, CARD, 8);
-        quad(pose, buffers, 128, -96, 168, -88, CARD, 8);
+        quad(pose, buffers, 134, -105, 165, -87, CARD_BACK, 12.1f);
+        solidBox(pose, buffers, 139, -90, 160, -72, 5, 5.7f, CARD);
     }
 
     /** The tray the dealt cards are dropped into, on the far left. */
     private static void discardTray(PoseStack pose, MultiBufferSource buffers) {
-        quad(pose, buffers, -176, -118, -120, -78, WOOD, 3);
-        quad(pose, buffers, -172, -114, -124, -82, 0xff2a1c11, 4);
-        quad(pose, buffers, -168, -110, -128, -96, CARD_BACK, 5);
+        solidBox(pose, buffers, -176, -118, -120, -78, 2, 5, WOOD);
+        solidBox(pose, buffers, -176, -118, -172, -78, 5, 10, WOOD_LIGHT);
+        solidBox(pose, buffers, -124, -118, -120, -78, 5, 10, WOOD_LIGHT);
+        solidBox(pose, buffers, -172, -118, -124, -114, 5, 10, WOOD_LIGHT);
+        solidBox(pose, buffers, -166, -109, -130, -84, 5, 7, CARD);
+        quad(pose, buffers, -164, -107, -132, -86, CARD_BACK, 7.1f);
     }
 
     /** A rack of chips: four colours, each a short stack. */
     private static void chipRack(PoseStack pose, MultiBufferSource buffers, float x, float y) {
-        quad(pose, buffers, x - 8, y - 10, x + 8, y + 74, WOOD, 3);
+        solidBox(pose, buffers, x - 9, y - 10, x + 9, y + 74, 2, 4, WOOD);
         int[] colours = {RED, BLUE, GREEN, GOLD};
         for (int index = 0; index < colours.length; index++) {
             float top = y - 4 + index * 20;
             for (int layer = 0; layer < 4; layer++) {
-                circle(pose, buffers, x, top + 8 - layer * 0.8f, 7 - layer * 0.4f, colours[index], 4 + layer);
+                cylinder(pose, buffers, x, top + 8, 7, 4 + layer * 2, 6 + layer * 2, colours[index]);
+                circle(pose, buffers, x, top + 8, 4.5f, CARD, 6.1f + layer * 2);
             }
         }
     }
@@ -253,24 +269,26 @@ public final class StationTables {
         pose.pushPose();
         pose.translate(-124, -18, 0);
         // The bowl: an apron, a wooden rim, the pockets, and the turret in the middle.
-        circle(pose, buffers, 0, 0, 64, WOOD, 3);
-        circle(pose, buffers, 0, 0, 58, WOOD_LIGHT, 4);
-        circle(pose, buffers, 0, 0, 53, 0xff102b1c, 5);
+        cylinder(pose, buffers, 0, 0, 64, 2, 7, WOOD);
+        cylinder(pose, buffers, 0, 0, 62, 7, 9, GOLD);
+        cylinder(pose, buffers, 0, 0, 60, 9, 11, WOOD_LIGHT);
+        circle(pose, buffers, 0, 0, 57, 0xff211c19, 11.1f);
+        circle(pose, buffers, 0, 0, 54, GOLD, 11.2f);
         for (int pocket = 0; pocket < RouletteWheel.POCKETS; pocket++) {
             int number = RouletteWheel.numberAtPocket(pocket);
             double angle = wheelAngle + pocket * 2 * Math.PI / RouletteWheel.POCKETS;
-            blade(pose, buffers, angle, colourOf(number), 62, 30, 6, pocket);
+            blade(pose, buffers, angle, colourOf(number), 53, 28, 11.4f);
             // A blade is centred on its own angle, so its number is written on that same line.
             label(pose, buffers, font, String.valueOf(number),
-                    (float) (Math.cos(angle) * 45), (float) (Math.sin(angle) * 45), TEXT, 0.5f, 7);
+                    (float) (Math.cos(angle) * 43), (float) (Math.sin(angle) * 43), TEXT, 0.5f, 11.6f);
         }
         turret(pose, buffers, wheelAngle);
         if (result >= 0 && station.phase > 0) {
             double pocketAngle = RouletteWheel.pocketOf(result) * 2 * Math.PI / RouletteWheel.POCKETS;
             double ballAngle = wheelAngle + pocketAngle - (1 - eased) * 6 * Math.PI * 2;
-            double radius = 56 - 14 * eased;
-            circle(pose, buffers, (float) (Math.cos(ballAngle) * radius),
-                    (float) (Math.sin(ballAngle) * radius), 4, 0xfff8fbff, 12);
+            double radius = 55 - 20 * eased;
+            cylinder(pose, buffers, (float) (Math.cos(ballAngle) * radius),
+                    (float) (Math.sin(ballAngle) * radius), 2.8f, 11.5f, 15, CARD);
         }
         pose.popPose();
         layout(pose, buffers, font, result, station.phase == 3);
@@ -278,15 +296,15 @@ public final class StationTables {
 
     /** The turret in the middle of the bowl: stacked discs, narrowing as they rise. */
     private static void turret(PoseStack pose, MultiBufferSource buffers, double angle) {
-        circle(pose, buffers, 0, 0, 22, 0xff3b2a17, 8);
-        circle(pose, buffers, 0, 0, 15, GOLD, 9);
-        circle(pose, buffers, 0, 0, 9, 0xff8a6b1f, 10);
-        circle(pose, buffers, 0, 0, 4, SILVER, 11);
+        cylinder(pose, buffers, 0, 0, 27, 11.5f, 13, WOOD);
+        cylinder(pose, buffers, 0, 0, 20, 13, 15, WOOD_LIGHT);
+        cylinder(pose, buffers, 0, 0, 12, 15, 18, GOLD);
+        cylinder(pose, buffers, 0, 0, 5, 18, 26, SILVER);
         for (int arm = 0; arm < 4; arm++) {
             double armAngle = angle + arm * Math.PI / 2;
             pose.pushPose();
             pose.mulPose(Axis.ZP.rotation((float) armAngle));
-            quad(pose, buffers, 4, -2.5f, 20, 2.5f, SILVER, 11);
+            solidBox(pose, buffers, 3, -1.8f, 19, 1.8f, 23, 25, GOLD);
             pose.popPose();
         }
     }
@@ -483,35 +501,66 @@ public final class StationTables {
 
     // ---------------------------------------------------------------- drawing
 
-    /**
-     * One pocket of the wheel, drawn as a rotated blade so the wheel really looks round.
-     * Neighbouring blades overlap near the middle, so each gets a hair of its own height:
-     * two coloured surfaces sharing a plane are what makes a model flicker.
-     */
+    /** A true annular sector; the narrow gap reveals the brass pocket separators. */
     private static void blade(PoseStack pose, MultiBufferSource buffers, double angle, int colour,
-                              float outer, float inner, float lift, int index) {
-        double half = Math.PI / RouletteWheel.POCKETS;
-        float width = (float) (2 * outer * Math.sin(half));
-        pose.pushPose();
-        pose.mulPose(Axis.ZP.rotation((float) angle));
-        quad(pose, buffers, inner, -width / 2, outer, width / 2, colour, lift + index * SLICE);
-        pose.popPose();
+                              float outer, float inner, float lift) {
+        double half = Math.PI / RouletteWheel.POCKETS * .92;
+        var v = buffers.getBuffer(RenderType.gui());
+        var m = pose.last().pose();
+        v.addVertex(m, (float) (inner * Math.cos(angle-half)), (float) (inner * Math.sin(angle-half)), lift).setColor(colour);
+        v.addVertex(m, (float) (inner * Math.cos(angle+half)), (float) (inner * Math.sin(angle+half)), lift).setColor(colour);
+        v.addVertex(m, (float) (outer * Math.cos(angle+half)), (float) (outer * Math.sin(angle+half)), lift).setColor(colour);
+        v.addVertex(m, (float) (outer * Math.cos(angle-half)), (float) (outer * Math.sin(angle-half)), lift).setColor(colour);
     }
 
-    /** A filled circle, drawn as a fan of blades around its middle, each on its own hair. */
+    /** A coplanar triangle fan, with no overlapping blades or depth drift. */
     private static void circle(PoseStack pose, MultiBufferSource buffers, float centreX, float centreY,
                                float radius, int colour, float lift) {
         int steps = 40;
-        pose.pushPose();
-        pose.translate(centreX, centreY, 0);
+        var vertices = buffers.getBuffer(RenderType.gui());
+        var matrix = pose.last().pose();
         for (int step = 0; step < steps; step++) {
-            pose.pushPose();
-            pose.mulPose(Axis.ZP.rotation((float) (step * 2 * Math.PI / steps)));
-            float width = (float) (2 * radius * Math.sin(Math.PI / steps)) + 0.4f;
-            quad(pose, buffers, 0, -width / 2, radius, width / 2, colour, lift + step * SLICE);
-            pose.popPose();
+            double a = step * 2 * Math.PI / steps, b = (step + 1) * 2 * Math.PI / steps;
+            vertices.addVertex(matrix, centreX, centreY, lift).setColor(colour);
+            vertices.addVertex(matrix, centreX + (float) Math.cos(b) * radius, centreY + (float) Math.sin(b) * radius, lift).setColor(colour);
+            vertices.addVertex(matrix, centreX + (float) Math.cos(a) * radius, centreY + (float) Math.sin(a) * radius, lift).setColor(colour);
+            vertices.addVertex(matrix, centreX, centreY, lift).setColor(colour);
         }
-        pose.popPose();
+    }
+
+    private static int shade(int colour, float amount) {
+        return 0xff000000 | (int) (((colour >> 16) & 255) * amount) << 16
+                | (int) (((colour >> 8) & 255) * amount) << 8 | (int) ((colour & 255) * amount);
+    }
+
+    private static void wall(PoseStack pose, MultiBufferSource buffers, float x1, float y1,
+                             float x2, float y2, float bottom, float top, int colour) {
+        var v = buffers.getBuffer(RenderType.gui());
+        var m = pose.last().pose();
+        v.addVertex(m, x1, y1, bottom).setColor(colour);
+        v.addVertex(m, x2, y2, bottom).setColor(colour);
+        v.addVertex(m, x2, y2, top).setColor(colour);
+        v.addVertex(m, x1, y1, top).setColor(colour);
+    }
+
+    private static void solidBox(PoseStack pose, MultiBufferSource buffers, float x1, float y1,
+                                 float x2, float y2, float bottom, float top, int colour) {
+        quad(pose, buffers, x1, y1, x2, y2, colour, top);
+        wall(pose, buffers, x1, y1, x2, y1, bottom, top, shade(colour, .65f));
+        wall(pose, buffers, x2, y1, x2, y2, bottom, top, shade(colour, .8f));
+        wall(pose, buffers, x2, y2, x1, y2, bottom, top, shade(colour, .75f));
+        wall(pose, buffers, x1, y2, x1, y1, bottom, top, shade(colour, .6f));
+    }
+
+    private static void cylinder(PoseStack pose, MultiBufferSource buffers, float x, float y,
+                                 float radius, float bottom, float top, int colour) {
+        circle(pose, buffers, x, y, radius, colour, top);
+        for (int step = 0; step < 40; step++) {
+            double a = step * Math.PI / 20, b = (step + 1) * Math.PI / 20;
+            wall(pose, buffers, x + (float) Math.cos(a) * radius, y + (float) Math.sin(a) * radius,
+                    x + (float) Math.cos(b) * radius, y + (float) Math.sin(b) * radius,
+                    bottom, top, shade(colour, .68f + .13f * (float) Math.cos(a - .8)));
+        }
     }
 
     /** A flat coloured rectangle, wound the way the station screen winds its own. */

@@ -72,3 +72,63 @@ loom.runs.gameTest {
 tasks.named('runGameTest') {
     doFirst { file('build/test-results').mkdirs() }
 }
+
+tasks.named('jar') {
+    from('../../LICENSE')
+}
+
+tasks.register('prepareCurseForge') {
+    group = 'distribution'
+    description = 'Build and verify the mod, then prepare its CurseForge upload folder.'
+    dependsOn tasks.named('build')
+    doLast {
+        def jarFile = tasks.named('remapJar').get().archiveFile.get().asFile
+        def fields = new groovy.json.JsonSlurper().parse(file('../../release/curseforge/project-fields.json'))
+        assert fields.file.path == jarFile.name : 'Update the CurseForge file metadata for this version'
+        def metadata
+        def nested
+        new java.util.zip.ZipFile(jarFile).withCloseable { archive ->
+            metadata = new groovy.json.JsonSlurper().parse(archive.getInputStream(archive.getEntry('fabric.mod.json')))
+            assert metadata.version == project.version.toString()
+            assert metadata.authors == ['Romalaure']
+            assert metadata.license == 'All Rights Reserved'
+            assert metadata.depends.minecraft == '1.21.1'
+            assert archive.getEntry(metadata.icon) != null
+            assert archive.getEntry('LICENSE') != null
+            assert archive.getEntry('dev/gamblingitems/fabric/client/GamblingItemsClient.class') != null
+            assert archive.getEntry('dev/gamblingitems/fabric/GamblingItemsFabric.class') != null
+            nested = metadata.jars.collect { it.file }
+            assert nested.size() == 1 && nested[0].contains('gambling-items-core')
+            assert archive.getEntry(nested[0]) != null
+            assert !archive.entries().toList().any {
+                it.name.contains('GameTests') || it.name.endsWith('.java') || it.name.startsWith('config/')
+            }
+        }
+        def destination = file("../../dist/curseforge/${project.version}")
+        destination.mkdirs()
+        copy {
+            from jarFile
+            from '../../release/curseforge'
+            from '../../LICENSE'
+            from '../../ITEMS_AND_VALUES.md'
+            into destination
+        }
+        def digest = java.security.MessageDigest.getInstance('SHA-256')
+        jarFile.withInputStream { stream ->
+            byte[] buffer = new byte[8192]
+            int length
+            while ((length = stream.read(buffer)) != -1) digest.update(buffer, 0, length)
+        }
+        def sha = digest.digest().encodeHex().toString()
+        new File(destination, 'SHA256SUMS.txt').text = "${sha}  ${jarFile.name}\n"
+        def report = [version: project.version.toString(), file: jarFile.name, bytes: jarFile.length(),
+                      sha256: sha, metadata: metadata, embeddedLibraries: nested,
+                      verification: ['Gradle build and core tests passed', 'Fabric server GameTests passed',
+                                     'Production JAR metadata, client classes, license and nested core checked'],
+                      notVerified: ['Manual client gameplay and visual smoke test', 'CurseForge moderation'],
+                      published: false]
+        new File(destination, 'verification.json').text = groovy.json.JsonOutput.prettyPrint(
+                groovy.json.JsonOutput.toJson(report)) + '\n'
+        logger.lifecycle("CurseForge upload folder: ${destination}")
+    }
+}

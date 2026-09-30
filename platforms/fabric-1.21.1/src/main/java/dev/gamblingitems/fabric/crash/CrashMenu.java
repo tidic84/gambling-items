@@ -169,7 +169,7 @@ public final class CrashMenu extends AbstractContainerMenu {
                 > CrashGames.REACH * CrashGames.REACH) {
             return false;
         }
-        return player.getInventory().contains(new ItemStack(ModContent.TERMINAL))
+        return dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.CRASH)
                 || (game.level().getBlockState(pos).getBlock() instanceof GameSurface surface
                         && surface.mode() == GameMode.CRASH);
     }

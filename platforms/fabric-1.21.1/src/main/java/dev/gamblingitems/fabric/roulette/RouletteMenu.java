@@ -199,7 +199,7 @@ public final class RouletteMenu extends AbstractContainerMenu {
                 > RouletteGames.REACH * RouletteGames.REACH) {
             return false;
         }
-        return player.getInventory().contains(new ItemStack(ModContent.TERMINAL))
+        return dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.ROULETTE)
                 || (game.level().getBlockState(pos).getBlock() instanceof GameSurface surface
                         && surface.mode() == GameMode.ROULETTE);
     }

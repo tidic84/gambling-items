@@ -237,7 +237,8 @@ public final class BingoGame {
     }
 
     private void reset() {
-        if (level.isLoaded(station) && level.getBlockEntity(station) instanceof GameStationEntity entity) {
+        if (level.isLoaded(station) && level.getBlockEntity(station) instanceof GameStationEntity entity
+                && entity.mode() == dev.gamblingitems.core.GameMode.BINGO) {
             entity.clear();
         }
         cards.clear();
@@ -277,7 +278,8 @@ public final class BingoGame {
         if (phase == Phase.WAITING || --stationTicks > 0) return;
         stationTicks = STATION_REFRESH_TICKS;
         if (!level.isLoaded(station)) return;
-        if (!(level.getBlockEntity(station) instanceof GameStationEntity entity)) return;
+        if (!(level.getBlockEntity(station) instanceof GameStationEntity entity)
+                || entity.mode() != dev.gamblingitems.core.GameMode.BINGO) return;
         StringBuilder board = new StringBuilder();
         for (Card card : cards.values()) {
             if (board.length() > 0) board.append('\n');

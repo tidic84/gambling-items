@@ -37,8 +37,8 @@ public final class CrashGames {
     }
 
     /**
-     * The round a portable terminal may join: an existing one, announced by a nearby station.
-     * A terminal never opens a new table on its own.
+     * Finds an existing round near a handheld player, whether hosted by an item or a station.
+     * The menu creates a round at the player when this lookup finds none.
      */
     public static CrashGame nearest(ServerPlayer player) {
         CrashGame best = null;

@@ -20,7 +20,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 public final class UpgradeMenu extends AbstractContainerMenu {
-    public static final int SPIN_BUTTON = 1000;
+    public static final int SPIN_BUTTON = ValueCatalog.MAX_ENTRIES;
     public static final int ANIMATION_TICKS = 60;
     private static final SecureRandom RANDOM = new SecureRandom();
     private final Player owner;
@@ -29,7 +29,7 @@ public final class UpgradeMenu extends AbstractContainerMenu {
     private final UpgradeSetup setup;
     private final java.util.function.DoubleSupplier draw;
     // selection, animation ticks, result (0 none / 1 win / 2 loss), frozen chance, cooldown
-    private final SimpleContainerData data = new SimpleContainerData(5);
+    private final SimpleContainerData data = new SimpleContainerData(7);
     private long animationEnd;
 
     public UpgradeMenu(int syncId, Inventory inventory, UpgradeSetup setup) {
@@ -78,8 +78,12 @@ public final class UpgradeMenu extends AbstractContainerMenu {
                 ? null : setup.catalog().entries().get(selectedIndex());
     }
     public double chance() {
-        if (isAnimating() || (inputValue() == 0 && result() != 0)) return data.get(3) / 10_000.0;
-        var target = selected();
+        if (isAnimating() || (inputValue() == 0 && result() != 0)) {
+            return Float.intBitsToFloat((int) dev.gamblingitems.fabric.menu.ValueSync.read(data, 5));
+        }
+        return chanceFor(selected());
+    }
+    public double chanceFor(ValueCatalog.Entry target) {
         long input = inputValue();
         return target == null || input <= 0 || target.value() <= input ? 0
                 : setup.rules().chance(input, target.value()).doubleValue();
@@ -106,6 +110,8 @@ public final class UpgradeMenu extends AbstractContainerMenu {
         boolean won = setup.rules().wins(value, target.value(), BigDecimal.valueOf(draw.getAsDouble()));
         // Resolve on the server once. The animation cannot change or repeat this payment.
         data.set(3, setup.rules().chance(value, target.value()).movePointRight(4).intValue());
+        dev.gamblingitems.fabric.menu.ValueSync.write(data, 5,
+                Float.floatToRawIntBits(setup.rules().chance(value, target.value()).floatValue()));
         data.set(2, won ? 1 : 2);
         animationEnd = player.level().getGameTime() + ANIMATION_TICKS;
         data.set(1, ANIMATION_TICKS);
@@ -137,7 +143,7 @@ public final class UpgradeMenu extends AbstractContainerMenu {
                 (level, pos) -> level.getBlockState(pos).getBlock() instanceof GameStationBlock station
                         && station.mode() == GameMode.UPGRADER
                         && player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64,
-                player.getInventory().contains(new ItemStack(ModContent.TERMINAL)));
+                dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.UPGRADER));
     }
 
     @Override public void clicked(int slot, int button, ClickType type, Player player) {

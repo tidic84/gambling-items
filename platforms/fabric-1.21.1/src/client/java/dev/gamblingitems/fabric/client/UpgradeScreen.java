@@ -29,7 +29,7 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
     public UpgradeScreen(UpgradeMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         imageWidth = 320;
-        imageHeight = 238;
+        imageHeight = 252;
     }
 
     /** Every game explains itself, in the language of the player. */
@@ -46,7 +46,7 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
 
     @Override protected void init() {
         super.init();
-        addRenderableWidget(rules.button(leftPos + imageWidth - 30, topPos + 6));
+        addRenderableWidget(rules.button(leftPos + 147, topPos + 6));
         rows.clear();
         search = new EditBox(font, leftPos + 181, topPos + 11, 126, 16, tr("search"));
         search.setMaxLength(64);
@@ -73,10 +73,11 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
     }
     private void filter() {
         filtered.clear();
-        String query = search.getValue().toLowerCase(Locale.ROOT);
+        String query = search.getValue().strip().toLowerCase(Locale.ROOT);
         for (int i = 0; i < menu.catalog().entries().size(); i++) {
             ValueCatalog.Entry entry = menu.catalog().entries().get(i);
-            if (entry.id().toString().contains(query)
+            if (query.startsWith("@") ? entry.id().getNamespace().contains(query.substring(1))
+                    : entry.id().toString().contains(query)
                     || entry.stack().getHoverName().getString().toLowerCase(Locale.ROOT).contains(query)) filtered.add(i);
         }
         refreshRows();
@@ -93,7 +94,7 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
                 var entry = menu.catalog().entries().get(row.entryIndex);
                 row.setMessage(entry.stack().getHoverName());
                 row.setTooltip(Tooltip.create(Component.translatable("gui.gamblingitems.target_tooltip",
-                        entry.stack().getHoverName(), value(entry.value()))));
+                        entry.stack().getHoverName(), value(entry.value())).append("\n" + entry.id())));
             }
         }
         previous.active = page > 0;
@@ -132,8 +133,8 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
         g.fill(x, y, x + imageWidth, y + imageHeight, BORDER);
         g.fill(x + 1, y + 1, x + imageWidth - 1, y + imageHeight - 1, INK);
         g.fill(x + 1, y + 1, x + imageWidth - 1, y + 3, GOLD);
-        g.drawString(font, title, x + 12, y + 11, TEXT, false);
-        g.drawString(font, tr("subtitle"), x + 12, y + 23, MUTED, false);
+        GameScreens.fitted(g, font, title, x + 12, y + 11, 130, TEXT);
+        GameScreens.fitted(g, font, tr("subtitle"), x + 12, y + 23, 158, MUTED);
         g.fill(x + 8, y + 34, x + 174, y + 115, PANEL);
         g.fill(x + 178, y + 32, x + 310, y + 119, PANEL);
         g.drawString(font, tr("input"), x + 16, y + 47, MUTED, false);
@@ -178,9 +179,9 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
         for (int row = 0; row < 3; row++)
             for (int col = 0; col < 9; col++) slot(g, x + 79 + col * 18, y + 155 + row * 18);
         for (int col = 0; col < 9; col++) slot(g, x + 79 + col * 18, y + 213);
-        g.drawString(font, tr("inventory"), x + 12, y + 161, MUTED, false);
-        g.drawString(font, tr("shift_click"), x + 12, y + 178, MUTED, false);
-        g.drawString(font, tr("protected"), x + 12, y + 217, GREEN, false);
+        GameScreens.fitted(g, font, tr("inventory"), x + 12, y + 161, 62, MUTED);
+        GameScreens.fitted(g, font, tr("shift_click"), x + 12, y + 178, 62, MUTED);
+        GameScreens.fitted(g, font, tr("protected"), x + 12, y + 238, imageWidth - 24, GREEN);
     }
 
     private static void slot(GuiGraphics g, int x, int y) {
@@ -214,7 +215,11 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
             int color = active ? (selected ? GOLD : TEXT) : MUTED;
             g.drawString(font, font.plainSubstrByWidth(entry.stack().getHoverName().getString(), 99),
                     getX() + 24, getY() + 2, color, false);
-            g.drawString(font, value(entry.value()), getX() + 24, getY() + 11, MUTED, false);
+            String odds = percent(menu.chanceFor(entry));
+            int oddsX = getX() + width - 3 - font.width(odds);
+            GameScreens.fitted(g, font, Component.literal(value(entry.value())), getX() + 24,
+                    getY() + 11, Math.max(8, oddsX - getX() - 28), MUTED);
+            g.drawString(font, odds, oddsX, getY() + 11, active ? GREEN : MUTED, false);
         }
     }
 }

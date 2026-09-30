@@ -3,7 +3,13 @@
   "id": "gamblingitems",
   "version": "${version}",
   "name": "Gambling Items",
-  "description": "Development foundation for item games with portable interfaces and multiplayer machines.",
+  "description": "Nine item-based games with craftable handheld devices, multiplayer stations, and recipe-based item values.",
+  "authors": ["Romalaure"],
+  "license": "All Rights Reserved",
+  "icon": "assets/gamblingitems/icon.png",
+  "contact": {
+    "sources": "https://github.com/tidic84/gambling-items"
+  },
   "environment": "*",
   "entrypoints": {
     "main": ["dev.gamblingitems.fabric.GamblingItemsFabric"],

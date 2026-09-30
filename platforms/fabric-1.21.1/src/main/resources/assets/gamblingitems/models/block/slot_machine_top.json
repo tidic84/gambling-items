@@ -1,10 +1,10 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "body": "minecraft:block/deepslate_tiles",
-    "trim": "minecraft:block/red_nether_bricks",
-    "roof": "minecraft:block/nether_bricks",
-    "particle": "minecraft:block/deepslate_tiles"
+    "body": "minecraft:block/polished_deepslate",
+    "trim": "minecraft:block/red_concrete",
+    "roof": "minecraft:block/black_concrete",
+    "particle": "minecraft:block/polished_deepslate"
   },
   "elements": [
     {

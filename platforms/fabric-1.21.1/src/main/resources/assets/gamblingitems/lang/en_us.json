@@ -286,5 +286,14 @@
   "gui.gamblingitems.rules.blackjack": "Beat the dealer without going over 21. An ace is one or eleven, a court card is ten. The dealer draws to sixteen and stands on seventeen. A win pays the bet twice, a blackjack pays it two and a half times, a push hands back the very items staked.",
   "gui.gamblingitems.rules.bingo": "Buy a card, then the drum draws numbers everyone shares. Your card marks itself as they come out; the free square in the middle is always marked. The first cards to fill a line share the pot. A card that has been paid for stays with the round until it settles.",
   "gui.gamblingitems.rules.slot_machine": "Prepare any priced items as credit and pull the lever. The three reels stop one after the other: three alike pay the line of that symbol, two alike pay 1.4 times the credit, anything else takes it. The items played come back on a win and only the profit is made up in change.",
-  "gui.gamblingitems.slot_service": "SERVICE"
+  "gui.gamblingitems.slot_service": "SERVICE",
+  "item.gamblingitems.upgrader_item": "Handheld Upgrader",
+  "item.gamblingitems.trade_up_item": "Handheld Trade Up",
+  "item.gamblingitems.case_opening_item": "Handheld Case Opener",
+  "item.gamblingitems.crash_item": "Handheld Crash",
+  "item.gamblingitems.roulette_item": "Handheld Roulette",
+  "item.gamblingitems.blackjack_item": "Handheld Blackjack",
+  "item.gamblingitems.case_battle_item": "Handheld Case Battle",
+  "item.gamblingitems.bingo_item": "Handheld Bingo",
+  "item.gamblingitems.slot_machine_item": "Handheld Slot Machine"
 }

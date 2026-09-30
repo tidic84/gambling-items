@@ -263,7 +263,8 @@ public final class BattleLobby {
     }
 
     private void reset() {
-        if (level.isLoaded(station) && level.getBlockEntity(station) instanceof GameStationEntity entity) {
+        if (level.isLoaded(station) && level.getBlockEntity(station) instanceof GameStationEntity entity
+                && entity.mode() == dev.gamblingitems.core.GameMode.CASE_BATTLE) {
             entity.clear();
         }
         seats.clear();
@@ -321,7 +322,8 @@ public final class BattleLobby {
         if (--stationTicks > 0) return;
         stationTicks = STATION_REFRESH_TICKS;
         if (!level.isLoaded(station)) return;
-        if (!(level.getBlockEntity(station) instanceof GameStationEntity entity)) return;
+        if (!(level.getBlockEntity(station) instanceof GameStationEntity entity)
+                || entity.mode() != dev.gamblingitems.core.GameMode.CASE_BATTLE) return;
         StringBuilder bets = new StringBuilder();
         for (Seat seat : seats.values()) {
             if (bets.length() > 0) bets.append('\n');

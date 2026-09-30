@@ -9,9 +9,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 /** Immutable server snapshot of item values, shared by every game and sent when a menu opens. */
-public record ValueCatalog(List<Entry> entries) {
-    public static final int MAX_ENTRIES = 512;
+public final class ValueCatalog {
+    // Selection uses Minecraft's signed 16-bit container data. The final id is the spin action.
+    public static final int MAX_ENTRIES = 32_767;
     public static final long MAX_VALUE = 1_000_000_000L;
+    private final List<Entry> entries;
+    private final java.util.Map<ResourceLocation, Entry> byId;
 
     public record Entry(ResourceLocation id, long value) {
         public Entry {
@@ -20,13 +23,18 @@ public record ValueCatalog(List<Entry> entries) {
         public ItemStack stack() { return new ItemStack(BuiltInRegistries.ITEM.get(id)); }
     }
 
-    public ValueCatalog {
-        entries = List.copyOf(entries);
+    public ValueCatalog(List<Entry> entries) {
+        this.entries = List.copyOf(entries);
         if (entries.isEmpty() || entries.size() > MAX_ENTRIES
                 || entries.stream().map(Entry::id).distinct().count() != entries.size()) {
             throw new IllegalArgumentException("Invalid item value catalogue");
         }
+        var index = new java.util.HashMap<ResourceLocation, Entry>();
+        for (Entry entry : entries) index.put(entry.id(), entry);
+        byId = java.util.Map.copyOf(index);
     }
+
+    public List<Entry> entries() { return entries; }
 
     /** Value of the whole stack, or 0 when the item is unlisted or carries extra data. */
     public long valueOf(ItemStack stack) {
@@ -49,10 +57,7 @@ public record ValueCatalog(List<Entry> entries) {
         // Enchantments, custom names and container contents are not priced: refuse the item.
         if (!ItemStack.isSameItemSameComponents(normalized, new ItemStack(stack.getItem()))) return null;
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        for (Entry entry : entries) {
-            if (entry.id().equals(id)) return entry;
-        }
-        return null;
+        return byId.get(id);
     }
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ValueCatalog> CODEC = new StreamCodec<>() {
@@ -60,14 +65,21 @@ public record ValueCatalog(List<Entry> entries) {
             int count = buffer.readVarInt();
             if (count < 1 || count > MAX_ENTRIES) throw new IllegalArgumentException("Invalid catalogue length");
             var entries = new java.util.ArrayList<Entry>(count);
-            for (int i = 0; i < count; i++) entries.add(new Entry(buffer.readResourceLocation(), buffer.readLong()));
+            for (int i = 0; i < count; i++) {
+                int itemId = buffer.readVarInt();
+                var item = BuiltInRegistries.ITEM.byId(itemId);
+                if (item == null || item == net.minecraft.world.item.Items.AIR) {
+                    throw new IllegalArgumentException("Invalid catalogue item");
+                }
+                entries.add(new Entry(BuiltInRegistries.ITEM.getKey(item), buffer.readVarLong()));
+            }
             return new ValueCatalog(entries);
         }
         @Override public void encode(RegistryFriendlyByteBuf buffer, ValueCatalog data) {
             buffer.writeVarInt(data.entries().size());
             for (Entry entry : data.entries()) {
-                buffer.writeResourceLocation(entry.id());
-                buffer.writeLong(entry.value());
+                buffer.writeVarInt(BuiltInRegistries.ITEM.getId(BuiltInRegistries.ITEM.get(entry.id())));
+                buffer.writeVarLong(entry.value());
             }
         }
     };

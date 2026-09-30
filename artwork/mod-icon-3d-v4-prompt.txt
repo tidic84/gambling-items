@@ -1,0 +1,7 @@
+Tool: built-in imagegen
+Input: release/curseforge/project-icon.png
+
+Use case: style-transfer.
+Edit target: the supplied original 3D slot machine mod icon.
+Create a refined simpler version of this SAME icon, recognizable as the original. Keep the red cabinet, gray metal trim, cream three reels with cyan diamond / green emerald / red 7 in that order, right-hand lever, front payout tray, three-quarter view, square composition and dark navy background.
+Make it look like a deliberately built low-poly Minecraft Blockbench model rendered in a simple studio: coherent cuboid geometry, crisp straight edges, restrained pixel textures, large clean surfaces, consistent pixel density, flat matte materials, limited palette, one soft neutral light and subtle ambient shadows. Simplify the crown and trim while preserving the silhouette. Reel symbols should be clean flat pixel-art sprites on the reels, not bulging jewels. Remove the red glowing background ring entirely, neon bloom, cyan rim lights, shiny chrome, excessive bevels, random surface checker noise, tiny decorative highlights and dramatic cinematic lighting. Keep sufficient padding around the whole machine and the lever. Strong readable silhouette at small icon size. No added objects, no title, no text apart from the single 7 on the third reel, no watermark. Retain 3D volume, not a flat logo. Output one square icon.

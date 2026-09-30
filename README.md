@@ -1,6 +1,6 @@
 # Gambling Items
 
-Cible actuelle : **Minecraft Java 1.21.1 · Fabric · Java 21**.
+Cibles actuelles : **Minecraft Java 1.21.1 · Fabric et NeoForge · Java 21**.
 
 Le projet prépare un mod avec Upgrader, Crash, Trade Up, caisses animées, roulette et battles de caisses. Accès prévu par terminal portable et bornes multijoueurs.
 
@@ -20,9 +20,15 @@ Toute mise se fait en objets cot�s, jamais dans une mati�re impos�e : c'es
 
 Le serveur d�cide de chaque r�sultat avant l'animation, consomme la mise une seule fois et garde les gains non r�cup�r�s dans un coffre par joueur et par jeu, accessible depuis n'importe quel terminal ou borne.
 
-Les manches partag�es (Crash, roulette, battles) appartiennent au serveur, pas au bloc : d�charger le chunk d'une borne ou la casser n'interrompt pas une manche et ne lib�re aucune mise. Un arr�t du serveur annule une manche non r�gl�e et rend chaque mise engag�e une seule fois. Le terminal portable rejoint une table annonc�e par une borne � moins de 64 blocs ; il n'en cr�e jamais.
+Les manches partagées (Crash, roulette, bingo, battles) appartiennent au serveur. Les items portables rejoignent une table à moins de 64 blocs ou en ouvrent une sur place sans bloc. Fermer une interface ou casser une borne n'interrompt pas une manche engagée. Un arrêt du serveur annule une manche non réglée et rend chaque mise engagée une seule fois.
 
 Aucun support NeoForge ou 26.2 n'est livr� pour le moment.
+
+## Items autonomes et catalogue de valeurs
+
+Chaque jeu possède son item craftable, utilisable directement au clic droit sans borne. L'Upgrader propose les objets des recettes vanilla et modées, avec recherche par nom ou `@mod` et une chance recalculée pour chaque cible. Les prix sont estimés à partir des recettes et peuvent être corrigés dans `config/gamblingitems/games.json`.
+
+Voir [Items portables et valeurs](ITEMS_AND_VALUES.md) pour les recettes, les limites du calcul automatique et les réglages d'un modpack.
 
 ## Développement
 
@@ -40,6 +46,14 @@ Installer un JDK 21 et exécuter les commandes suivantes depuis ce dossier. Le w
 
 # Démarrer le serveur de développement (son EULA doit être accepté par l'utilisateur)
 .\gradlew.bat runServer
+
+# Les mêmes pour NeoForge
+.\gradlew.bat buildNeoForge
+.\gradlew.bat runNeoForgeClient
+.\gradlew.bat runNeoForgeServer
+
+# Démarrer un serveur NeoForge, lancer ses GameTests de démarrage puis l'arrêter
+.\gradlew.bat -p platforms/neoforge-1.21.1 runGameTestServer
 ```
 
 Sur Linux/macOS, employer `bash ./gradlew` à la place de `.\gradlew.bat`.
@@ -48,11 +62,23 @@ Sur Linux/macOS, employer `bash ./gradlew` à la place de `.\gradlew.bat`.
 
 Le JAR du mod se trouve dans `platforms/fabric-1.21.1/build/libs/`. Le fichier sans suffixe `-sources` embarque le cœur Java ; seul Fabric API doit être installé en plus dans une instance Fabric Minecraft 1.21.1. Ne pas installer le JAR du cœur séparément.
 
+Le JAR NeoForge se trouve dans `platforms/neoforge-1.21.1/build/libs/` et embarque lui aussi le cœur ; il ne demande que NeoForge 21.1 pour Minecraft 1.21.1.
+
+### Fabric et NeoForge
+
+Le code du jeu est écrit contre Minecraft vanilla et vit dans `platforms/fabric-1.21.1/src`. Le projet NeoForge compile ces mêmes sources, sans copie, et remplace seulement les fichiers propres au loader :
+
+- `GamblingItemsFabric` et `GamblingItemsClient` (points d'entrée) : `GamblingItemsNeoForge` et `GamblingItemsNeoForgeClient` ;
+- `platform/Platform` (dossier de config, types de menus, ouverture d'un menu avec données) : une version NeoForge de même nom et mêmes signatures.
+
+Hors de ces fichiers, le code partagé ne doit importer aucune API Fabric ou NeoForge. Toute nouvelle dépendance au loader passe par `Platform`, avec une implémentation dans chaque projet. La liste des fichiers exclus est dans `platforms/neoforge-1.21.1/build.gradle`.
+
 ## Organisation
 
 ```text
 core/src/                     Règles Java et tests, sans Minecraft
-platforms/fabric-1.21.1/       Intégration Fabric et API Minecraft 1.21.1
+platforms/fabric-1.21.1/       Intégration Fabric et code de jeu Minecraft 1.21.1 partagé
+platforms/neoforge-1.21.1/     Intégration NeoForge, compile les sources partagées du projet Fabric
 build.gradle                  Compilation indépendante du cœur
 gradle/                       Wrapper de la cible de développement actuelle
 CONCEPTION.md                 Mécaniques et périmètre des six jeux
@@ -64,6 +90,8 @@ Chaque adaptateur référence le cœur depuis ses sources via un build composite
 Dans IntelliJ IDEA, ouvrir le build `platforms/fabric-1.21.1` pour développer le mod ; le cœur est inclus automatiquement. Ouvrir le dossier racine suffit pour travailler uniquement sur les règles.
 
 ## Documents
+
+- [Préparation et publication CurseForge](release/curseforge/UPLOAD-FR.md) — générer le dossier avec `.\gradlew.bat prepareCurseForge`.
 
 - [Conception](CONCEPTION.md)
 - [Architecture et portages](ARCHITECTURE.md)

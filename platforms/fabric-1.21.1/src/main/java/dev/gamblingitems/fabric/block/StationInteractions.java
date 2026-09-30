@@ -132,7 +132,7 @@ public final class StationInteractions {
         } else if (menu instanceof CrashMenu) {
             changed = menu.clickMenuButton(player, button == 3 ? CrashMenu.BET_BUTTON : CrashMenu.CASH_OUT_BUTTON);
         } else if (button == 4) {
-            if (!station.animating()) changed = menu.clickMenuButton(player, 1000);
+            if (!station.animating()) changed = menu.clickMenuButton(player, menu instanceof UpgradeMenu ? UpgradeMenu.SPIN_BUTTON : 1000);
         } else if (menu instanceof CaseMenu cases) {
             changed = menu.clickMenuButton(player, Math.floorMod(cases.selectedIndex() + (button == 3 ? -1 : 1), cases.setup().cases().cases().size()));
         } else if (menu instanceof UpgradeMenu upgrade) {

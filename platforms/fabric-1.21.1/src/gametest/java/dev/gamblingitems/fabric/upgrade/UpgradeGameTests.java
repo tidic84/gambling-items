@@ -22,6 +22,45 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 
 public class UpgradeGameTests implements FabricGameTest {
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void largeCatalogSelectionCannotCollideWithSpin(GameTestHelper helper) {
+        ServerPlayer player = player(helper);
+        var entries = new java.util.ArrayList<ValueCatalog.Entry>();
+        for (var item : net.minecraft.core.registries.BuiltInRegistries.ITEM) {
+            if (item == Items.AIR || item == Items.IRON_INGOT) continue;
+            entries.add(new ValueCatalog.Entry(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item), 10000));
+            if (entries.size() == 1100) break;
+        }
+        entries.add(new ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("iron_ingot"), 1000));
+        var setup = new UpgradeSetup(new ValueCatalog(entries), 9000, 9000);
+        var vault = new SimpleContainer(2);
+        vault.setItem(0, new ItemStack(Items.IRON_INGOT));
+        var menu = new UpgradeMenu(1, player.getInventory(), setup, vault, ContainerLevelAccess.NULL, () -> 0);
+        helper.assertTrue(menu.clickMenuButton(player, 1000), "Entry 1000 is selectable");
+        helper.assertTrue(menu.selectedIndex() == 1000 && !menu.isAnimating(), "Selection never starts a wager");
+        helper.assertTrue(!vault.getItem(0).isEmpty(), "Selection preserves the stake");
+        helper.assertTrue(menu.clickMenuButton(player, UpgradeMenu.SPIN_BUTTON), "Separate spin action works");
+        helper.assertTrue(menu.isAnimating() && vault.getItem(0).isEmpty(), "Exactly one wager is made");
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void aTinyChanceSurvivesTheAnimationSnapshot(GameTestHelper helper) {
+        ServerPlayer player = player(helper);
+        var setup = new UpgradeSetup(new ValueCatalog(List.of(
+                new ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("iron_ingot"), 1),
+                new ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("diamond"), ValueCatalog.MAX_VALUE))), 9000, 9000);
+        var vault = new SimpleContainer(2);
+        vault.setItem(0, new ItemStack(Items.IRON_INGOT));
+        var menu = new UpgradeMenu(1, player.getInventory(), setup, vault, ContainerLevelAccess.NULL, () -> 0);
+        menu.clickMenuButton(player, 1);
+        double announced = menu.chance();
+        helper.assertTrue(menu.clickMenuButton(player, UpgradeMenu.SPIN_BUTTON), "Tiny but positive chance is playable");
+        helper.assertTrue(menu.chance() > 0 && Math.abs(menu.chance() - announced) < 1e-15,
+                "Animation does not round a positive chance down to zero");
+        helper.succeed();
+    }
+
     private UpgradeSetup setup() {
         return new UpgradeSetup(new ValueCatalog(List.of(
                 new ValueCatalog.Entry(ResourceLocation.withDefaultNamespace("iron_ingot"), 1000),

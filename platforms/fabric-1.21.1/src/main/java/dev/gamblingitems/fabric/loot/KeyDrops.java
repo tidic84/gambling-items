@@ -5,7 +5,6 @@ import dev.gamblingitems.fabric.ModContent;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.storage.loot.LootPool;
@@ -49,13 +48,9 @@ public final class KeyDrops {
     /** One drop: which key, and how often that mob leaves it. */
     private record Drop(CaseRarity rarity, float chance) {}
 
-    public static void initialize() {
-        LootTableEvents.MODIFY.register((key, builder, source, registries) -> {
-            if (!source.isBuiltin()) return;
-            for (Drop drop : dropsFor(key)) {
-                builder.withPool(pool(drop));
-            }
-        });
+    /** The pools each loader adds to a vanilla loot table as it loads. */
+    public static List<LootPool.Builder> poolsFor(ResourceKey<LootTable> table) {
+        return dropsFor(table).stream().map(KeyDrops::pool).toList();
     }
 
     /** What a given entity table should also drop. Anything else drops no key at all. */

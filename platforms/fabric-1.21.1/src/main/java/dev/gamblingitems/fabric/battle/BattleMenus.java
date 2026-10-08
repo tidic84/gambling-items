@@ -21,8 +21,10 @@ public final class BattleMenus {
         BattleLobby round = lobby;
         BattleLobbies.join(round, player.getUUID());
         BattleSetup setup = round.setup();
-        Platform.openMenu(player, Component.translatable("screen.gamblingitems.case_battle"), setup, BattleSetup.CODEC,
+        Platform.openMenu(player, Component.translatable("screen.gamblingitems.case_battle"), new dev.gamblingitems.fabric.menu.Opening<>(setup, access == ContainerLevelAccess.NULL),
+                dev.gamblingitems.fabric.menu.Opening.codec(BattleSetup.CODEC),
                 (id, inventory, ignored) -> new BattleMenu(id, inventory, setup,
-                        PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.CASE_BATTLE), round));
+                        PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.CASE_BATTLE), round,
+                        access == ContainerLevelAccess.NULL));
     }
 }

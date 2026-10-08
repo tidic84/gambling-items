@@ -28,12 +28,15 @@ public final class UpgradeMenu extends AbstractContainerMenu {
     private final ContainerLevelAccess access;
     private final UpgradeSetup setup;
     private final java.util.function.DoubleSupplier draw;
+    private final boolean portable;
     // selection, animation ticks, result (0 none / 1 win / 2 loss), frozen chance, cooldown
     private final SimpleContainerData data = new SimpleContainerData(7);
     private long animationEnd;
 
-    public UpgradeMenu(int syncId, Inventory inventory, UpgradeSetup setup) {
-        this(syncId, inventory, setup, new SimpleContainer(2), ContainerLevelAccess.NULL);
+    public UpgradeMenu(int syncId, Inventory inventory, UpgradeSetup setup) { this(syncId, inventory, setup, false); }
+
+    public UpgradeMenu(int syncId, Inventory inventory, UpgradeSetup setup, boolean portable) {
+        this(syncId, inventory, setup, new SimpleContainer(2), ContainerLevelAccess.NULL, () -> 1, portable);
     }
 
     public UpgradeMenu(int syncId, Inventory inventory, UpgradeSetup setup,
@@ -43,30 +46,35 @@ public final class UpgradeMenu extends AbstractContainerMenu {
 
     UpgradeMenu(int syncId, Inventory inventory, UpgradeSetup setup,
                 Container vault, ContainerLevelAccess access, java.util.function.DoubleSupplier draw) {
+        this(syncId, inventory, setup, vault, access, draw, access == ContainerLevelAccess.NULL);
+    }
+
+    private UpgradeMenu(int syncId, Inventory inventory, UpgradeSetup setup, Container vault,
+                ContainerLevelAccess access, java.util.function.DoubleSupplier draw, boolean portable) {
         super(ModContent.UPGRADER_MENU, syncId);
         this.owner = inventory.player;
         this.setup = setup;
         this.vault = vault;
         this.access = access;
         this.draw = draw;
+        this.portable = portable;
         data.set(0, -1);
         addDataSlots(data);
-        addSlot(new Slot(vault, 0, 20, 62) {
+        addSlot(new Slot(vault, 0, 30, 72) {
             @Override public boolean mayPlace(ItemStack stack) { return !isAnimating() && setup.catalog().valueOf(stack) > 0; }
             @Override public boolean mayPickup(Player player) { return !isAnimating(); }
         });
-        addSlot(new Slot(vault, 1, 146, 62) {
+        addSlot(new Slot(vault, 1, 206, 72) {
             @Override public boolean mayPlace(ItemStack stack) { return false; }
             @Override public boolean mayPickup(Player player) { return !isAnimating(); }
             @Override public boolean isActive() { return !isAnimating(); }
         });
-        for (int row = 0; row < 3; row++)
-            for (int col = 0; col < 9; col++)
-                addSlot(new Slot(inventory, col + row * 9 + 9, 79 + col * 18, 155 + row * 18));
-        for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, col, 79 + col * 18, 213));
+        dev.gamblingitems.fabric.menu.CasinoLayout.inventory(inventory, this::addSlot);
     }
 
     public UpgradeSetup setup() { return setup; }
+    /** Opened from a portable item, so its window shows the tabs of the other games of that item. */
+    public boolean portable() { return portable; }
     public ValueCatalog catalog() { return setup.catalog(); }
     public int selectedIndex() { return data.get(0); }
     public int remainingTicks() { return data.get(1); }
@@ -96,6 +104,8 @@ public final class UpgradeMenu extends AbstractContainerMenu {
 
     @Override public boolean clickMenuButton(Player player, int button) {
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) return false;
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (button >= 0 && button < setup.catalog().entries().size() && !isAnimating()) {
             data.set(0, button);
             data.set(2, 0);
@@ -104,7 +114,7 @@ public final class UpgradeMenu extends AbstractContainerMenu {
         }
         if (access.evaluate((level, pos) -> level.getBlockEntity(pos) instanceof GameStationEntity station
                 && station.animating(), false)) return false;
-        if (button != SPIN_BUTTON || !canSpin() || player.getCooldowns().isOnCooldown(ModContent.TERMINAL)) return false;
+        if (button != SPIN_BUTTON || !canSpin() || dev.gamblingitems.fabric.Compat.coolingDown(player)) return false;
         long value = inputValue();
         var target = selected();
         boolean won = setup.rules().wins(value, target.value(), BigDecimal.valueOf(draw.getAsDouble()));
@@ -116,7 +126,7 @@ public final class UpgradeMenu extends AbstractContainerMenu {
         animationEnd = player.level().getGameTime() + ANIMATION_TICKS;
         data.set(1, ANIMATION_TICKS);
         data.set(4, ANIMATION_TICKS);
-        player.getCooldowns().addCooldown(ModContent.TERMINAL, ANIMATION_TICKS);
+        dev.gamblingitems.fabric.Compat.coolDown(player, ANIMATION_TICKS);
         vault.setItem(0, ItemStack.EMPTY);
         if (won) vault.setItem(1, target.stack());
         access.execute((level, pos) -> {
@@ -132,7 +142,7 @@ public final class UpgradeMenu extends AbstractContainerMenu {
     @Override public void broadcastChanges() {
         if (!owner.level().isClientSide) {
             data.set(1, (int) Math.max(0, Math.min(ANIMATION_TICKS, animationEnd - owner.level().getGameTime())));
-            data.set(4, (int) Math.ceil(owner.getCooldowns().getCooldownPercent(ModContent.TERMINAL, 0) * ANIMATION_TICKS));
+            data.set(4, (int) Math.ceil(dev.gamblingitems.fabric.Compat.cooldown(owner) * ANIMATION_TICKS));
         }
         super.broadcastChanges();
     }
@@ -143,7 +153,7 @@ public final class UpgradeMenu extends AbstractContainerMenu {
                 (level, pos) -> level.getBlockState(pos).getBlock() instanceof GameStationBlock station
                         && station.mode() == GameMode.UPGRADER
                         && player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64,
-                dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.UPGRADER));
+                dev.gamblingitems.fabric.item.TerminalItem.hasAccess(player, GameMode.UPGRADER));
     }
 
     @Override public void clicked(int slot, int button, ClickType type, Player player) {

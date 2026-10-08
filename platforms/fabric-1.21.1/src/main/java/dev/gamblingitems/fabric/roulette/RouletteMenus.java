@@ -22,7 +22,8 @@ public final class RouletteMenus {
         RouletteGames.join(round, player.getUUID());
         // The round keeps the settings it started with, whatever the configuration says now.
         RouletteSetup setup = round.setup();
-        Platform.openMenu(player, Component.translatable("screen.gamblingitems.roulette"), setup, RouletteSetup.CODEC,
+        Platform.openMenu(player, Component.translatable("screen.gamblingitems.roulette"), new dev.gamblingitems.fabric.menu.Opening<>(setup, access == ContainerLevelAccess.NULL),
+                dev.gamblingitems.fabric.menu.Opening.codec(RouletteSetup.CODEC),
                 (id, inventory, ignored) -> new RouletteMenu(id, inventory, setup,
                         PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.ROULETTE), round));
     }

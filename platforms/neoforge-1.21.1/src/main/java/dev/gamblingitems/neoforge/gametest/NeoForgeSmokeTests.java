@@ -32,7 +32,7 @@ public final class NeoForgeSmokeTests {
         BlockPos pos = new BlockPos(1, 1, 1);
         helper.setBlock(pos, ModContent.UPGRADE_STATION);
         helper.assertTrue(helper.getBlockEntity(pos) instanceof GameStationEntity, "The station has its entity");
-        helper.assertTrue(ModContent.UPGRADER_MENU != null && ModContent.gameItem(GameMode.BINGO) != null,
+        helper.assertTrue(ModContent.UPGRADER_MENU != null && ModContent.TERMINAL != null,
                 "Menus and items are registered");
         helper.succeed();
     }

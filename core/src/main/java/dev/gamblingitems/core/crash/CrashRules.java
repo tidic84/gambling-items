@@ -25,7 +25,7 @@ public record CrashRules(BigDecimal returnRate, int maximumMultiplier, BigDecima
         if (returnRate.signum() <= 0 || returnRate.compareTo(BigDecimal.ONE) > 0
                 || maximumMultiplier <= START || maximumMultiplier > MAX_MULTIPLIER
                 || growthPerTick.compareTo(BigDecimal.ONE) <= 0
-                || growthPerTick.compareTo(BigDecimal.TWO) > 0) {
+                || growthPerTick.compareTo(BigDecimal.valueOf(2)) > 0) {
             throw new IllegalArgumentException("Invalid crash settings");
         }
     }

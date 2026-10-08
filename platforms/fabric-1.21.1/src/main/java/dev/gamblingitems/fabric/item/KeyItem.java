@@ -37,9 +37,21 @@ public final class KeyItem extends Item {
         return super.getName(stack).copy().withStyle(colourOf(rarity));
     }
 
+    //#if MC >= 1.21.5
+    //$ @Override public void appendHoverText(ItemStack stack, TooltipContext context,
+    //$         net.minecraft.world.item.component.TooltipDisplay display, java.util.function.Consumer<Component> lines, TooltipFlag flag) {
+    //$     lines.accept(Component.translatable("item.gamblingitems.key.help").withStyle(ChatFormatting.GRAY));
+    //$ }
+    //#elif MC < 1.20.5
+    //$ @Override public void appendHoverText(ItemStack stack, net.minecraft.world.level.Level level,
+    //$         List<Component> lines, TooltipFlag flag) {
+    //$     lines.add(Component.translatable("item.gamblingitems.key.help").withStyle(ChatFormatting.GRAY));
+    //$ }
+    //#else
     @Override public void appendHoverText(ItemStack stack, TooltipContext context,
                                           List<Component> lines, TooltipFlag flag) {
         lines.add(Component.translatable("item.gamblingitems.key.help")
                 .withStyle(ChatFormatting.GRAY));
     }
+    //#endif
 }

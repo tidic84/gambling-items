@@ -34,12 +34,15 @@ public final class CaseMenu extends AbstractContainerMenu {
     private final ContainerLevelAccess access;
     private final CaseSetup setup;
     private final IntSupplier draw;
+    private final boolean portable;
     // animation ticks, won reward index plus one, cooldown ticks, selected case
     private final SimpleContainerData data = new SimpleContainerData(4);
     private long animationEnd;
 
-    public CaseMenu(int syncId, Inventory inventory, CaseSetup setup) {
-        this(syncId, inventory, setup, new SimpleContainer(REWARD_SLOT + 1), ContainerLevelAccess.NULL);
+    public CaseMenu(int syncId, Inventory inventory, CaseSetup setup) { this(syncId, inventory, setup, false); }
+
+    public CaseMenu(int syncId, Inventory inventory, CaseSetup setup, boolean portable) {
+        this(syncId, inventory, setup, new SimpleContainer(REWARD_SLOT + 1), ContainerLevelAccess.NULL, () -> 0, portable);
     }
 
     public CaseMenu(int syncId, Inventory inventory, CaseSetup setup,
@@ -49,31 +52,36 @@ public final class CaseMenu extends AbstractContainerMenu {
 
     CaseMenu(int syncId, Inventory inventory, CaseSetup setup,
              Container vault, ContainerLevelAccess access, IntSupplier draw) {
+        this(syncId, inventory, setup, vault, access, draw, access == ContainerLevelAccess.NULL);
+    }
+
+    private CaseMenu(int syncId, Inventory inventory, CaseSetup setup,
+             Container vault, ContainerLevelAccess access, IntSupplier draw, boolean portable) {
         super(ModContent.CASE_MENU, syncId);
         this.owner = inventory.player;
         this.setup = setup;
         this.vault = vault;
         this.access = access;
         this.draw = draw;
+        this.portable = portable;
         addDataSlots(data);
-        addSlot(new Slot(vault, PRICE_SLOT, 20, 100) {
+        addSlot(new Slot(vault, PRICE_SLOT, 22, 110) {
             @Override public boolean mayPlace(ItemStack stack) {
                 return !isAnimating() && setup.cases().isPrice(stack);
             }
             @Override public boolean mayPickup(Player player) { return !isAnimating(); }
         });
-        addSlot(new Slot(vault, REWARD_SLOT, 146, 100) {
+        addSlot(new Slot(vault, REWARD_SLOT, 206, 110) {
             @Override public boolean mayPlace(ItemStack stack) { return false; }
             @Override public boolean mayPickup(Player player) { return !isAnimating(); }
             @Override public boolean isActive() { return !isAnimating(); }
         });
-        for (int row = 0; row < 3; row++)
-            for (int col = 0; col < 9; col++)
-                addSlot(new Slot(inventory, col + row * 9 + 9, 79 + col * 18, 155 + row * 18));
-        for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, col, 79 + col * 18, 213));
+        dev.gamblingitems.fabric.menu.CasinoLayout.inventory(inventory, this::addSlot);
     }
 
     public CaseSetup setup() { return setup; }
+    /** Opened from a portable item, so its window shows the tabs of the other games of that item. */
+    public boolean portable() { return portable; }
     public ValueCatalog catalog() { return setup.catalog(); }
     public int selectedIndex() { return data.get(3); }
     public CaseDefinition selected() { return setup.cases().get(selectedIndex()); }
@@ -95,6 +103,8 @@ public final class CaseMenu extends AbstractContainerMenu {
 
     @Override public boolean clickMenuButton(Player player, int button) {
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) return false;
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (button >= 0 && button < setup.cases().cases().size() && !isAnimating()) {
             // A past result belongs to the case it was drawn from, never to the newly selected one.
             if (button != selectedIndex()) data.set(1, 0);
@@ -104,7 +114,7 @@ public final class CaseMenu extends AbstractContainerMenu {
         }
         if (access.evaluate((level, pos) -> level.getBlockEntity(pos) instanceof GameStationEntity station
                 && station.animating(), false)) return false;
-        if (button != OPEN_BUTTON || !canOpen() || player.getCooldowns().isOnCooldown(ModContent.TERMINAL)) return false;
+        if (button != OPEN_BUTTON || !canOpen() || dev.gamblingitems.fabric.Compat.coolingDown(player)) return false;
         // The opening keeps this definition: a later configuration change cannot alter it.
         CaseDefinition definition = selected();
         int index = CaseRules.select(definition.weightArray(), draw.getAsInt());
@@ -116,7 +126,7 @@ public final class CaseMenu extends AbstractContainerMenu {
         animationEnd = player.level().getGameTime() + ANIMATION_TICKS;
         data.set(0, ANIMATION_TICKS);
         data.set(2, ANIMATION_TICKS);
-        player.getCooldowns().addCooldown(ModContent.TERMINAL, ANIMATION_TICKS);
+        dev.gamblingitems.fabric.Compat.coolDown(player, ANIMATION_TICKS);
         access.execute((level, pos) -> {
             if (level.getBlockEntity(pos) instanceof GameStationEntity station) {
                 station.reelItems = definition.rewards().stream().map(entry -> entry.item().toString())
@@ -133,7 +143,7 @@ public final class CaseMenu extends AbstractContainerMenu {
     @Override public void broadcastChanges() {
         if (!owner.level().isClientSide) {
             data.set(0, (int) Math.max(0, Math.min(ANIMATION_TICKS, animationEnd - owner.level().getGameTime())));
-            data.set(2, (int) Math.ceil(owner.getCooldowns().getCooldownPercent(ModContent.TERMINAL, 0) * ANIMATION_TICKS));
+            data.set(2, (int) Math.ceil(dev.gamblingitems.fabric.Compat.cooldown(owner) * ANIMATION_TICKS));
         }
         super.broadcastChanges();
     }
@@ -144,7 +154,7 @@ public final class CaseMenu extends AbstractContainerMenu {
                 (level, pos) -> level.getBlockState(pos).getBlock() instanceof GameStationBlock station
                         && station.mode() == GameMode.CASE_OPENING
                         && player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64,
-                dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.CASE_OPENING));
+                dev.gamblingitems.fabric.item.TerminalItem.hasAccess(player, GameMode.CASE_OPENING));
     }
 
     @Override public void clicked(int slot, int button, ClickType type, Player player) {

@@ -44,10 +44,29 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 21
 }
 
+sourceSets {
+    arenaGeometryTest {
+        java.srcDirs = ['src/client/java', 'src/arenaGeometryTest/java']
+        java.include '**/ArenaMesh.java', '**/ArenaMeshTest.java'
+    }
+}
+tasks.register('verifyArenaGeometry', JavaExec) {
+    dependsOn tasks.named('arenaGeometryTestClasses')
+    classpath = sourceSets.arenaGeometryTest.runtimeClasspath
+    mainClass = 'dev.gamblingitems.fabric.client.ArenaMeshTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+tasks.named('check') { dependsOn tasks.named('verifyArenaGeometry') }
+
 processResources {
     inputs.property 'version', project.version
+    inputs.property 'arenaMixinRefmap', 'client-gambling-items-fabric-1.21.1-refmap.json'
     filesMatching('fabric.mod.json') {
         expand version: project.version
+    }
+    // Loom generates the client refmap; NeoForge uses Mojang names and the shared source config.
+    filesMatching('gamblingitems.client.mixins.json') {
+        filter { line -> line.replace('"required": true,', '"required": true, "refmap": "client-gambling-items-fabric-1.21.1-refmap.json",') }
     }
 }
 

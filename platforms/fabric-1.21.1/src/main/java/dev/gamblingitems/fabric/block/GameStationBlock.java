@@ -8,7 +8,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
+//#if MC >= 1.20.5 && MC < 1.21.2
 import net.minecraft.world.ItemInteractionResult;
+//#endif
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.player.Player;
@@ -21,7 +23,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -31,11 +33,14 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 /** One placed machine per game. Its screen shows the running draw to nearby players. */
 public final class GameStationBlock extends BaseEntityBlock implements GameSurface {
     public static final net.minecraft.world.level.block.state.properties.IntegerProperty PART = net.minecraft.world.level.block.state.properties.IntegerProperty.create("part", 0, 5);
-    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
+    // Blocks declare a codec from 1.20.3 to 26.2.
+    //#if MC >= 1.20.3 && MC < 26.3
     public static final MapCodec<GameStationBlock> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             Codec.STRING.fieldOf("mode").forGetter(block -> block.mode().id()),
             propertiesCodec()).apply(instance, (mode, properties) ->
                     new GameStationBlock(GameMode.fromId(mode), properties)));
+    //#endif
 
     private final GameMode mode;
 
@@ -47,7 +52,9 @@ public final class GameStationBlock extends BaseEntityBlock implements GameSurfa
 
     @Override public GameMode mode() { return mode; }
 
+    //#if MC >= 1.20.3 && MC < 26.3
     @Override protected MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
+    //#endif
 
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(FACING, PART);
@@ -92,9 +99,15 @@ public final class GameStationBlock extends BaseEntityBlock implements GameSurfa
             level.setBlock(partPos(pos, state.getValue(FACING), part), state.setValue(PART, part), 3);
     }
 
+    // Breaking any part of the furniture removes the others.
+    //#if MC >= 1.21.5
+    //$ @Override protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level, BlockPos pos, boolean moving) {
+    //$     super.affectNeighborsAfterRemoval(state, level, pos, moving);
+    //#else
     @Override protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState next, boolean moving) {
         super.onRemove(state, level, pos, next, moving);
         if (state.is(next.getBlock()) || level.isClientSide) return;
+    //#endif
         BlockPos root = anchor(pos, state);
         for (int part = 0; part < 6; part++) {
             BlockPos target = partPos(root, state.getValue(FACING), part);
@@ -104,17 +117,35 @@ public final class GameStationBlock extends BaseEntityBlock implements GameSurfa
         }
     }
 
+    //#if MC >= 1.20.5
     @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                           Player player, BlockHitResult hit) {
         interact(state, level, pos, player, hit);
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return dev.gamblingitems.fabric.Compat.handled(level);
     }
 
-    @Override protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level,
+    //#if MC >= 1.21.2
+    //$ @Override protected InteractionResult useItemOn(
+    //#else
+    @Override protected ItemInteractionResult useItemOn(
+    //#endif
+            ItemStack stack, BlockState state, Level level,
             BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         if (hand == InteractionHand.MAIN_HAND) interact(state, level, pos, player, hit);
+        //#if MC >= 1.21.2
+        //$ return dev.gamblingitems.fabric.Compat.handled(level);
+        //#else
         return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        //#endif
     }
+    //#else
+    //$ // Before 1.20.5 one method answered a click, with or without an item in hand.
+    //$ @Override public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
+    //$         InteractionHand hand, BlockHitResult hit) {
+    //$     if (hand == InteractionHand.MAIN_HAND) interact(state, level, pos, player, hit);
+    //$     return InteractionResult.sidedSuccess(level.isClientSide);
+    //$ }
+    //#endif
 
     private void interact(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(anchor(pos, state)) instanceof GameStationEntity station) {

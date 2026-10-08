@@ -2,6 +2,9 @@ modLoader = "javafml"
 loaderVersion = "[4,)"
 license = "All Rights Reserved"
 
+[[mixins]]
+config = "gamblingitems.client.mixins.json"
+
 [[mods]]
 modId = "gamblingitems"
 version = "${version}"
@@ -9,7 +12,7 @@ displayName = "Gambling Items"
 authors = "Romalaure"
 logoFile = "assets/gamblingitems/icon.png"
 displayURL = "https://github.com/tidic84/gambling-items"
-description = '''Nine item-based games with craftable handheld devices, multiplayer stations, and recipe-based item values.'''
+description = '''Gambling with your items: trade up, upgrades and cases on an exchange terminal; crash, roulette, blackjack, bingo and slots at casino tables or in a pocket casino.'''
 
 [[dependencies.gamblingitems]]
 modId = "neoforge"

@@ -3,17 +3,26 @@
   "id": "gamblingitems",
   "version": "${version}",
   "name": "Gambling Items",
-  "description": "Nine item-based games with craftable handheld devices, multiplayer stations, and recipe-based item values.",
-  "authors": ["Romalaure"],
+  "description": "Gambling with your items: trade up, upgrades and cases on an exchange terminal; crash, roulette, blackjack, bingo and slots at casino tables or in a pocket casino.",
+  "authors": [
+    "Romalaure"
+  ],
   "license": "All Rights Reserved",
   "icon": "assets/gamblingitems/icon.png",
   "contact": {
     "sources": "https://github.com/tidic84/gambling-items"
   },
   "environment": "*",
+  "mixins": [
+    "gamblingitems.client.mixins.json"
+  ],
   "entrypoints": {
-    "main": ["dev.gamblingitems.fabric.GamblingItemsFabric"],
-    "client": ["dev.gamblingitems.fabric.client.GamblingItemsClient"]
+    "main": [
+      "dev.gamblingitems.fabric.GamblingItemsFabric"
+    ],
+    "client": [
+      "dev.gamblingitems.fabric.client.GamblingItemsClient"
+    ]
   },
   "depends": {
     "fabricloader": ">=0.16.14",

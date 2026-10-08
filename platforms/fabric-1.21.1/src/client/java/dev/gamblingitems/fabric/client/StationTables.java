@@ -14,7 +14,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 
@@ -49,7 +48,7 @@ public final class StationTables {
     }
 
     public static void render(GameStationEntity station, float partialTick, PoseStack pose,
-                              MultiBufferSource buffers, Font font) {
+                              WorldCanvas buffers, Font font) {
         pose.pushPose();
         pose.translate(0.5, HEIGHT, 0.5);
         pose.mulPose(Axis.YP.rotationDegrees(-station.getBlockState()
@@ -72,7 +71,7 @@ public final class StationTables {
     }
 
     /** The felt itself, with the padded rail a player leans on at the front. */
-    private static void cloth(PoseStack pose, MultiBufferSource buffers, boolean detailed) {
+    private static void cloth(PoseStack pose, WorldCanvas buffers, boolean detailed) {
         quad(pose, buffers, -HALF_WIDTH, -HALF_DEPTH, HALF_WIDTH, HALF_DEPTH, FELT_EDGE, 1);
         quad(pose, buffers, -HALF_WIDTH + 3, -HALF_DEPTH + 3, HALF_WIDTH - 3, HALF_DEPTH - 14, FELT, 2);
         if (!detailed) {
@@ -96,7 +95,7 @@ public final class StationTables {
     // ---------------------------------------------------------------- blackjack
 
     private static void blackjack(GameStationEntity station, float partialTick, PoseStack pose,
-                                  MultiBufferSource buffers, Font font) {
+                                  WorldCanvas buffers, Font font) {
         // The arc of a real mat, between the dealer and the seats.
         for (int step = 0; step <= 80; step++) {
             double angle = Math.PI * step / 80;
@@ -142,7 +141,7 @@ public final class StationTables {
     }
 
     /** The shoe the cards come out of, in the far right corner. */
-    private static void shoe(PoseStack pose, MultiBufferSource buffers) {
+    private static void shoe(PoseStack pose, WorldCanvas buffers) {
         solidBox(pose, buffers, 122, -117, 177, -78, 2, 5, WOOD);
         solidBox(pose, buffers, 124, -115, 129, -80, 5, 15, WOOD_LIGHT);
         solidBox(pose, buffers, 170, -115, 175, -80, 5, 15, WOOD_LIGHT);
@@ -156,7 +155,7 @@ public final class StationTables {
     }
 
     /** The tray the dealt cards are dropped into, on the far left. */
-    private static void discardTray(PoseStack pose, MultiBufferSource buffers) {
+    private static void discardTray(PoseStack pose, WorldCanvas buffers) {
         solidBox(pose, buffers, -176, -118, -120, -78, 2, 5, WOOD);
         solidBox(pose, buffers, -176, -118, -172, -78, 5, 10, WOOD_LIGHT);
         solidBox(pose, buffers, -124, -118, -120, -78, 5, 10, WOOD_LIGHT);
@@ -166,7 +165,7 @@ public final class StationTables {
     }
 
     /** A rack of chips: four colours, each a short stack. */
-    private static void chipRack(PoseStack pose, MultiBufferSource buffers, float x, float y) {
+    private static void chipRack(PoseStack pose, WorldCanvas buffers, float x, float y) {
         solidBox(pose, buffers, x - 9, y - 10, x + 9, y + 74, 2, 4, WOOD);
         int[] colours = {RED, BLUE, GREEN, GOLD};
         for (int index = 0; index < colours.length; index++) {
@@ -179,7 +178,7 @@ public final class StationTables {
     }
 
     /** One row of cards, centred on the felt. A hidden hole card is drawn face down. */
-    private static void cards(PoseStack pose, MultiBufferSource buffers, Font font, String list,
+    private static void cards(PoseStack pose, WorldCanvas buffers, Font font, String list,
                               int y, float landing) {
         if (list.isEmpty()) return;
         String[] parts = list.split(",");
@@ -257,7 +256,7 @@ public final class StationTables {
     // ---------------------------------------------------------------- roulette
 
     private static void roulette(GameStationEntity station, float partialTick, PoseStack pose,
-                                 MultiBufferSource buffers, Font font) {
+                                 WorldCanvas buffers, Font font) {
         double now = station.getLevel().getGameTime() + partialTick;
         double spin = station.phase == 2 && station.animationTicks > 0
                 ? Math.max(0, Math.min(1, 1 - (station.phaseEnd - now) / station.animationTicks))
@@ -295,7 +294,7 @@ public final class StationTables {
     }
 
     /** The turret in the middle of the bowl: stacked discs, narrowing as they rise. */
-    private static void turret(PoseStack pose, MultiBufferSource buffers, double angle) {
+    private static void turret(PoseStack pose, WorldCanvas buffers, double angle) {
         cylinder(pose, buffers, 0, 0, 27, 11.5f, 13, WOOD);
         cylinder(pose, buffers, 0, 0, 20, 13, 15, WOOD_LIGHT);
         cylinder(pose, buffers, 0, 0, 12, 15, 18, GOLD);
@@ -310,7 +309,7 @@ public final class StationTables {
     }
 
     /** The layout on the right of the felt, with the marker standing on the number that came out. */
-    private static void layout(PoseStack pose, MultiBufferSource buffers, Font font,
+    private static void layout(PoseStack pose, WorldCanvas buffers, Font font,
                                int result, boolean settled) {
         float left = TableLayout.LAYOUT_LEFT, top = TableLayout.LAYOUT_TOP;
         float width = TableLayout.ZERO_WIDTH + 12 * TableLayout.CELL_WIDTH;
@@ -346,7 +345,7 @@ public final class StationTables {
         };
     }
 
-    private static void cellOf(PoseStack pose, MultiBufferSource buffers, Font font, float x, float y,
+    private static void cellOf(PoseStack pose, WorldCanvas buffers, Font font, float x, float y,
                                float width, float height, int number, int result, boolean settled) {
         quad(pose, buffers, x, y, x + width, y + height, colourOf(number), 4);
         label(pose, buffers, font, String.valueOf(number), x + width / 2, y + height / 2, TEXT, 0.5f, 5);
@@ -368,7 +367,7 @@ public final class StationTables {
     // ---------------------------------------------------------------- bingo
 
     private static void bingo(GameStationEntity station, PoseStack pose,
-                              MultiBufferSource buffers, Font font) {
+                              WorldCanvas buffers, Font font) {
         boolean[] called = new boolean[BingoRules.NUMBERS + 1];
         if (!station.drawn.isEmpty()) {
             for (String part : station.drawn.split(",")) {
@@ -421,7 +420,7 @@ public final class StationTables {
      * panel of a station, read from the same geometry the block reads a click in, so what is
      * drawn here is exactly what answers.
      */
-    private static void controls(GameStationEntity station, PoseStack pose, MultiBufferSource buffers,
+    private static void controls(GameStationEntity station, PoseStack pose, WorldCanvas buffers,
                                  Font font) {
         int hovered = hovered(station);
         for (StationPanel.Control control : TableLayout.controls(station.mode(), station.phase)) {
@@ -457,7 +456,7 @@ public final class StationTables {
     }
 
     /** The very items staked on this table, laid out on the felt where the chips belong. */
-    private static void stakes(GameStationEntity station, PoseStack pose, MultiBufferSource buffers) {
+    private static void stakes(GameStationEntity station, PoseStack pose, WorldCanvas buffers) {
         if (station.stakeItems.isEmpty()) return;
         String[] parts = station.stakeItems.split(",");
         float centreX = switch (station.mode()) {
@@ -474,10 +473,7 @@ public final class StationTables {
             pose.pushPose();
             pose.translate(x, centreY, 8);
             pose.scale(22, -22, 4);
-            net.minecraft.client.Minecraft.getInstance().getItemRenderer().renderStatic(stack,
-                    ItemDisplayContext.GUI, 0xf000f0,
-                    net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, pose, buffers,
-                    station.getLevel(), 0);
+            buffers.item(pose, stack, 0xf000f0, station.getLevel());
             pose.popPose();
         }
     }
@@ -496,36 +492,36 @@ public final class StationTables {
         }
         ResourceLocation key = ResourceLocation.tryParse(id);
         if (key == null || !BuiltInRegistries.ITEM.containsKey(key)) return ItemStack.EMPTY;
-        return new ItemStack(BuiltInRegistries.ITEM.get(key), count);
+        return new ItemStack(dev.gamblingitems.fabric.Compat.item(key), count);
     }
 
     // ---------------------------------------------------------------- drawing
 
     /** A true annular sector; the narrow gap reveals the brass pocket separators. */
-    private static void blade(PoseStack pose, MultiBufferSource buffers, double angle, int colour,
+    private static void blade(PoseStack pose, WorldCanvas buffers, double angle, int colour,
                               float outer, float inner, float lift) {
         double half = Math.PI / RouletteWheel.POCKETS * .92;
-        var v = buffers.getBuffer(RenderType.gui());
-        var m = pose.last().pose();
-        v.addVertex(m, (float) (inner * Math.cos(angle-half)), (float) (inner * Math.sin(angle-half)), lift).setColor(colour);
-        v.addVertex(m, (float) (inner * Math.cos(angle+half)), (float) (inner * Math.sin(angle+half)), lift).setColor(colour);
-        v.addVertex(m, (float) (outer * Math.cos(angle+half)), (float) (outer * Math.sin(angle+half)), lift).setColor(colour);
-        v.addVertex(m, (float) (outer * Math.cos(angle-half)), (float) (outer * Math.sin(angle-half)), lift).setColor(colour);
+        buffers.quads(pose, (m, v) -> {
+        WorldCanvas.vertex(v, m, (float) (inner * Math.cos(angle-half)), (float) (inner * Math.sin(angle-half)), lift, colour);
+        WorldCanvas.vertex(v, m, (float) (inner * Math.cos(angle+half)), (float) (inner * Math.sin(angle+half)), lift, colour);
+        WorldCanvas.vertex(v, m, (float) (outer * Math.cos(angle+half)), (float) (outer * Math.sin(angle+half)), lift, colour);
+        WorldCanvas.vertex(v, m, (float) (outer * Math.cos(angle-half)), (float) (outer * Math.sin(angle-half)), lift, colour);
+        });
     }
 
     /** A coplanar triangle fan, with no overlapping blades or depth drift. */
-    private static void circle(PoseStack pose, MultiBufferSource buffers, float centreX, float centreY,
+    private static void circle(PoseStack pose, WorldCanvas buffers, float centreX, float centreY,
                                float radius, int colour, float lift) {
         int steps = 40;
-        var vertices = buffers.getBuffer(RenderType.gui());
-        var matrix = pose.last().pose();
+        buffers.quads(pose, (matrix, vertices) -> {
         for (int step = 0; step < steps; step++) {
             double a = step * 2 * Math.PI / steps, b = (step + 1) * 2 * Math.PI / steps;
-            vertices.addVertex(matrix, centreX, centreY, lift).setColor(colour);
-            vertices.addVertex(matrix, centreX + (float) Math.cos(b) * radius, centreY + (float) Math.sin(b) * radius, lift).setColor(colour);
-            vertices.addVertex(matrix, centreX + (float) Math.cos(a) * radius, centreY + (float) Math.sin(a) * radius, lift).setColor(colour);
-            vertices.addVertex(matrix, centreX, centreY, lift).setColor(colour);
+            WorldCanvas.vertex(vertices, matrix, centreX, centreY, lift, colour);
+            WorldCanvas.vertex(vertices, matrix, centreX + (float) Math.cos(b) * radius, centreY + (float) Math.sin(b) * radius, lift, colour);
+            WorldCanvas.vertex(vertices, matrix, centreX + (float) Math.cos(a) * radius, centreY + (float) Math.sin(a) * radius, lift, colour);
+            WorldCanvas.vertex(vertices, matrix, centreX, centreY, lift, colour);
         }
+        });
     }
 
     private static int shade(int colour, float amount) {
@@ -533,17 +529,17 @@ public final class StationTables {
                 | (int) (((colour >> 8) & 255) * amount) << 8 | (int) ((colour & 255) * amount);
     }
 
-    private static void wall(PoseStack pose, MultiBufferSource buffers, float x1, float y1,
+    private static void wall(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                              float x2, float y2, float bottom, float top, int colour) {
-        var v = buffers.getBuffer(RenderType.gui());
-        var m = pose.last().pose();
-        v.addVertex(m, x1, y1, bottom).setColor(colour);
-        v.addVertex(m, x2, y2, bottom).setColor(colour);
-        v.addVertex(m, x2, y2, top).setColor(colour);
-        v.addVertex(m, x1, y1, top).setColor(colour);
+        buffers.quads(pose, (m, v) -> {
+        WorldCanvas.vertex(v, m, x1, y1, bottom, colour);
+        WorldCanvas.vertex(v, m, x2, y2, bottom, colour);
+        WorldCanvas.vertex(v, m, x2, y2, top, colour);
+        WorldCanvas.vertex(v, m, x1, y1, top, colour);
+        });
     }
 
-    private static void solidBox(PoseStack pose, MultiBufferSource buffers, float x1, float y1,
+    private static void solidBox(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                                  float x2, float y2, float bottom, float top, int colour) {
         quad(pose, buffers, x1, y1, x2, y2, colour, top);
         wall(pose, buffers, x1, y1, x2, y1, bottom, top, shade(colour, .65f));
@@ -552,7 +548,7 @@ public final class StationTables {
         wall(pose, buffers, x1, y2, x1, y1, bottom, top, shade(colour, .6f));
     }
 
-    private static void cylinder(PoseStack pose, MultiBufferSource buffers, float x, float y,
+    private static void cylinder(PoseStack pose, WorldCanvas buffers, float x, float y,
                                  float radius, float bottom, float top, int colour) {
         circle(pose, buffers, x, y, radius, colour, top);
         for (int step = 0; step < 40; step++) {
@@ -564,29 +560,28 @@ public final class StationTables {
     }
 
     /** A flat coloured rectangle, wound the way the station screen winds its own. */
-    private static void quad(PoseStack pose, MultiBufferSource buffers, float x1, float y1,
+    private static void quad(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                              float x2, float y2, int colour, float lift) {
-        var vertices = buffers.getBuffer(RenderType.gui());
-        var matrix = pose.last().pose();
-        vertices.addVertex(matrix, x1, y1, lift).setColor(colour);
-        vertices.addVertex(matrix, x1, y2, lift).setColor(colour);
-        vertices.addVertex(matrix, x2, y2, lift).setColor(colour);
-        vertices.addVertex(matrix, x2, y1, lift).setColor(colour);
+        buffers.quads(pose, (matrix, vertices) -> {
+        WorldCanvas.vertex(vertices, matrix, x1, y1, lift, colour);
+        WorldCanvas.vertex(vertices, matrix, x1, y2, lift, colour);
+        WorldCanvas.vertex(vertices, matrix, x2, y2, lift, colour);
+        WorldCanvas.vertex(vertices, matrix, x2, y1, lift, colour);
+        });
     }
 
     /**
      * Writes on the felt. The lift is the layer the text belongs to, plus a hair: printed on its
      * card or its pocket, not floating above the table.
      */
-    private static void label(PoseStack pose, MultiBufferSource buffers, Font font, String text,
+    private static void label(PoseStack pose, WorldCanvas buffers, Font font, String text,
                               float x, float y, int colour, float scale, float lift) {
         if (text.isEmpty()) return;
         pose.pushPose();
         pose.translate(x, y, lift + 0.4f);
         pose.scale(scale, scale, scale);
         // Half a line above the middle, so a number sits in its cell whatever its size.
-        font.drawInBatch(text, -font.width(text) / 2f, -4.5f, colour, false, pose.last().pose(), buffers,
-                Font.DisplayMode.NORMAL, 0, 0xF000F0);
+        buffers.text(pose, font, text, -font.width(text) / 2f, -4.5f, colour, 0xF000F0);
         pose.popPose();
     }
 }

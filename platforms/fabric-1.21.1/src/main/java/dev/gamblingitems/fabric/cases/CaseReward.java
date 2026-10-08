@@ -15,7 +15,7 @@ public record CaseReward(ResourceLocation item, int count, int weight) {
         }
     }
 
-    public ItemStack stack() { return new ItemStack(BuiltInRegistries.ITEM.get(item), count); }
+    public ItemStack stack() { return new ItemStack(dev.gamblingitems.fabric.Compat.item(item), count); }
 
     public static final StreamCodec<RegistryFriendlyByteBuf, CaseReward> CODEC = new StreamCodec<>() {
         @Override public CaseReward decode(RegistryFriendlyByteBuf buffer) {

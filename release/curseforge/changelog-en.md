@@ -1,6 +1,23 @@
-# Gambling Items 0.2.0-beta.2
+# Gambling Items 0.2.0-beta.7
 
 Minecraft Java 1.21.1 · Fabric · Java 21
+
+## Casino interfaces
+
+- New casino look for every game window: night-blue room, rounded cards, a green button for what you stake, gold for what you win.
+- Minecraft's own font at native GUI size; the window is only scaled down when it would not fit.
+- Every game uses the same layout: the game on the left, odds on the right, your full 9x4 inventory and a betting slip with one big action button.
+- Two portable items, each with its games as tabs: the **Exchange terminal** (Trade Up, Upgrader, Cases, Case battles) and the new **Pocket casino** (Crash, roulette, blackjack, bingo, slots). Each reopens the last game played.
+- The Pocket casino joins a nearby table, or opens one where you stand.
+- Switching tab keeps the mouse cursor where it was.
+- Opened from their block, games show on their own, without tabs.
+- Reels slow down like a real case opening, tick as items pass the marker, and the winning line lights up in the odds list.
+- Win and loss sounds; the action button collects the reward once the reel stops.
+- Odds lists scroll with the mouse wheel; the Upgrader lists the best prizes first and reachable targets by odds once an item is staked.
+
+## Removed
+
+- The nine single-game handheld items (`*_item`) and their recipes, replaced by the two portable items above; existing copies disappear from worlds.
 
 ## New: casino currency
 

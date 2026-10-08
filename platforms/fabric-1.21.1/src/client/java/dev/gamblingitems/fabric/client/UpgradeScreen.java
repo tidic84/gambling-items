@@ -1,195 +1,209 @@
 package dev.gamblingitems.fabric.client;
 
-import dev.gamblingitems.fabric.value.ValueCatalog;
+import dev.gamblingitems.core.GameMode;
+import dev.gamblingitems.fabric.menu.CasinoLayout;
 import dev.gamblingitems.fabric.upgrade.UpgradeMenu;
-import java.math.BigDecimal;
+import dev.gamblingitems.fabric.value.ValueCatalog;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
-public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
-    private static final int INK = 0xff0d131c, PANEL = 0xff172231, BORDER = 0xff304358;
-    private static final int TEXT = 0xffe8eff6, MUTED = 0xff91a6ba, GOLD = 0xffffce69, GREEN = 0xff6cdeb7;
+/** One item staked for a better one: the odds ring in the middle, the targets on the side. */
+public final class UpgradeScreen extends CasinoScreen<UpgradeMenu> {
+    private static final int GX = CasinoLayout.GAME_X, GY = CasinoLayout.CONTENT_Y, GW = CasinoLayout.GAME_WIDTH;
+    private static final int SX = CasinoLayout.SIDE_X, SW = CasinoLayout.SIDE_WIDTH;
+    private static final int LIST_Y = GY + 22, LIST_HEIGHT = CasinoLayout.CONTENT_HEIGHT - 24;
+    private static final int RING_X = GX + 118, RING_Y = GY + 46, RADIUS = 26;
     private final List<Integer> filtered = new ArrayList<>();
-    private final List<RewardButton> rows = new ArrayList<>();
+    private final OddsList targets = new OddsList();
     private EditBox search;
     private Button spin;
-    private Button previous;
-    private Button next;
-    private int page;
+    private boolean wasAnimating;
 
     public UpgradeScreen(UpgradeMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        imageWidth = 320;
-        imageHeight = 252;
     }
 
-    /** Every game explains itself, in the language of the player. */
-    private final GameRules rules = new GameRules("upgrader");
-
-    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // While the rules are up they take every click, so nothing is played by accident.
-        if (rules.open()) {
-            rules.close();
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
+    @Override protected GameMode mode() { return GameMode.UPGRADER; }
+    @Override protected boolean portable() { return menu.portable(); }
 
     @Override protected void init() {
+        String query = search == null ? "" : search.getValue();
         super.init();
-        addRenderableWidget(rules.button(leftPos + 147, topPos + 6));
-        rows.clear();
-        search = new EditBox(font, leftPos + 181, topPos + 11, 126, 16, tr("search"));
+        search = new EditBox(font, leftPos + SX + 8, topPos + GY + 8, SW - 14, 10, tr("search"));
+        search.setBordered(false);
         search.setMaxLength(64);
-        search.setHint(tr("search"));
-        search.setResponder(query -> { page = 0; filter(); });
+        search.setHint(Component.literal(tr("search").getString()).withStyle(style -> style.withColor(GameScreens.DIM)));
+        search.setValue(query);
+        search.setResponder(ignored -> { targets.reset(); filter(); });
         addRenderableWidget(search);
-        for (int row = 0; row < 4; row++) {
-            RewardButton button = new RewardButton(leftPos + 181, topPos + 34 + row * 21);
-            rows.add(addRenderableWidget(button));
-        }
-        previous = addRenderableWidget(Button.builder(Component.literal("<"), b -> { page--; refreshRows(); })
-                .bounds(leftPos + 181, topPos + 121, 23, 17).build());
-        next = addRenderableWidget(Button.builder(Component.literal(">"), b -> { page++; refreshRows(); })
-                .bounds(leftPos + 284, topPos + 121, 23, 17).build());
-        spin = addRenderableWidget(Button.builder(tr("spin"), b -> send(UpgradeMenu.SPIN_BUTTON))
-                .bounds(leftPos + 14, topPos + 120, 153, 18).build());
+        spin = addRenderableWidget(CasinoButton.primary(tr("spin"), b -> {
+                    if (rewarded()) collect(1); else send(UpgradeMenu.SPIN_BUTTON);
+                })
+                .bounds(leftPos + CasinoLayout.SLIP_X + 8, topPos + CasinoLayout.SLIP_Y + 52, CasinoLayout.SLIP_WIDTH - 16, 20).build());
         spin.setTooltip(Tooltip.create(tr("stake_warning")));
         filter();
     }
 
-    private static Component tr(String key) { return Component.translatable("gui.gamblingitems." + key); }
-    private void send(int id) {
-        if (minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id);
-    }
     private void filter() {
         filtered.clear();
         String query = search.getValue().strip().toLowerCase(Locale.ROOT);
+        long input = menu.inputValue();
         for (int i = 0; i < menu.catalog().entries().size(); i++) {
             ValueCatalog.Entry entry = menu.catalog().entries().get(i);
-            if (query.startsWith("@") ? entry.id().getNamespace().contains(query.substring(1))
+            boolean matches = query.startsWith("@") ? entry.id().getNamespace().contains(query.substring(1))
                     : entry.id().toString().contains(query)
-                    || entry.stack().getHoverName().getString().toLowerCase(Locale.ROOT).contains(query)) filtered.add(i);
+                    || entry.stack().getHoverName().getString().toLowerCase(Locale.ROOT).contains(query);
+            if (matches) filtered.add(i);
         }
-        refreshRows();
+        // With a stake, reachable targets come first, best odds first. Without one, the prizes lead.
+        filtered.sort((a, b) -> {
+            long va = menu.catalog().entries().get(a).value(), vb = menu.catalog().entries().get(b).value();
+            if (input <= 0) return Long.compare(vb, va);
+            boolean ra = va > input, rb = vb > input;
+            if (ra != rb) return ra ? -1 : 1;
+            return ra ? Long.compare(va, vb) : Long.compare(vb, va);
+        });
     }
-    private void refreshRows() {
-        int pages = Math.max(1, (filtered.size() + 3) / 4);
-        page = Math.max(0, Math.min(page, pages - 1));
-        for (int i = 0; i < rows.size(); i++) {
-            int position = page * 4 + i;
-            RewardButton row = rows.get(i);
-            row.entryIndex = position < filtered.size() ? filtered.get(position) : -1;
-            row.visible = row.entryIndex >= 0;
-            if (row.visible) {
-                var entry = menu.catalog().entries().get(row.entryIndex);
-                row.setMessage(entry.stack().getHoverName());
-                row.setTooltip(Tooltip.create(Component.translatable("gui.gamblingitems.target_tooltip",
-                        entry.stack().getHoverName(), value(entry.value())).append("\n" + entry.id())));
-            }
-        }
-        previous.active = page > 0;
-        next.active = page + 1 < pages;
-    }
-    private static String value(long value) { return BigDecimal.valueOf(value, 3).stripTrailingZeros().toPlainString(); }
+
     private static String percent(double chance) {
         return chance > 0 && chance < 0.0001 ? "<0.01%" : String.format(Locale.ROOT, "%.2f%%", chance * 100);
     }
 
+    private long lastInput = -1;
+
+    private boolean rewarded() { return !menu.isAnimating() && !menu.getSlot(1).getItem().isEmpty(); }
+
     @Override protected void containerTick() {
         super.containerTick();
-        spin.active = menu.canSpin();
-        spin.setMessage(menu.isAnimating() ? tr("rolling") : tr("spin"));
-        for (RewardButton row : rows) {
-            if (row.entryIndex >= 0)
-                row.active = !menu.isAnimating() && menu.catalog().entries().get(row.entryIndex).value() > menu.inputValue();
+        if (menu.inputValue() != lastInput) { lastInput = menu.inputValue(); filter(); }
+        spin.active = menu.canSpin() || rewarded();
+        spin.setMessage(menu.isAnimating() ? tr("rolling") : !menu.getSlot(1).getItem().isEmpty() ? tr("collect_short") : tr("spin"));
+        if (wasAnimating && !menu.isAnimating()) {
+            if (menu.result() == 1) CasinoSounds.win(); else CasinoSounds.lose();
         }
+        wasAnimating = menu.isAnimating();
     }
 
-    @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        if (rules.open()) {
-            rules.render(graphics, font, width, height);
-            return;
+    private List<OddsList.Row> rows() {
+        List<OddsList.Row> rows = new ArrayList<>();
+        long input = menu.inputValue();
+        for (int index : filtered) {
+            ValueCatalog.Entry entry = menu.catalog().entries().get(index);
+            boolean reachable = input > 0 && entry.value() > input;
+            rows.add(new OddsList.Row(entry.stack(), reachable ? percent(menu.chanceFor(entry)) : GameScreens.value(entry.value()),
+                    reachable ? GameScreens.GREEN : GameScreens.MUTED,
+                    Component.translatable("gui.gamblingitems.arena.item_value", GameScreens.value(entry.value())),
+                    input <= 0 || reachable, menu.selectedIndex() == index));
         }
-        renderTooltip(graphics, mouseX, mouseY);
-        if (mouseX >= leftPos + 12 && mouseX <= leftPos + 166
-                && mouseY >= topPos + 142 && mouseY <= topPos + 154) {
-            graphics.renderTooltip(font, tr("values_help"), mouseX, mouseY);
-        }
+        return rows;
     }
 
-    @Override protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
+    @Override protected void renderGame(GuiGraphics g, float tick, int mouseX, int mouseY) {
         int x = leftPos, y = topPos;
-        g.fill(x, y, x + imageWidth, y + imageHeight, BORDER);
-        g.fill(x + 1, y + 1, x + imageWidth - 1, y + imageHeight - 1, INK);
-        g.fill(x + 1, y + 1, x + imageWidth - 1, y + 3, GOLD);
-        GameScreens.fitted(g, font, title, x + 12, y + 11, 130, TEXT);
-        GameScreens.fitted(g, font, tr("subtitle"), x + 12, y + 23, 158, MUTED);
-        g.fill(x + 8, y + 34, x + 174, y + 115, PANEL);
-        g.fill(x + 178, y + 32, x + 310, y + 119, PANEL);
-        g.drawString(font, tr("input"), x + 16, y + 47, MUTED, false);
-        g.drawString(font, tr("reward"), x + 140, y + 47, MUTED, false);
-        slot(g, x + 20, y + 62);
-        slot(g, x + 146, y + 62);
-        if ((menu.getSlot(1).getItem().isEmpty() || menu.isAnimating()) && menu.selected() != null)
-            g.renderFakeItem(menu.selected().stack(), x + 146, y + 62);
+        ValueCatalog.Entry target = menu.selected();
+        boolean rewarded = !menu.getSlot(1).getItem().isEmpty() && !menu.isAnimating();
+        GameScreens.card(g, x + GX, y + GY, GW, CasinoLayout.CONTENT_HEIGHT);
+        GameScreens.label(g, font, tr("input"), x + GX + 8, y + GY + 7, 80);
+        String targetLabel = tr("target").getString().toUpperCase(Locale.ROOT);
+        GameScreens.rightAligned(g, font, targetLabel, x + GX + GW - 8, y + GY + 7, GameScreens.DIM);
 
-        double chance = menu.chance();
-        double target = menu.result() == 1 ? chance * 0.5 : chance + (1 - chance) * 0.65;
-        double progress = menu.result() == 0 ? 0
-                : Math.min(1, (UpgradeMenu.ANIMATION_TICKS - menu.remainingTicks() + partialTick) / UpgradeMenu.ANIMATION_TICKS);
-        double turns = menu.result() == 0 ? 0 : (6 + target) * (1 - Math.pow(1 - progress, 3));
-        int cx = x + 91, cy = y + 71;
-        for (int i = 0; i < 180; i++) {
-            double angle = i * Math.PI * 2 / 180 - Math.PI / 2;
-            int color = (i / 180.0) < chance ? GOLD : BORDER;
-            for (int radius = 27; radius < 30; radius++) {
-                int px = cx + (int) Math.round(Math.cos(angle) * radius);
-                int py = cy + (int) Math.round(Math.sin(angle) * radius);
-                g.fill(px, py, px + 2, py + 2, color);
+        GameScreens.well(g, font, x + 30, y + 72, menu.getSlot(0).getItem().isEmpty(), 0);
+        GameScreens.fitted(g, font, Component.literal(GameScreens.value(menu.inputValue())), x + 26, y + 96, 40, GameScreens.MUTED);
+        if (rewarded) GameScreens.ring(g, x + 202, y + 68, 24, 24, GameScreens.GOLD);
+        GameScreens.well(g, font, x + 206, y + 72, target == null, 0);
+        if (target != null) {
+            if (menu.getSlot(1).getItem().isEmpty() || menu.isAnimating()) {
+                g.renderFakeItem(target.stack(), x + 206, y + 72);
+                g.fill(x + 206, y + 72, x + 222, y + 88, 0x60000000 | (GameScreens.HOLE & 0xffffff));
             }
+            GameScreens.rightAligned(g, font, GameScreens.value(target.value()), x + 226, y + 96, GameScreens.MUTED);
         }
-        double marker = turns * Math.PI * 2 - Math.PI / 2;
-        int mx = cx + (int) (Math.cos(marker) * 29);
-        int my = cy + (int) (Math.sin(marker) * 29);
-        g.fill(mx - 2, my - 2, mx + 3, my + 3, TEXT);
-        g.drawCenteredString(font, percent(chance), cx, cy - 4, GOLD);
+        renderRing(g, x + RING_X, y + RING_Y, tick);
 
         Component status = menu.isAnimating() ? tr("rolling")
-                : menu.result() == 1 ? tr("won")
-                : menu.result() == 2 ? tr("lost")
-                : !menu.getSlot(1).getItem().isEmpty() ? tr("collect")
+                : menu.result() == 1 ? tr("won") : menu.result() == 2 ? tr("lost")
+                : rewarded ? tr("collect")
                 : menu.inputValue() == 0 ? tr("insert")
-                : menu.selected() == null ? tr("select") : tr("ready");
-        g.drawCenteredString(font, status, x + 91, y + 103,
-                menu.result() == 1 && !menu.isAnimating() ? GREEN : MUTED);
-        if (filtered.isEmpty()) g.drawCenteredString(font, tr("no_results"), x + 244, y + 68, MUTED);
-        g.drawCenteredString(font, (page + 1) + " / " + Math.max(1, (filtered.size() + 3) / 4), x + 244, y + 126, MUTED);
-        g.drawString(font, Component.translatable("gui.gamblingitems.value", value(menu.inputValue())), x + 12, y + 144, MUTED, false);
-        for (int row = 0; row < 3; row++)
-            for (int col = 0; col < 9; col++) slot(g, x + 79 + col * 18, y + 155 + row * 18);
-        for (int col = 0; col < 9; col++) slot(g, x + 79 + col * 18, y + 213);
-        GameScreens.fitted(g, font, tr("inventory"), x + 12, y + 161, 62, MUTED);
-        GameScreens.fitted(g, font, tr("shift_click"), x + 12, y + 178, 62, MUTED);
-        GameScreens.fitted(g, font, tr("protected"), x + 12, y + 238, imageWidth - 24, GREEN);
+                : target == null ? tr("select") : tr("ready");
+        int colour = menu.isAnimating() ? GameScreens.MUTED : menu.result() == 1 ? GameScreens.GOLD
+                : menu.result() == 2 ? GameScreens.RED : menu.canSpin() ? GameScreens.GREEN : GameScreens.MUTED;
+        int width = font.width(status);
+        GameScreens.fitted(g, font, status, x + GX + Math.max(8, (GW - width) / 2), y + GY + 92, GW - 16, colour);
+
+        GameScreens.card(g, x + SX, y + GY, SW, CasinoLayout.CONTENT_HEIGHT);
+        GameScreens.rounded(g, x + SX + 4, y + GY + 4, SW - 8, 15, GameScreens.HOLE);
+        List<OddsList.Row> rows = rows();
+        if (rows.isEmpty()) GameScreens.paragraph(g, font, tr("no_results"), x + SX + 8, y + LIST_Y + 4, SW - 16, 3, GameScreens.DIM);
+        else targets.render(g, font, rows, x + SX + 4, y + LIST_Y, SW - 6, LIST_HEIGHT, mouseX, mouseY);
+
+        slip(g);
+        int sx = x + CasinoLayout.SLIP_X + 8, sy = y + CasinoLayout.SLIP_Y + 8;
+        GameScreens.label(g, font, tr("chance"), sx, sy, 80);
+        GameScreens.heading(g, font, Component.literal(percent(menu.chance())), sx, sy + 12, 2,
+                menu.chance() > 0 ? GameScreens.GREEN : GameScreens.DIM);
+        GameScreens.label(g, font, tr("payout"), sx + 100, sy, 70);
+        if (target != null && menu.inputValue() > 0) {
+            double factor = (double) target.value() / menu.inputValue();
+            g.drawString(font, String.format(Locale.ROOT, "x%.2f", factor), sx + 100, sy + 16, GameScreens.GOLD, false);
+        } else g.drawString(font, "—", sx + 100, sy + 16, GameScreens.DIM, false);
     }
 
-    private static void slot(GuiGraphics g, int x, int y) {
-        g.fill(x - 1, y - 1, x + 17, y + 17, BORDER);
-        g.fill(x, y, x + 16, y + 16, 0xff091018);
+    /** The odds as an arc, and the marker that runs around it until it stops on the server's result. */
+    private void renderRing(GuiGraphics g, int cx, int cy, float tick) {
+        double chance = menu.chance();
+        int steps = 72;
+        int win = menu.isAnimating() || menu.result() == 0 ? GameScreens.GREEN : menu.result() == 1 ? GameScreens.GOLD : GameScreens.RED;
+        for (int i = 0; i < steps; i++) {
+            double a1 = i * Math.PI * 2 / steps - Math.PI / 2, a2 = (i + 1.15) * Math.PI * 2 / steps - Math.PI / 2;
+            int colour = (i + .5) / steps < chance ? win : GameScreens.HOLE;
+            ArenaShapes.line(g, (float) (cx + Math.cos(a1) * RADIUS), (float) (cy + Math.sin(a1) * RADIUS),
+                    (float) (cx + Math.cos(a2) * RADIUS), (float) (cy + Math.sin(a2) * RADIUS), 6, colour);
+        }
+        double target = menu.result() == 1 ? chance * 0.5 : chance + (1 - chance) * 0.6;
+        double progress = menu.result() == 0 ? 0
+                : Math.min(1, (UpgradeMenu.ANIMATION_TICKS - menu.remainingTicks() + tick) / UpgradeMenu.ANIMATION_TICKS);
+        double turns = menu.result() == 0 ? 0 : (5 + target) * GameScreens.eased(progress);
+        double marker = turns * Math.PI * 2 - Math.PI / 2;
+        float mx = (float) (cx + Math.cos(marker) * (RADIUS - 9)), my = (float) (cy + Math.sin(marker) * (RADIUS - 9));
+        ArenaShapes.line(g, (float) (cx + Math.cos(marker) * (RADIUS - 15)), (float) (cy + Math.sin(marker) * (RADIUS - 15)),
+                mx, my, 2, GameScreens.TEXT);
+        String label = percent(chance);
+        g.drawString(font, label, cx - font.width(label) / 2, cy - 4, chance > 0 ? GameScreens.TEXT : GameScreens.DIM, false);
     }
-    @Override protected void renderLabels(GuiGraphics g, int x, int y) {}
 
+    @Override protected void renderOverlay(GuiGraphics g, int mouseX, int mouseY, float tick) {
+        targets.tooltip(g, font, rows(), leftPos + SX + 4, topPos + LIST_Y, SW - 6, LIST_HEIGHT, mouseX, mouseY);
+    }
+
+    @Override protected boolean gameClicked(double x, double y, int button) {
+        int index = targets.at(filtered.size(), leftPos + SX + 4, topPos + LIST_Y, SW - 6, LIST_HEIGHT, x, y);
+        if (button != 0 || index < 0 || menu.isAnimating()) return false;
+        send(filtered.get(index));
+        return true;
+    }
+
+    @Override protected boolean gameScrolled(double x, double y, double amount) {
+        if (!inside(x, y, SX, GY, SW, CasinoLayout.CONTENT_HEIGHT)) return false;
+        targets.scroll(filtered.size(), LIST_HEIGHT, amount);
+        return true;
+    }
+
+    //#if MC >= 1.21.9
+    //$ @Override public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+    //$     // Typing inventory-key characters in the search must not close the menu.
+    //$     if (search.isFocused() && event.key() != 256) {
+    //$         if (search.keyPressed(event) || search.canConsumeInput()) return true;
+    //$     }
+    //$     return super.keyPressed(event);
+    //$ }
+    //#else
     @Override public boolean keyPressed(int key, int scan, int modifiers) {
         // Typing inventory-key characters in the search must not close the menu.
         if (search.isFocused() && key != 256) {
@@ -197,29 +211,5 @@ public final class UpgradeScreen extends AbstractContainerScreen<UpgradeMenu> {
         }
         return super.keyPressed(key, scan, modifiers);
     }
-
-    private final class RewardButton extends AbstractButton {
-        int entryIndex = -1;
-        RewardButton(int x, int y) { super(x, y, 126, 20, Component.empty()); }
-        @Override public void onPress() { if (entryIndex >= 0) send(entryIndex); }
-        @Override protected void updateWidgetNarration(net.minecraft.client.gui.narration.NarrationElementOutput output) {
-            defaultButtonNarrationText(output);
-        }
-        @Override protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float delta) {
-            if (entryIndex < 0) return;
-            ValueCatalog.Entry entry = menu.catalog().entries().get(entryIndex);
-            boolean selected = menu.selectedIndex() == entryIndex;
-            g.fill(getX(), getY(), getX() + width, getY() + height, isHoveredOrFocused() ? 0xff2a3b4e : PANEL);
-            if (selected) g.fill(getX(), getY(), getX() + 2, getY() + height, GOLD);
-            g.renderFakeItem(entry.stack(), getX() + 4, getY() + 2);
-            int color = active ? (selected ? GOLD : TEXT) : MUTED;
-            g.drawString(font, font.plainSubstrByWidth(entry.stack().getHoverName().getString(), 99),
-                    getX() + 24, getY() + 2, color, false);
-            String odds = percent(menu.chanceFor(entry));
-            int oddsX = getX() + width - 3 - font.width(odds);
-            GameScreens.fitted(g, font, Component.literal(value(entry.value())), getX() + 24,
-                    getY() + 11, Math.max(8, oddsX - getX() - 28), MUTED);
-            g.drawString(font, odds, oddsX, getY() + 11, active ? GREEN : MUTED, false);
-        }
-    }
+    //#endif
 }

@@ -16,7 +16,7 @@ import java.util.List;
  */
 public final class GameRules {
     private static final int PANEL_WIDTH = 320, PADDING = 12, LINE = 11;
-    private static final int SHADE = 0xd0060a11;
+    private static final int SHADE = 0xc0050d14;
     private final String mode;
     private boolean open;
 
@@ -27,9 +27,9 @@ public final class GameRules {
     public void close() { open = false; }
 
     /** The button that opens the rules, meant for the top right corner of a window. */
-    public Button button(int x, int y) {
-        Button button = Button.builder(Component.translatable("gui.gamblingitems.rules_button"),
-                ignored -> open = !open).bounds(x, y, 20, 16).build();
+    public Button button(int x, int y, int width, int height) {
+        Button button = CasinoButton.quiet(Component.translatable("gui.gamblingitems.rules_button"),
+                ignored -> open = !open).bounds(x, y, width, height).build();
         button.setTooltip(Tooltip.create(Component.translatable("gui.gamblingitems.rules_help")));
         return button;
     }
@@ -45,10 +45,10 @@ public final class GameRules {
         List<FormattedCharSequence> lines = lines(font);
         int height = PADDING * 2 + LINE * (lines.size() + 3);
         int left = (screenWidth - PANEL_WIDTH) / 2, top = Math.max(4, (screenHeight - height) / 2);
+        GuiPose.push(graphics);
+        GuiPose.front(graphics);
         graphics.fill(0, 0, screenWidth, screenHeight, SHADE);
-        graphics.fill(left - 1, top - 1, left + PANEL_WIDTH + 1, top + height + 1, GameScreens.BORDER);
-        graphics.fill(left, top, left + PANEL_WIDTH, top + height, GameScreens.INK);
-        graphics.fill(left, top, left + PANEL_WIDTH, top + 2, GameScreens.GOLD);
+        ArenaShapes.rounded(graphics, left, top, PANEL_WIDTH, height, 6, GameScreens.PANEL);
         Component title = Component.translatable("gui.gamblingitems.rules_title",
                 Component.translatable("gui.gamblingitems.mode." + mode));
         graphics.drawString(font, title, left + PADDING, top + PADDING, GameScreens.GOLD, false);
@@ -57,6 +57,7 @@ public final class GameRules {
                     top + PADDING + LINE * (index + 2), GameScreens.TEXT, false);
         }
         graphics.drawString(font, Component.translatable("gui.gamblingitems.rules_close"),
-                left + PADDING, top + height - PADDING - 8, GameScreens.MUTED, false);
+                left + PADDING, top + height - PADDING - 8, GameScreens.DIM, false);
+        GuiPose.pop(graphics);
     }
 }

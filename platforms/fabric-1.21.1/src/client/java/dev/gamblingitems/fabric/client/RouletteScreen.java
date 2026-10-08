@@ -1,6 +1,6 @@
 package dev.gamblingitems.fabric.client;
 
-import com.mojang.math.Axis;
+import dev.gamblingitems.core.GameMode;
 import dev.gamblingitems.core.roulette.RouletteWheel;
 import dev.gamblingitems.core.roulette.RouletteWheel.Bet;
 import dev.gamblingitems.core.roulette.RouletteWheel.BetType;
@@ -12,7 +12,6 @@ import java.util.List;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
@@ -20,28 +19,28 @@ import net.minecraft.world.entity.player.Inventory;
  * A real roulette: the wheel turns on the left, the felt is on the right, and clicking an area
  * puts the prepared chips on it. The wheel only replays the pocket the server already drew.
  */
-public final class RouletteScreen extends AbstractContainerScreen<RouletteMenu> {
+public final class RouletteScreen extends CasinoScreen<RouletteMenu> {
     private static final int FELT = 0xff14472c, FELT_LINE = 0xff2d6b46;
-    private static final int RED = 0xffc0392b, BLACK = 0xff1b1f27, GREEN = 0xff1e8f52;
+    private static final int RED = 0xffc0392b, BLACK = 0xff17191e, GREEN = 0xff1e8f52;
     private static final int TABLE_X = 146, TABLE_Y = 46;
-    private static final int WHEEL_X = 72, WHEEL_Y = 100, WHEEL_RADIUS = 50;
+    private static final int WHEEL_X = 74, WHEEL_Y = 94, WHEEL_RADIUS = 56, HUB_RADIUS = 34;
     private static final double WHEEL_TURNS = 3, BALL_TURNS = 6;
     private Button collect;
     private final List<RouletteTable.Area> areas = RouletteTable.areas();
 
     public RouletteScreen(RouletteMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title);
-        imageWidth = 440;
-        imageHeight = 296;
+        super(menu, inventory, title, 440, 296);
     }
 
-    /** Every game explains itself, in the language of the player. */
-    private final GameRules rules = new GameRules("roulette");
+    @Override protected GameMode mode() { return GameMode.ROULETTE; }
+    @Override protected boolean portable() { return menu.portable(); }
+    @Override protected Component subtitle() {
+        return Component.translatable("gui.gamblingitems.roulette_subtitle", GameScreens.value(menu.settings().minimumStake()));
+    }
 
     @Override protected void init() {
         super.init();
-        addRenderableWidget(rules.button(leftPos + imageWidth - 30, topPos + 6));
-        collect = addRenderableWidget(Button.builder(tr("collect_winnings"),
+        collect = addRenderableWidget(CasinoButton.builder(tr("collect_winnings"),
                         button -> click(RouletteMenu.COLLECT_BUTTON))
                 .bounds(leftPos + 296, topPos + 186, 124, 18).build());
         collect.setTooltip(Tooltip.create(tr("collect_help")));
@@ -51,19 +50,12 @@ public final class RouletteScreen extends AbstractContainerScreen<RouletteMenu> 
         if (minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId, button);
     }
 
-    private static Component tr(String key) { return Component.translatable("gui.gamblingitems." + key); }
-
     @Override protected void containerTick() {
         super.containerTick();
         collect.active = menu.winnings() > 0;
     }
 
-    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // While the rules are up they take every click, so nothing is played by accident.
-        if (rules.open()) {
-            rules.close();
-            return true;
-        }
+    @Override protected boolean gameClicked(double mouseX, double mouseY, int button) {
         if (button == 0 && menu.canBet()) {
             RouletteTable.Area area = RouletteTable.at(areas,
                     (int) mouseX - leftPos - TABLE_X, (int) mouseY - topPos - TABLE_Y);
@@ -72,28 +64,15 @@ public final class RouletteScreen extends AbstractContainerScreen<RouletteMenu> 
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return false;
     }
 
-    @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        if (rules.open()) {
-            rules.render(graphics, font, width, height);
-            return;
-        }
+    @Override protected void renderOverlay(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderAreaTooltip(graphics, mouseX, mouseY);
-        renderTooltip(graphics, mouseX, mouseY);
     }
 
-    @Override protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
+    @Override protected void renderGame(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
         int x = leftPos, y = topPos;
-        g.fill(x, y, x + imageWidth, y + imageHeight, GameScreens.BORDER);
-        g.fill(x + 1, y + 1, x + imageWidth - 1, y + imageHeight - 1, GameScreens.INK);
-        g.fill(x + 1, y + 1, x + imageWidth - 1, y + 3, GameScreens.GOLD);
-        g.drawString(font, title, x + 12, y + 11, GameScreens.TEXT, false);
-        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.roulette_subtitle",
-                GameScreens.value(menu.settings().minimumStake())), x + 12, y + 22, imageWidth - 24,
-                GameScreens.MUTED);
         renderWheel(g, x, y, partialTick);
         renderFelt(g, x, y, mouseX, mouseY);
         renderStatus(g, x, y);
@@ -104,31 +83,42 @@ public final class RouletteScreen extends AbstractContainerScreen<RouletteMenu> 
                 x + RouletteMenu.STAKE_X, y + RouletteMenu.INPUT_Y - 9, 96, GameScreens.MUTED);
         GameScreens.slots(g, menu, x, y);
         g.drawString(font, tr("inventory"), x + 12, y + 219, GameScreens.MUTED, false);
-        g.drawString(font, tr("protected"), x + 12, y + 275, GameScreens.GREEN, false);
     }
 
-    /** The wheel itself: pockets drawn as blades around a hub, and a ball falling into one of them. */
+    /** The wheel itself: pockets around a hub, and a ball falling into one of them. */
     private void renderWheel(GuiGraphics g, int x, int y, float partialTick) {
         int centreX = x + WHEEL_X, centreY = y + WHEEL_Y;
         double progress = spinProgress(partialTick);
         double eased = 1 - Math.pow(1 - progress, 3);
         double wheelAngle = eased * WHEEL_TURNS * 2 * Math.PI;
-        g.fill(centreX - WHEEL_RADIUS - 3, centreY - WHEEL_RADIUS - 3,
-                centreX + WHEEL_RADIUS + 3, centreY + WHEEL_RADIUS + 3, 0x00000000);
+        // A gold rim and a wooden hub, so the pockets stand out from the room.
+        ArenaShapes.disc(g, centreX, centreY, WHEEL_RADIUS + 3, GameScreens.GOLD);
+        ArenaShapes.disc(g, centreX, centreY, WHEEL_RADIUS + 1.5f, 0xff3b2a17);
+        double pocketAngle = 2 * Math.PI / RouletteWheel.POCKETS;
         for (int pocket = 0; pocket < RouletteWheel.POCKETS; pocket++) {
             int number = RouletteWheel.numberAtPocket(pocket);
-            double angle = wheelAngle + pocket * 2 * Math.PI / RouletteWheel.POCKETS;
-            blade(g, centreX, centreY, angle, colourOf(RouletteWheel.colourOf(number)));
-            // Every pocket carries its number, as on a real wheel.
-            number(g, centreX, centreY, angle + Math.PI / RouletteWheel.POCKETS, number);
+            double angle = wheelAngle + pocket * pocketAngle;
+            ArenaShapes.sector(g, centreX, centreY, HUB_RADIUS, WHEEL_RADIUS, angle, angle + pocketAngle,
+                    colourOf(RouletteWheel.colourOf(number)));
         }
-        ring(g, centreX, centreY, WHEEL_RADIUS, GameScreens.GOLD);
-        ring(g, centreX, centreY, WHEEL_RADIUS / 2, 0xff3b2a17);
+        // Thin gold frets between the pockets, as on a real wheel.
+        for (int pocket = 0; pocket < RouletteWheel.POCKETS; pocket++) {
+            double angle = wheelAngle + pocket * pocketAngle;
+            ArenaShapes.line(g, centreX + (float) Math.cos(angle) * HUB_RADIUS, centreY + (float) Math.sin(angle) * HUB_RADIUS,
+                    centreX + (float) Math.cos(angle) * WHEEL_RADIUS, centreY + (float) Math.sin(angle) * WHEEL_RADIUS,
+                    .6f, 0xb0d9a441);
+        }
+        for (int pocket = 0; pocket < RouletteWheel.POCKETS; pocket++) {
+            // Every pocket carries its number, written along the radius as on a real wheel.
+            number(g, centreX, centreY, wheelAngle + (pocket + .5) * pocketAngle, RouletteWheel.numberAtPocket(pocket));
+        }
+        ArenaShapes.disc(g, centreX, centreY, HUB_RADIUS, 0xff3b2a17);
+        ArenaShapes.disc(g, centreX, centreY, HUB_RADIUS - 3, GameScreens.HOLE);
         int shown = menu.resultNumber() >= 0 ? menu.resultNumber() : menu.lastResultNumber();
         if (shown >= 0 && menu.phase() != RouletteGame.Phase.SPINNING) {
             String label = String.valueOf(shown);
-            g.drawString(font, label, centreX - font.width(label) / 2, centreY - 4,
-                    colourOf(RouletteWheel.colourOf(shown)) | 0xff000000, false);
+            int colour = RouletteWheel.colourOf(shown) == Colour.BLACK ? GameScreens.TEXT : colourOf(RouletteWheel.colourOf(shown));
+            GameScreens.heading(g, font, Component.literal(label), centreX - font.width(label), centreY - 7, 2, colour);
         }
         if (shown >= 0) renderBall(g, centreX, centreY, wheelAngle, eased, shown);
     }
@@ -146,43 +136,30 @@ public final class RouletteScreen extends AbstractContainerScreen<RouletteMenu> 
                             double eased, int number) {
         double pocketAngle = RouletteWheel.pocketOf(number) * 2 * Math.PI / RouletteWheel.POCKETS;
         double angle = wheelAngle + pocketAngle - (1 - eased) * BALL_TURNS * 2 * Math.PI;
-        double radius = WHEEL_RADIUS * (0.95 - 0.22 * eased);
-        int ballX = centreX + (int) Math.round(Math.cos(angle) * radius);
-        int ballY = centreY + (int) Math.round(Math.sin(angle) * radius);
-        g.fill(ballX - 2, ballY - 2, ballX + 2, ballY + 2, 0xfff3f6fb);
+        // The ball runs on the rim, then drops into the inner end of its pocket.
+        double radius = WHEEL_RADIUS + 1 - (WHEEL_RADIUS + 1 - HUB_RADIUS - 4) * eased;
+        float ballX = centreX + (float) (Math.cos(angle + Math.PI / RouletteWheel.POCKETS) * radius);
+        float ballY = centreY + (float) (Math.sin(angle + Math.PI / RouletteWheel.POCKETS) * radius);
+        ArenaShapes.disc(g, ballX, ballY, 2.6f, 0xff000000);
+        ArenaShapes.disc(g, ballX, ballY, 2.2f, 0xfff3f6fb);
     }
 
-    /** The number of a pocket, written upright in the middle of its blade. */
+    /**
+     * The number of a pocket, written along its radius. A pocket is about as wide as one line of
+     * text, so the number runs along the radius at full size instead of being shrunk upright.
+     */
     private void number(GuiGraphics g, int centreX, int centreY, double angle, int number) {
         String text = String.valueOf(number);
-        int x = centreX + (int) Math.round(Math.cos(angle) * (WHEEL_RADIUS * 0.78));
-        int y = centreY + (int) Math.round(Math.sin(angle) * (WHEEL_RADIUS * 0.78));
-        g.pose().pushPose();
-        g.pose().translate(x, y, 0);
-        g.pose().scale(0.62f, 0.62f, 1f);
-        g.drawString(font, text, -font.width(text) / 2, -4, GameScreens.TEXT, false);
-        g.pose().popPose();
-    }
-
-    /** One pocket of the wheel, drawn as a rotated blade so the wheel really looks round. */
-    private void blade(GuiGraphics g, int centreX, int centreY, double angle, int colour) {
-        double half = Math.PI / RouletteWheel.POCKETS;
-        int width = Math.max(2, (int) Math.round(2 * WHEEL_RADIUS * Math.sin(half)));
-        g.pose().pushPose();
-        g.pose().translate(centreX, centreY, 0);
-        g.pose().mulPose(Axis.ZP.rotation((float) angle));
-        g.fill(WHEEL_RADIUS / 2, -width / 2, WHEEL_RADIUS, width / 2 + 1, colour);
-        g.pose().popPose();
-    }
-
-    private void ring(GuiGraphics g, int centreX, int centreY, int radius, int colour) {
-        int steps = Math.max(24, radius * 4);
-        for (int step = 0; step < steps; step++) {
-            double angle = step * 2 * Math.PI / steps;
-            int pointX = centreX + (int) Math.round(Math.cos(angle) * radius);
-            int pointY = centreY + (int) Math.round(Math.sin(angle) * radius);
-            g.fill(pointX, pointY, pointX + 1, pointY + 1, colour);
-        }
+        float middle = (HUB_RADIUS + WHEEL_RADIUS) / 2f + 1;
+        GuiPose.push(g);
+        GuiPose.translate(g, centreX + (float) Math.cos(angle) * middle, centreY + (float) Math.sin(angle) * middle);
+        // On the left half the text is turned over, so no number is ever read upside down.
+        GuiPose.rotate(g, (float) (Math.cos(angle) < 0 ? angle + Math.PI : angle));
+        // Slightly under full size: a pocket is barely wider than a line of text.
+        GuiPose.scale(g, .8f);
+        GuiPose.translate(g, -font.width(text) / 2f + .5f, -3.5f);
+        g.drawString(font, text, 0, 0, GameScreens.TEXT, false);
+        GuiPose.pop(g);
     }
 
     private static int colourOf(Colour colour) {
@@ -268,7 +245,7 @@ public final class RouletteScreen extends AbstractContainerScreen<RouletteMenu> 
             lines.add(Component.translatable("gui.gamblingitems.bet_click",
                     GameScreens.value(menu.plannedStake())));
         }
-        g.renderComponentTooltip(font, lines, mouseX, mouseY);
+        GuiPose.tooltip(g, font, lines, mouseX, mouseY);
     }
 
     private void renderStatus(GuiGraphics g, int x, int y) {

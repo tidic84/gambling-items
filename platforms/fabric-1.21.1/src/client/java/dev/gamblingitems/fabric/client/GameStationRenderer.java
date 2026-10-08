@@ -7,7 +7,6 @@ import dev.gamblingitems.fabric.block.GameStationEntity;
 import dev.gamblingitems.fabric.block.StationPanel;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -16,14 +15,55 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 /** Draws the public screen of a station. It shows what happened, never anyone's inventory. */
+//#if MC >= 1.21.9
+//$ public final class GameStationRenderer implements BlockEntityRenderer<GameStationEntity, GameStationRenderer.State> {
+//#else
 public final class GameStationRenderer implements BlockEntityRenderer<GameStationEntity> {
+//#endif
     private static final int TEXT = 0xffe8eff6, GOLD = 0xffffce69, GREEN = 0xff6cdeb7;
     private final Font font;
 
-    public GameStationRenderer(BlockEntityRendererProvider.Context context) { font = context.getFont(); }
+    public GameStationRenderer(BlockEntityRendererProvider.Context context) {
+        //#if MC >= 1.21.9
+        //$ font = context.font();
+        //#else
+        font = context.getFont();
+        //#endif
+    }
 
+    //#if MC >= 1.21.9
+    //$ /** Since 1.21.9 a frame first extracts what it draws; a station is read when it is drawn, on the same thread. */
+    //$ public static final class State extends net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState {
+    //$     GameStationEntity station;
+    //$     float partialTick;
+    //$ }
+    //$
+    //$ @Override public State createRenderState() { return new State(); }
+    //$
+    //$ @Override public void extractRenderState(GameStationEntity station, State state, float partialTick,
+    //$         net.minecraft.world.phys.Vec3 camera, net.minecraft.client.renderer.feature.ModelFeatureRenderer.CrumblingOverlay crumbling) {
+    //$     BlockEntityRenderer.super.extractRenderState(station, state, partialTick, camera, crumbling);
+    //$     state.station = station;
+    //$     state.partialTick = partialTick;
+    //$ }
+    //$
+    //$ @Override public void submit(State state, PoseStack pose, net.minecraft.client.renderer.SubmitNodeCollector collector,
+    //$         net.minecraft.client.renderer.state.CameraRenderState camera) {
+    //$     draw(state.station, state.partialTick, pose, new WorldCanvas(collector));
+    //$ }
+    //#elif MC >= 1.21.5
+    //$ @Override public void render(GameStationEntity station, float partialTick, PoseStack pose,
+    //$         net.minecraft.client.renderer.MultiBufferSource buffers, int light, int overlay, net.minecraft.world.phys.Vec3 camera) {
+    //$     draw(station, partialTick, pose, new WorldCanvas(buffers));
+    //$ }
+    //#else
     @Override public void render(GameStationEntity station, float partialTick, PoseStack pose,
-                                 MultiBufferSource buffers, int light, int overlay) {
+                                 net.minecraft.client.renderer.MultiBufferSource buffers, int light, int overlay) {
+        draw(station, partialTick, pose, new WorldCanvas(buffers));
+    }
+    //#endif
+
+    private void draw(GameStationEntity station, float partialTick, PoseStack pose, WorldCanvas buffers) {
         if (SlotCabinet.isCabinet(station)) {
             // A cabinet has no monitor: its reels are drawn on its own front.
             SlotCabinet.render(station, partialTick, pose, buffers, font);
@@ -94,9 +134,13 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
         pose.popPose();
     }
 
+    //#if MC >= 1.21.6
+    //$ @Override public boolean shouldRenderOffScreen() { return true; }
+    //#else
     @Override public boolean shouldRenderOffScreen(GameStationEntity station) { return true; }
+    //#endif
 
-    private void animation(GameStationEntity station, float partial, PoseStack pose, MultiBufferSource buffers) {
+    private void animation(GameStationEntity station, float partial, PoseStack pose, WorldCanvas buffers) {
         double now = station.getLevel().getGameTime() + partial;
         double progress = Math.max(0, Math.min(1, (now - station.startedAt) / Math.max(1, station.durationTicks)));
         switch (station.mode()) {
@@ -159,7 +203,7 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
         return Math.max(0, (int) Math.ceil((station.phaseEnd - now) / 20)) + " s";
     }
 
-    private void reel(GameStationEntity station, double progress, PoseStack pose, MultiBufferSource buffers) {
+    private void reel(GameStationEntity station, double progress, PoseStack pose, WorldCanvas buffers) {
         String[] items = station.reelItems.isEmpty() ? new String[]{"minecraft:chest"} : station.reelItems.split(",");
         int result = 0;
         for (int i = 0; i < items.length; i++) if (items[i].equals(station.resultItem)) { result = i; break; }
@@ -178,42 +222,38 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
         dot(pose, buffers, 0, -138, GOLD, 3);
     }
 
-    private void item(GameStationEntity station, String id, int x, int y, PoseStack pose, MultiBufferSource buffers) {
+    private void item(GameStationEntity station, String id, int x, int y, PoseStack pose, WorldCanvas buffers) {
         ResourceLocation key = ResourceLocation.tryParse(id);
         if (key == null || !BuiltInRegistries.ITEM.containsKey(key)) return;
         pose.pushPose();
         pose.translate(x, y, 6);
         pose.scale(24, -24, 0.1f);
-        net.minecraft.client.Minecraft.getInstance().getItemRenderer().renderStatic(
-                new ItemStack(BuiltInRegistries.ITEM.get(key)), net.minecraft.world.item.ItemDisplayContext.GUI,
-                0xf000f0, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
-                pose, buffers, station.getLevel(), 0);
+        buffers.item(pose, new ItemStack(dev.gamblingitems.fabric.Compat.item(key)), 0xf000f0, station.getLevel());
         pose.popPose();
     }
 
-    private void dot(PoseStack pose, MultiBufferSource buffers, double x, double y, int colour, int radius) {
+    private void dot(PoseStack pose, WorldCanvas buffers, double x, double y, int colour, int radius) {
         rectangle(pose, buffers, (int) x - radius, (int) y - radius, (int) x + radius, (int) y + radius, colour, 5);
     }
 
     /** Adjacent ring segments share edges instead of overlapping coloured squares. */
-    private void arc(PoseStack pose, MultiBufferSource buffers, double a, double b, float inner, float outer, int colour) {
-        var vertices = buffers.getBuffer(RenderType.gui());
-        var matrix = pose.last().pose();
-        vertices.addVertex(matrix, (float) Math.sin(a) * inner, -98 - (float) Math.cos(a) * inner, 4).setColor(colour);
-        vertices.addVertex(matrix, (float) Math.sin(b) * inner, -98 - (float) Math.cos(b) * inner, 4).setColor(colour);
-        vertices.addVertex(matrix, (float) Math.sin(b) * outer, -98 - (float) Math.cos(b) * outer, 4).setColor(colour);
-        vertices.addVertex(matrix, (float) Math.sin(a) * outer, -98 - (float) Math.cos(a) * outer, 4).setColor(colour);
+    private void arc(PoseStack pose, WorldCanvas buffers, double a, double b, float inner, float outer, int colour) {
+        buffers.quads(pose, (matrix, vertices) -> {
+        WorldCanvas.vertex(vertices, matrix, (float) Math.sin(a) * inner, -98 - (float) Math.cos(a) * inner, 4, colour);
+        WorldCanvas.vertex(vertices, matrix, (float) Math.sin(b) * inner, -98 - (float) Math.cos(b) * inner, 4, colour);
+        WorldCanvas.vertex(vertices, matrix, (float) Math.sin(b) * outer, -98 - (float) Math.cos(b) * outer, 4, colour);
+        WorldCanvas.vertex(vertices, matrix, (float) Math.sin(a) * outer, -98 - (float) Math.cos(a) * outer, 4, colour);
+        });
     }
 
-    private void label(PoseStack pose, MultiBufferSource buffers, String text, int x, int y, int colour) {
+    private void label(PoseStack pose, WorldCanvas buffers, String text, int x, int y, int colour) {
         pose.pushPose();
         pose.translate(0, 0, 8);
-        font.drawInBatch(font.plainSubstrByWidth(text, 84), x, y, colour, false,
-                pose.last().pose(), buffers, Font.DisplayMode.NORMAL, 0, 0xf000f0);
+        buffers.text(pose, font, font.plainSubstrByWidth(text, 84), x, y, colour, 0xf000f0);
         pose.popPose();
     }
 
-    private void marquee(PoseStack pose, MultiBufferSource buffers, String text, int y, int color, long ticks) {
+    private void marquee(PoseStack pose, WorldCanvas buffers, String text, int y, int color, long ticks) {
         if (font.width(text) > 348) {
             String padded = text + "   |   ";
             int offset = (int) (ticks / 5 % padded.length());
@@ -222,18 +262,18 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
         line(pose, buffers, text, y, color);
     }
 
-    private void rectangle(PoseStack pose, MultiBufferSource buffers, int x1, int y1, int x2, int y2, int color) {
+    private void rectangle(PoseStack pose, WorldCanvas buffers, int x1, int y1, int x2, int y2, int color) {
         rectangle(pose, buffers, x1, y1, x2, y2, color, 3);
     }
 
     // Separate depth planes prevent coplanar quads from fighting in world-space rendering.
-    private void rectangle(PoseStack pose, MultiBufferSource buffers, int x1, int y1, int x2, int y2, int color, float depth) {
-        var vertices = buffers.getBuffer(RenderType.gui());
-        var matrix = pose.last().pose();
-        vertices.addVertex(matrix, x1, y1, depth).setColor(color);
-        vertices.addVertex(matrix, x1, y2, depth).setColor(color);
-        vertices.addVertex(matrix, x2, y2, depth).setColor(color);
-        vertices.addVertex(matrix, x2, y1, depth).setColor(color);
+    private void rectangle(PoseStack pose, WorldCanvas buffers, int x1, int y1, int x2, int y2, int color, float depth) {
+        buffers.quads(pose, (matrix, vertices) -> {
+        WorldCanvas.vertex(vertices, matrix, x1, y1, depth, color);
+        WorldCanvas.vertex(vertices, matrix, x1, y2, depth, color);
+        WorldCanvas.vertex(vertices, matrix, x2, y2, depth, color);
+        WorldCanvas.vertex(vertices, matrix, x2, y1, depth, color);
+        });
     }
 
     private String result(GameStationEntity station) {
@@ -242,15 +282,14 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
         }
         ResourceLocation id = ResourceLocation.tryParse(station.resultItem);
         if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) return station.resultItem;
-        return font.plainSubstrByWidth(new ItemStack(BuiltInRegistries.ITEM.get(id)).getHoverName().getString(), 94);
+        return font.plainSubstrByWidth(new ItemStack(dev.gamblingitems.fabric.Compat.item(id)).getHoverName().getString(), 94);
     }
 
-    private void line(PoseStack pose, MultiBufferSource buffers, String text, int y, int color) {
+    private void line(PoseStack pose, WorldCanvas buffers, String text, int y, int color) {
         text = font.plainSubstrByWidth(text, 348);
         pose.pushPose();
         pose.translate(0, 0, 8);
-        font.drawInBatch(text, -font.width(text) / 2f, y, color, false,
-                pose.last().pose(), buffers, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+        buffers.text(pose, font, text, -font.width(text) / 2f, y, color, 0xF000F0);
         pose.popPose();
     }
 }

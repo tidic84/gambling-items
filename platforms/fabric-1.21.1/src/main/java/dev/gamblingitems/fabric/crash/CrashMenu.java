@@ -26,7 +26,7 @@ import net.minecraft.world.item.ItemStack;
 public final class CrashMenu extends AbstractContainerMenu {
     public static final int BET_BUTTON = 1000, CASH_OUT_BUTTON = 1001, COLLECT_BUTTON = 1002;
     /** Where the two rows of the wager sit, read by the screen so both sides cannot drift apart. */
-    public static final int STAKE_X = 16, ENGAGED_Y = 96, INPUT_Y = 126;
+    public static final int STAKE_X = 264, ENGAGED_Y = 92, INPUT_Y = 56;
     public static final int INVENTORY_START = 2 * CrashSettings.STAKE_SLOTS;
     public static final int STATE_NONE = 0, STATE_ENGAGED = 1, STATE_CASHED = 2, STATE_LOST = 3;
 
@@ -40,6 +40,14 @@ public final class CrashMenu extends AbstractContainerMenu {
             STAKE = 9, PAID = 11, POT = 13, WINNINGS = 15, PLANNED = 17;
     private static final int DATA_SIZE = 19;
     private final SimpleContainerData data = new SimpleContainerData(DATA_SIZE);
+
+    /** Opened from a portable item, so its window shows the tabs of the other games of that item. */
+    private boolean portable;
+
+    public CrashMenu(int syncId, Inventory inventory, CrashSetup setup, boolean portable) {
+        this(syncId, inventory, setup);
+        this.portable = portable;
+    }
 
     public CrashMenu(int syncId, Inventory inventory, CrashSetup setup) {
         this(syncId, inventory, setup, new SimpleContainer(CrashSettings.VAULT_SIZE), null);
@@ -67,13 +75,11 @@ public final class CrashMenu extends AbstractContainerMenu {
                 @Override public boolean mayPickup(Player player) { return !engagedNow(player); }
             });
         }
-        for (int row = 0; row < 3; row++)
-            for (int col = 0; col < 9; col++)
-                addSlot(new Slot(inventory, col + row * 9 + 9, 79 + col * 18, 155 + row * 18));
-        for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, col, 79 + col * 18, 213));
+        dev.gamblingitems.fabric.menu.CasinoLayout.inventory(inventory, this::addSlot);
     }
 
     public CrashSetup setup() { return setup; }
+    public boolean portable() { return portable; }
     public CrashSettings settings() { return setup.settings(); }
     public ValueCatalog catalog() { return setup.catalog(); }
     public CrashGame.Phase phase() { return CrashGame.Phase.fromId(data.get(PHASE)); }
@@ -108,6 +114,8 @@ public final class CrashMenu extends AbstractContainerMenu {
     public boolean canCashOut() { return isEngaged() && phase() == CrashGame.Phase.FLYING; }
 
     @Override public boolean clickMenuButton(Player player, int button) {
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) {
             return false;
         }
@@ -169,7 +177,7 @@ public final class CrashMenu extends AbstractContainerMenu {
                 > CrashGames.REACH * CrashGames.REACH) {
             return false;
         }
-        return dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.CRASH)
+        return dev.gamblingitems.fabric.item.TerminalItem.hasAccess(player, GameMode.CRASH)
                 || (game.level().getBlockState(pos).getBlock() instanceof GameSurface surface
                         && surface.mode() == GameMode.CRASH);
     }

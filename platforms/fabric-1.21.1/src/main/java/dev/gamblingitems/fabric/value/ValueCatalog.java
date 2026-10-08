@@ -20,7 +20,7 @@ public final class ValueCatalog {
         public Entry {
             if (value <= 0 || value > MAX_VALUE) throw new IllegalArgumentException("Invalid item value");
         }
-        public ItemStack stack() { return new ItemStack(BuiltInRegistries.ITEM.get(id)); }
+        public ItemStack stack() { return new ItemStack(dev.gamblingitems.fabric.Compat.item(id)); }
     }
 
     public ValueCatalog(List<Entry> entries) {
@@ -78,7 +78,7 @@ public final class ValueCatalog {
         @Override public void encode(RegistryFriendlyByteBuf buffer, ValueCatalog data) {
             buffer.writeVarInt(data.entries().size());
             for (Entry entry : data.entries()) {
-                buffer.writeVarInt(BuiltInRegistries.ITEM.getId(BuiltInRegistries.ITEM.get(entry.id())));
+                buffer.writeVarInt(BuiltInRegistries.ITEM.getId(dev.gamblingitems.fabric.Compat.item(entry.id())));
                 buffer.writeVarLong(entry.value());
             }
         }

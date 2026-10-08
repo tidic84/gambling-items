@@ -14,7 +14,8 @@ public final class TradeUpMenus {
     public static void open(ServerPlayer player, ContainerLevelAccess access) {
         if (player.isSpectator()) return;
         TradeUpSetup setup = ModConfig.tradeUp();
-        Platform.openMenu(player, Component.translatable("screen.gamblingitems.trade_up"), setup, TradeUpSetup.CODEC,
+        Platform.openMenu(player, Component.translatable("screen.gamblingitems.trade_up"), new dev.gamblingitems.fabric.menu.Opening<>(setup, access == ContainerLevelAccess.NULL),
+                dev.gamblingitems.fabric.menu.Opening.codec(TradeUpSetup.CODEC),
                 (id, inventory, ignored) -> new TradeUpMenu(id, inventory, setup,
                         PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.TRADE_UP), access));
     }

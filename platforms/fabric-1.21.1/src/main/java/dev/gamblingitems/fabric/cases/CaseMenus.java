@@ -14,7 +14,8 @@ public final class CaseMenus {
     public static void open(ServerPlayer player, ContainerLevelAccess access) {
         if (player.isSpectator()) return;
         CaseSetup setup = ModConfig.cases();
-        Platform.openMenu(player, Component.translatable("screen.gamblingitems.cases"), setup, CaseSetup.CODEC,
+        Platform.openMenu(player, Component.translatable("screen.gamblingitems.cases"), new dev.gamblingitems.fabric.menu.Opening<>(setup, access == ContainerLevelAccess.NULL),
+                dev.gamblingitems.fabric.menu.Opening.codec(CaseSetup.CODEC),
                 (id, inventory, ignored) -> new CaseMenu(id, inventory, setup,
                         PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.CASE_OPENING),
                         access));

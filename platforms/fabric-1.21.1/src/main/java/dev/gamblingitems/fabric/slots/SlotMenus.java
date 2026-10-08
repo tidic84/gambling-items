@@ -15,7 +15,8 @@ public final class SlotMenus {
     public static void open(ServerPlayer player, ContainerLevelAccess access) {
         if (player.isSpectator()) return;
         SlotSetup setup = ModConfig.slots();
-        Platform.openMenu(player, Component.translatable("screen.gamblingitems.slot_machine"), setup, SlotSetup.CODEC,
+        Platform.openMenu(player, Component.translatable("screen.gamblingitems.slot_machine"), new dev.gamblingitems.fabric.menu.Opening<>(setup, access == ContainerLevelAccess.NULL),
+                dev.gamblingitems.fabric.menu.Opening.codec(SlotSetup.CODEC),
                 (id, inventory, ignored) -> new SlotMenu(id, inventory, setup,
                         PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.SLOT_MACHINE),
                         access));

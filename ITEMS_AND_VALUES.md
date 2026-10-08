@@ -1,32 +1,23 @@
 # Items portables et valeurs
 
-## Un item par jeu
+## Les deux objets portables
 
-Un clic droit avec l'item ouvre directement le jeu, en main principale ou secondaire. Aucun bloc ni terminal supplémentaire n'est nécessaire. Les items se trouvent dans l'onglet créatif des blocs fonctionnels et possèdent chacun une recette.
+Un clic droit, en main principale ou secondaire, ouvre les jeux de l'objet en onglets. Chaque objet rouvre le dernier jeu utilisé, et changer d'onglet garde le curseur en place.
 
-| Jeu | Identifiant | Ingrédient central |
+| Objet | Identifiant | Jeux |
 | --- | --- | --- |
-| Upgrader | `gamblingitems:upgrader_item` | Diamant |
-| Trade Up | `gamblingitems:trade_up_item` | Enclume |
-| Caisses | `gamblingitems:case_opening_item` | Coffre |
-| Crash | `gamblingitems:crash_item` | Fusée de feu d'artifice |
-| Roulette | `gamblingitems:roulette_item` | Boussole |
-| Blackjack | `gamblingitems:blackjack_item` | Papier |
-| Battles de caisses | `gamblingitems:case_battle_item` | Épée en fer |
-| Bingo | `gamblingitems:bingo_item` | Boule de slime |
-| Machine à sous | `gamblingitems:slot_machine_item` | Lingot d'or |
+| Terminal d'échange | `gamblingitems:terminal` | Trade Up, Upgrader, Caisses, Battles de caisses |
+| Casino de poche | `gamblingitems:pocket_casino` | Crash, roulette, blackjack, bingo, machine à sous |
 
-La recette commune utilise sept lingots de fer (`F`), une redstone (`R`) et l'ingrédient du jeu (`J`) :
+Le casino de poche rejoint la manche d'une table proche, ou en ouvre une là où se trouve le joueur. Ouverts depuis leur bloc (borne, table, machine), les jeux s'affichent seuls, sans onglets.
+
+Recette du casino de poche : lingots d'or (`G`), un diamant (`D`), deux redstones (`R`) et un bloc de redstone (`C`).
 
 ```text
-F R F
-F J F
-F F F
+G D G
+R C R
+G G G
 ```
-
-Le terminal conserve l'accès à tous les jeux. Les bornes et les items utilisent les mêmes coffres de gains persistants par joueur et par jeu. Pour garder une interface portable ouverte, conserver l'item correspondant ou le terminal dans son inventaire.
-
-Crash, roulette, bingo et battles rejoignent une table du même jeu située à 64 blocs maximum, dans la même dimension. S'il n'y en a aucune, l'item crée une table à l'emplacement du joueur, sans poser de bloc. Les joueurs proches peuvent la rejoindre avec leur propre item. Les battles demandent toujours plusieurs participants. La table conserve son emplacement jusqu'à la fin de la session ; une manche engagée continue même si son interface est fermée.
 
 ## Choisir la cible de l'Upgrader
 

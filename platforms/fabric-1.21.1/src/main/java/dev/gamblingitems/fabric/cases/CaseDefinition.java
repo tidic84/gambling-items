@@ -33,7 +33,7 @@ public record CaseDefinition(String id, String name, ResourceLocation priceItem,
         }
     }
 
-    public ItemStack priceStack() { return new ItemStack(BuiltInRegistries.ITEM.get(priceItem), priceCount); }
+    public ItemStack priceStack() { return new ItemStack(dev.gamblingitems.fabric.Compat.item(priceItem), priceCount); }
 
     /**
      * How this case is called on a screen: translated when it is one of the cases this mod ships,
@@ -53,7 +53,7 @@ public record CaseDefinition(String id, String name, ResourceLocation priceItem,
     /** True for a stack that pays for one opening; a partial stack is refused, never partly taken. */
     public boolean pays(ItemStack stack) {
         return !stack.isEmpty() && stack.getCount() >= priceCount
-                && ItemStack.isSameItemSameComponents(stack, new ItemStack(BuiltInRegistries.ITEM.get(priceItem)));
+                && ItemStack.isSameItemSameComponents(stack, new ItemStack(dev.gamblingitems.fabric.Compat.item(priceItem)));
     }
 
     public int[] weightArray() {

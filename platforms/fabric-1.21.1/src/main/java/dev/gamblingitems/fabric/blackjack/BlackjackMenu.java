@@ -26,7 +26,7 @@ import net.minecraft.world.item.ItemStack;
 public final class BlackjackMenu extends AbstractContainerMenu {
     public static final int DEAL_BUTTON = 1000, HIT_BUTTON = 1001, STAND_BUTTON = 1002,
             DOUBLE_BUTTON = 1003, COLLECT_BUTTON = 1004;
-    public static final int STAKE_X = 16, ENGAGED_Y = 118, INPUT_Y = 148;
+    public static final int STAKE_X = 264, ENGAGED_Y = 92, INPUT_Y = 56;
     public static final int INVENTORY_START = 2 * BlackjackSettings.STAKE_SLOTS;
     // Small numbers first, then the values, which each need two slots to survive the packet.
     private static final int PHASE = 0, OUTCOME = 1, PAYABLE = 2, HAND_TOTAL = 3, DEALER_TOTAL = 4,
@@ -40,6 +40,14 @@ public final class BlackjackMenu extends AbstractContainerMenu {
     private final BlackjackTable table;
     private final ContainerLevelAccess access;
     private final SimpleContainerData data = new SimpleContainerData(DATA_SIZE);
+
+    /** Opened from a portable item, so its window shows the tabs of the other games of that item. */
+    private boolean portable;
+
+    public BlackjackMenu(int syncId, Inventory inventory, BlackjackSetup setup, boolean portable) {
+        this(syncId, inventory, setup);
+        this.portable = portable;
+    }
 
     public BlackjackMenu(int syncId, Inventory inventory, BlackjackSetup setup) {
         this(syncId, inventory, setup, new SimpleContainer(BlackjackSettings.VAULT_SIZE), null,
@@ -68,13 +76,11 @@ public final class BlackjackMenu extends AbstractContainerMenu {
                 @Override public boolean mayPickup(Player player) { return !isPlaying(); }
             });
         }
-        for (int row = 0; row < 3; row++)
-            for (int col = 0; col < 9; col++)
-                addSlot(new Slot(inventory, col + row * 9 + 9, 99 + col * 18, 177 + row * 18));
-        for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, col, 99 + col * 18, 235));
+        dev.gamblingitems.fabric.menu.CasinoLayout.inventory(inventory, this::addSlot);
     }
 
     public BlackjackSetup setup() { return setup; }
+    public boolean portable() { return portable; }
     public BlackjackSettings settings() { return setup.settings(); }
     public ValueCatalog catalog() { return setup.catalog(); }
     public BlackjackTable.Phase phase() { return BlackjackTable.Phase.fromId(data.get(PHASE)); }
@@ -119,6 +125,8 @@ public final class BlackjackMenu extends AbstractContainerMenu {
     }
 
     @Override public boolean clickMenuButton(Player player, int button) {
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) {
             return false;
         }
@@ -209,7 +217,7 @@ public final class BlackjackMenu extends AbstractContainerMenu {
                 (level, pos) -> level.getBlockState(pos).getBlock() instanceof GameSurface surface
                         && surface.mode() == GameMode.BLACKJACK
                         && player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64,
-                dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.BLACKJACK));
+                dev.gamblingitems.fabric.item.TerminalItem.hasAccess(player, GameMode.BLACKJACK));
     }
 
     @Override public void clicked(int slot, int button, ClickType type, Player player) {

@@ -1,0 +1,47 @@
+// Shared by every port project: the version, the generated sources and the Java toolchain of the target.
+// Builds live on the Linux file system: decompiling Minecraft on a Windows mount is several times slower.
+layout.buildDirectory = new File(System.getProperty('user.home'), ".cache/gambling-items-ports/${rootProject.name}")
+def shared = new Properties()
+file('../../gradle.properties').withInputStream { shared.load(it) }
+version = shared.getProperty('version')
+group = 'dev.gamblingitems'
+
+project.ext.mc = providers.gradleProperty('minecraft_version').getOrElse('1.21.1')
+project.ext.target = new groovy.json.JsonSlurper().parse(file('../versions.json')).find { it.minecraft == project.ext.mc }
+assert project.ext.target != null : "Minecraft ${project.ext.mc} is not in ports/versions.json"
+project.ext.javaVersion = project.ext.target.java as int
+
+base { archivesName = "gambling-items-${project.ext.mc}-${project.ext.loader}" }
+repositories { mavenCentral() }
+java { toolchain.languageVersion = JavaLanguageVersion.of(project.ext.javaVersion) }
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = project.ext.javaVersion
+}
+
+def generated = layout.buildDirectory.dir('generated/port').get().asFile
+sourceSets.main {
+    java.srcDirs = [new File(generated, 'java')]
+    resources.srcDirs = [new File(generated, 'resources')]
+}
+def python = providers.gradleProperty('python').getOrElse('python3')
+tasks.register('generatePort', Exec) {
+    inputs.dir file('../../core/src/main/java')
+    inputs.dir file('../../platforms/fabric-1.21.1/src/main')
+    inputs.dir file('../../platforms/fabric-1.21.1/src/client')
+    inputs.dir file('../../platforms/neoforge-1.21.1/src/main')
+    inputs.file file('../../tools/port.py')
+    inputs.file file('../versions.json')
+    inputs.property('minecraft', project.ext.mc)
+    outputs.dir generated
+    workingDir file('../..')
+    commandLine python, 'tools/port.py', project.ext.loader, project.ext.mc,
+            new File(generated, 'java').absolutePath, new File(generated, 'resources').absolutePath
+}
+tasks.named('compileJava') { dependsOn 'generatePort' }
+tasks.named('processResources') {
+    dependsOn 'generatePort'
+    inputs.property('version', version)
+    filesMatching(['fabric.mod.json', 'META-INF/*.toml']) { expand(version: version) }
+}
+tasks.named('jar') { from('../../LICENSE') }

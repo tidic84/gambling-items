@@ -22,7 +22,8 @@ public final class CrashMenus {
         CrashGames.join(round, player.getUUID());
         // The round keeps the settings it started with, whatever the configuration says now.
         CrashSetup setup = round.setup();
-        Platform.openMenu(player, Component.translatable("screen.gamblingitems.crash"), setup, CrashSetup.CODEC,
+        Platform.openMenu(player, Component.translatable("screen.gamblingitems.crash"), new dev.gamblingitems.fabric.menu.Opening<>(setup, access == ContainerLevelAccess.NULL),
+                dev.gamblingitems.fabric.menu.Opening.codec(CrashSetup.CODEC),
                 (id, inventory, ignored) -> new CrashMenu(id, inventory, setup,
                         PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.CRASH), round));
     }

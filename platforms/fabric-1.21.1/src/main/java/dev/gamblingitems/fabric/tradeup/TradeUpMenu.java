@@ -27,6 +27,8 @@ public final class TradeUpMenu extends AbstractContainerMenu {
     public static final int ANIMATION_TICKS = 70;
     public static final int INPUT_SLOTS = 5;
     public static final int REWARD_SLOT = INPUT_SLOTS;
+    public static final int INPUT_X = 22, INPUT_Y = 64, INPUT_GAP = 30;
+    public static final int REWARD_X = 206, REWARD_Y = 64;
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final Player owner;
@@ -34,12 +36,15 @@ public final class TradeUpMenu extends AbstractContainerMenu {
     private final ContainerLevelAccess access;
     private final TradeUpSetup setup;
     private final IntSupplier draw;
+    private final boolean portable;
     // animation ticks, won reward index plus one, cooldown ticks
     private final SimpleContainerData data = new SimpleContainerData(3);
     private long animationEnd;
 
-    public TradeUpMenu(int syncId, Inventory inventory, TradeUpSetup setup) {
-        this(syncId, inventory, setup, new SimpleContainer(REWARD_SLOT + 1), ContainerLevelAccess.NULL);
+    public TradeUpMenu(int syncId, Inventory inventory, TradeUpSetup setup) { this(syncId, inventory, setup, false); }
+
+    public TradeUpMenu(int syncId, Inventory inventory, TradeUpSetup setup, boolean portable) {
+        this(syncId, inventory, setup, new SimpleContainer(REWARD_SLOT + 1), ContainerLevelAccess.NULL, () -> 0, portable);
     }
 
     public TradeUpMenu(int syncId, Inventory inventory, TradeUpSetup setup,
@@ -49,15 +54,21 @@ public final class TradeUpMenu extends AbstractContainerMenu {
 
     TradeUpMenu(int syncId, Inventory inventory, TradeUpSetup setup,
                 Container vault, ContainerLevelAccess access, IntSupplier draw) {
+        this(syncId, inventory, setup, vault, access, draw, access == ContainerLevelAccess.NULL);
+    }
+
+    private TradeUpMenu(int syncId, Inventory inventory, TradeUpSetup setup,
+                Container vault, ContainerLevelAccess access, IntSupplier draw, boolean portable) {
         super(ModContent.TRADE_UP_MENU, syncId);
         this.owner = inventory.player;
         this.setup = setup;
         this.vault = vault;
         this.access = access;
         this.draw = draw;
+        this.portable = portable;
         addDataSlots(data);
         for (int slot = 0; slot < INPUT_SLOTS; slot++) {
-            addSlot(new Slot(vault, slot, 20 + slot * 22, 88) {
+            addSlot(new Slot(vault, slot, INPUT_X + slot * INPUT_GAP, INPUT_Y) {
                 @Override public boolean mayPlace(ItemStack stack) {
                     return !isAnimating() && setup.catalog().unitValue(stack) > 0;
                 }
@@ -66,18 +77,17 @@ public final class TradeUpMenu extends AbstractContainerMenu {
                 @Override public int getMaxStackSize() { return setup.settings().requiredUnits(); }
             });
         }
-        addSlot(new Slot(vault, REWARD_SLOT, 146, 88) {
+        addSlot(new Slot(vault, REWARD_SLOT, REWARD_X, REWARD_Y) {
             @Override public boolean mayPlace(ItemStack stack) { return false; }
             @Override public boolean mayPickup(Player player) { return !isAnimating(); }
             @Override public boolean isActive() { return !isAnimating(); }
         });
-        for (int row = 0; row < 3; row++)
-            for (int col = 0; col < 9; col++)
-                addSlot(new Slot(inventory, col + row * 9 + 9, 79 + col * 18, 155 + row * 18));
-        for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, col, 79 + col * 18, 213));
+        dev.gamblingitems.fabric.menu.CasinoLayout.inventory(inventory, this::addSlot);
     }
 
     public TradeUpSetup setup() { return setup; }
+    /** Opened from a portable item, so its window shows the tabs of the other games of that item. */
+    public boolean portable() { return portable; }
     public ValueCatalog catalog() { return setup.catalog(); }
     public int remainingTicks() { return data.get(0); }
     public boolean isAnimating() { return remainingTicks() > 0; }
@@ -104,9 +114,11 @@ public final class TradeUpMenu extends AbstractContainerMenu {
 
     @Override public boolean clickMenuButton(Player player, int button) {
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) return false;
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (access.evaluate((level, pos) -> level.getBlockEntity(pos) instanceof GameStationEntity station
                 && station.animating(), false)) return false;
-        if (button != SPIN_BUTTON || !canSpin() || player.getCooldowns().isOnCooldown(ModContent.TERMINAL)) return false;
+        if (button != SPIN_BUTTON || !canSpin() || dev.gamblingitems.fabric.Compat.coolingDown(player)) return false;
         TradeUpTable table = table().orElse(null);
         if (table == null) return false;
         // Resolve on the server once. The reel cannot change or repeat this trade.
@@ -118,7 +130,7 @@ public final class TradeUpMenu extends AbstractContainerMenu {
         animationEnd = player.level().getGameTime() + ANIMATION_TICKS;
         data.set(0, ANIMATION_TICKS);
         data.set(2, ANIMATION_TICKS);
-        player.getCooldowns().addCooldown(ModContent.TERMINAL, ANIMATION_TICKS);
+        dev.gamblingitems.fabric.Compat.coolDown(player, ANIMATION_TICKS);
         access.execute((level, pos) -> {
             if (level.getBlockEntity(pos) instanceof GameStationEntity station) {
                 station.reelItems = table.rewards().stream().map(entry -> entry.id().toString())
@@ -135,7 +147,7 @@ public final class TradeUpMenu extends AbstractContainerMenu {
     @Override public void broadcastChanges() {
         if (!owner.level().isClientSide) {
             data.set(0, (int) Math.max(0, Math.min(ANIMATION_TICKS, animationEnd - owner.level().getGameTime())));
-            data.set(2, (int) Math.ceil(owner.getCooldowns().getCooldownPercent(ModContent.TERMINAL, 0) * ANIMATION_TICKS));
+            data.set(2, (int) Math.ceil(dev.gamblingitems.fabric.Compat.cooldown(owner) * ANIMATION_TICKS));
         }
         super.broadcastChanges();
     }
@@ -146,7 +158,7 @@ public final class TradeUpMenu extends AbstractContainerMenu {
                 (level, pos) -> level.getBlockState(pos).getBlock() instanceof GameStationBlock station
                         && station.mode() == GameMode.TRADE_UP
                         && player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64,
-                dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.TRADE_UP));
+                dev.gamblingitems.fabric.item.TerminalItem.hasAccess(player, GameMode.TRADE_UP));
     }
 
     @Override public void clicked(int slot, int button, ClickType type, Player player) {

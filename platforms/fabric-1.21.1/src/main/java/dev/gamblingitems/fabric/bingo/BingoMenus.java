@@ -25,13 +25,14 @@ public final class BingoMenus {
             game = BingoGames.host(level, player.blockPosition());
         }
         if (game == null) {
-            player.displayClientMessage(Component.translatable("gui.gamblingitems.no_bingo_table"), true);
+            dev.gamblingitems.fabric.Compat.message(player, Component.translatable("gui.gamblingitems.no_bingo_table"), true);
             return;
         }
         BingoGame round = game;
         BingoGames.join(round, player.getUUID());
         BingoSetup setup = round.setup();
-        Platform.openMenu(player, Component.translatable("screen.gamblingitems.bingo"), setup, BingoSetup.CODEC,
+        Platform.openMenu(player, Component.translatable("screen.gamblingitems.bingo"), new dev.gamblingitems.fabric.menu.Opening<>(setup, access == ContainerLevelAccess.NULL),
+                dev.gamblingitems.fabric.menu.Opening.codec(BingoSetup.CODEC),
                 (id, inventory, ignored) -> new BingoMenu(id, inventory, setup,
                         PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.BINGO), round));
     }

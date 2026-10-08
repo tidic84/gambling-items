@@ -1,62 +1,51 @@
 package dev.gamblingitems.fabric.client;
 
+import dev.gamblingitems.core.GameMode;
 import dev.gamblingitems.core.crash.CrashRules;
 import dev.gamblingitems.fabric.crash.CrashGame;
 import dev.gamblingitems.fabric.crash.CrashMenu;
+import dev.gamblingitems.fabric.menu.CasinoLayout;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
 
 /**
  * A shared round seen from one seat: the curve everybody watches, and this player's own bet.
  * The drawing only replays what the server already decided; it never advances the flight itself.
  */
-public final class CrashScreen extends AbstractContainerScreen<CrashMenu> {
-    private static final int GRAPH_LEFT = 12, GRAPH_RIGHT = 170, GRAPH_TOP = 36, GRAPH_BOTTOM = 96;
+public final class CrashScreen extends CasinoScreen<CrashMenu> {
+    private static final int GX = CasinoLayout.GAME_X, GY = CasinoLayout.CONTENT_Y, GW = CasinoLayout.GAME_WIDTH;
+    private static final int GH = CasinoLayout.CONTENT_HEIGHT;
+    private static final int SX = CasinoLayout.SIDE_X, SW = CasinoLayout.SIDE_WIDTH;
     private static final int SHAKE_TICKS = 14, BURST_TICKS = 20, BURST_RAYS = 10;
     private Button bet, cashOut, collect;
     /** Flight tick of the previous client tick, so the curve can be drawn between two server ticks. */
     private int previousTick, currentTick;
+    private int lastState = -1;
 
     public CrashScreen(CrashMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        imageWidth = 320;
-        imageHeight = 238;
     }
 
-    /** Every game explains itself, in the language of the player. */
-    private final GameRules rules = new GameRules("crash");
-
-    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // While the rules are up they take every click, so nothing is played by accident.
-        if (rules.open()) {
-            rules.close();
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
+    @Override protected GameMode mode() { return GameMode.CRASH; }
+    @Override protected boolean portable() { return menu.portable(); }
 
     @Override protected void init() {
         super.init();
-        addRenderableWidget(rules.button(leftPos + imageWidth - 30, topPos + 6));
-        bet = addRenderableWidget(Button.builder(tr("bet"), button -> click(CrashMenu.BET_BUTTON))
-                .bounds(leftPos + 182, topPos + 104, 60, 18).build());
-        cashOut = addRenderableWidget(Button.builder(tr("cash_out"), button -> click(CrashMenu.CASH_OUT_BUTTON))
-                .bounds(leftPos + 246, topPos + 104, 60, 18).build());
+        int bx = leftPos + CasinoLayout.SLIP_X + 8, by = topPos + CasinoLayout.SLIP_Y + 52, bw = CasinoLayout.SLIP_WIDTH - 16;
+        bet = addRenderableWidget(CasinoButton.primary(tr("bet"), button -> send(CrashMenu.BET_BUTTON))
+                .bounds(bx, by, bw, 20).build());
+        cashOut = addRenderableWidget(CasinoButton.primary(tr("cash_out"), button -> send(CrashMenu.CASH_OUT_BUTTON))
+                .bounds(bx, by, bw, 20).build());
         cashOut.setTooltip(Tooltip.create(tr("cash_out_warning")));
-        collect = addRenderableWidget(Button.builder(tr("collect_winnings"), button -> click(CrashMenu.COLLECT_BUTTON))
-                .bounds(leftPos + 182, topPos + 126, 124, 18).build());
+        collect = addRenderableWidget(CasinoButton.builder(tr("collect_short"), button -> send(CrashMenu.COLLECT_BUTTON))
+                .bounds(leftPos + SX + 6, topPos + GY + GH - 22, SW - 12, 16).build());
         collect.setTooltip(Tooltip.create(tr("collect_help")));
+        refreshActions();
     }
-
-    private void click(int button) {
-        if (minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId, button);
-    }
-
-    private static Component tr(String key) { return Component.translatable("gui.gamblingitems." + key); }
 
     @Override protected void containerTick() {
         super.containerTick();
@@ -66,179 +55,158 @@ public final class CrashScreen extends AbstractContainerScreen<CrashMenu> {
             previousTick = 0;
             currentTick = 0;
         }
-        bet.active = menu.canBet();
+        if (lastState == CrashMenu.STATE_ENGAGED && menu.state() == CrashMenu.STATE_CASHED) CasinoSounds.win();
+        if (lastState == CrashMenu.STATE_ENGAGED && menu.state() == CrashMenu.STATE_LOST) CasinoSounds.lose();
+        lastState = menu.state();
+        refreshActions();
         bet.setMessage(menu.plannedStake() > 0
                 ? Component.translatable("gui.gamblingitems.bet_amount", GameScreens.value(menu.plannedStake()))
                 : tr("bet"));
         bet.setTooltip(Tooltip.create(menu.plannedStake() > 0 && !menu.isPayable()
                 ? tr("bet_unpayable")
-                : Component.translatable("gui.gamblingitems.bet_warning",
-                        GameScreens.value(menu.settings().minimumStake()))));
+                : Component.translatable("gui.gamblingitems.bet_warning", GameScreens.value(menu.settings().minimumStake()))));
+    }
+
+    private void refreshActions() {
+        bet.active = menu.canBet();
         cashOut.active = menu.canCashOut();
+        cashOut.visible = menu.isEngaged() && menu.phase() == CrashGame.Phase.FLYING;
+        bet.visible = !cashOut.visible;
+        cashOut.setMessage(Component.translatable("gui.gamblingitems.arena.cash_out_at",
+                GameScreens.value(menu.stake() * menu.multiplier() / 100)));
         collect.active = menu.winnings() > 0;
+        collect.setMessage(menu.winnings() > 0
+                ? Component.translatable("gui.gamblingitems.collect_amount", GameScreens.value(menu.winnings()))
+                : tr("collect_short"));
     }
 
-    @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        if (rules.open()) {
-            rules.render(graphics, font, width, height);
-            return;
-        }
-        renderTooltip(graphics, mouseX, mouseY);
-    }
-
-    @Override protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
+    @Override protected void renderGame(GuiGraphics g, float tick, int mouseX, int mouseY) {
         int x = leftPos, y = topPos;
-        g.fill(x, y, x + imageWidth, y + imageHeight, GameScreens.BORDER);
-        g.fill(x + 1, y + 1, x + imageWidth - 1, y + imageHeight - 1, GameScreens.INK);
-        g.fill(x + 1, y + 1, x + imageWidth - 1, y + 3, GameScreens.GOLD);
-        g.drawString(font, title, x + 12, y + 11, GameScreens.TEXT, false);
-        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.crash_subtitle",
-                GameScreens.value(menu.settings().minimumStake())), x + 12, y + 22, imageWidth - 24,
-                GameScreens.MUTED);
-        g.fill(x + 8, y + 32, x + 174, y + 150, GameScreens.PANEL);
-        g.fill(x + 178, y + 32, x + 310, y + 150, GameScreens.PANEL);
-        renderFlight(g, x, y, partialTick);
-        g.drawString(font, tr("engaged"), x + CrashMenu.STAKE_X, y + CrashMenu.ENGAGED_Y - 9,
-                GameScreens.MUTED, false);
-        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.bet_row",
-                        GameScreens.value(menu.plannedStake())),
-                x + CrashMenu.STAKE_X, y + CrashMenu.INPUT_Y - 9, 150, GameScreens.MUTED);
-        // Every slot frame is drawn where the menu says the slot is.
-        GameScreens.slots(g, menu, x, y);
-        renderSeat(g, x, y);
-        renderTable(g, x, y);
-        g.drawString(font, tr("inventory"), x + 12, y + 161, GameScreens.MUTED, false);
-        g.drawString(font, tr("shift_click"), x + 12, y + 178, GameScreens.MUTED, false);
-        g.drawString(font, tr("protected"), x + 12, y + 217, GameScreens.GREEN, false);
+        GameScreens.card(g, x + GX, y + GY, GW, GH);
+        renderFlight(g, x, y, tick);
+
+        GameScreens.card(g, x + SX, y + GY, SW, GH);
+        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.bet_row", GameScreens.value(menu.plannedStake())),
+                x + CrashMenu.STAKE_X, y + CrashMenu.INPUT_Y - 11, SW - 16, GameScreens.MUTED);
+        GameScreens.label(g, font, tr("engaged"), x + CrashMenu.STAKE_X, y + CrashMenu.ENGAGED_Y - 11, SW - 16);
+        for (Slot slot : menu.slots)
+            if (!(slot.container instanceof Inventory)) GameScreens.slot(g, x + slot.x, y + slot.y);
+
+        slip(g);
+        int sx = x + CasinoLayout.SLIP_X + 8, sy = y + CasinoLayout.SLIP_Y + 8;
+        renderSeat(g, sx, sy);
+        GameScreens.label(g, font, tr("crash_table_label"), sx + 100, sy, 70);
+        g.drawString(font, Component.translatable("gui.gamblingitems.crash_players", menu.participants()), sx + 100, sy + 12, GameScreens.TEXT, false);
+        g.drawString(font, Component.translatable("gui.gamblingitems.crash_pot", GameScreens.value(menu.pot())), sx + 100, sy + 24, GameScreens.GOLD, false);
     }
 
     /** Ticks elapsed since the crash, used by the shake and the burst only. */
     private int sinceCrash() {
-        return menu.phase() == CrashGame.Phase.CRASHED
-                ? menu.settings().resultTicks() - menu.phaseTicks() : -1;
+        return menu.phase() == CrashGame.Phase.CRASHED ? menu.settings().resultTicks() - menu.phaseTicks() : -1;
     }
 
-    private void renderFlight(GuiGraphics g, int x, int y, float partialTick) {
+    private void renderFlight(GuiGraphics g, int x, int y, float tick) {
         CrashGame.Phase phase = menu.phase();
         int crashed = sinceCrash();
         int shake = crashed >= 0 && crashed < SHAKE_TICKS
                 ? (int) Math.round(Math.sin(crashed * 1.7) * (SHAKE_TICKS - crashed) / 4.0) : 0;
-        int left = x + GRAPH_LEFT + shake, right = x + GRAPH_RIGHT + shake;
-        int top = y + GRAPH_TOP, bottom = y + GRAPH_BOTTOM;
-        g.fill(left, top, right, bottom, GameScreens.HOLE);
-        g.enableScissor(left + 1, top + 1, right - 1, bottom - 1);
+        int left = x + GX + 6 + shake, right = x + GX + GW - 6 + shake;
+        int top = y + GY + 6, bottom = y + GY + GH - 18;
+        GameScreens.rounded(g, left, top, right - left, bottom - top, GameScreens.HOLE);
+        for (int row = 1; row <= 3; row++) g.fill(left + 4, top + row * 21, right - 4, top + row * 21 + 1, 0xff12283a);
+        boolean live = phase == CrashGame.Phase.FLYING || phase == CrashGame.Phase.CRASHED;
         int colour = switch (phase) {
             case FLYING -> GameScreens.GREEN;
             case CRASHED -> GameScreens.RED;
-            default -> GameScreens.MUTED;
+            default -> GameScreens.DIM;
         };
-        if (phase == CrashGame.Phase.FLYING || phase == CrashGame.Phase.CRASHED) {
-            renderCurve(g, left, right, top, bottom, colour, partialTick, crashed);
-        } else {
-            g.drawCenteredString(font, tr("crash_idle_curve"), (left + right) / 2, (top + bottom) / 2 - 4,
-                    GameScreens.MUTED);
-        }
+        g.enableScissor(left + 1, top + 1, right - 1, bottom - 1);
+        if (live) renderCurve(g, left, right, top, bottom, colour, tick, crashed);
         g.disableScissor();
-        String value = phase == CrashGame.Phase.FLYING || phase == CrashGame.Phase.CRASHED
-                ? GameScreens.multiplier(menu.multiplier()) : GameScreens.multiplier(CrashRules.START);
-        g.pose().pushPose();
-        g.pose().translate((left + right) / 2f, top + 5f, 0);
-        g.pose().scale(2f, 2f, 1f);
-        g.drawString(font, value, -font.width(value) / 2, 0, colour, false);
-        g.pose().popPose();
-        g.fill(left, top, right, top + 1, GameScreens.BORDER);
-        g.fill(left, bottom - 1, right, bottom, GameScreens.BORDER);
+        String value = live ? GameScreens.multiplier(menu.multiplier()) : GameScreens.multiplier(CrashRules.START);
+        float scale = 3;
+        int width = Math.round(font.width(value) * scale);
+        GameScreens.heading(g, font, Component.literal(value), (left + right - width) / 2, top + 22, scale,
+                live ? colour : GameScreens.TEXT);
+        if (phase == CrashGame.Phase.BETTING) {
+            double share = (double) menu.phaseTicks() / Math.max(1, menu.settings().bettingTicks());
+            GameScreens.bar(g, (left + right) / 2 - 50, top + 54, 100, 4, share, GameScreens.GOLD);
+        }
+        if (menu.lastCrashPoint() > 0) {
+            String last = GameScreens.multiplier(menu.lastCrashPoint());
+            int pill = font.width(last) + 8;
+            GameScreens.rounded(g, right - pill - 4, top + 4, pill, 12, GameScreens.RAISED);
+            g.drawString(font, last, right - pill, top + 6, GameScreens.RED, false);
+        }
         Component status = switch (phase) {
             case WAITING -> tr("crash_waiting");
             case BETTING -> Component.translatable("gui.gamblingitems.crash_betting", (menu.phaseTicks() + 19) / 20);
             case FLYING -> tr("crash_flying");
-            case CRASHED -> Component.translatable("gui.gamblingitems.crash_crashed_at",
-                    GameScreens.multiplier(menu.multiplier()));
+            case CRASHED -> Component.translatable("gui.gamblingitems.crash_crashed_at", GameScreens.multiplier(menu.multiplier()));
         };
-        g.drawCenteredString(font, status, x + 91, y + GRAPH_BOTTOM + 3, colour);
+        GameScreens.fitted(g, font, status, x + GX + 8, y + GY + GH - 13, GW - 16, live ? colour : GameScreens.MUTED);
     }
 
     /**
      * The climb, drawn from the same rule the server used: one point per pixel column, on a
      * logarithmic scale that rescales itself so the head of the curve always stays visible.
      */
-    private void renderCurve(GuiGraphics g, int left, int right, int top, int bottom,
-                             int colour, float partialTick, int crashed) {
+    private void renderCurve(GuiGraphics g, int left, int right, int top, int bottom, int colour, float tick, int crashed) {
         CrashRules rules = menu.settings().rules();
-        double head = crashed >= 0 ? currentTick : previousTick + (currentTick - previousTick) * partialTick;
+        double head = crashed >= 0 ? currentTick : previousTick + (currentTick - previousTick) * tick;
         double ceiling = Math.max(2 * CrashRules.START, menu.multiplier() * 1.15);
-        double span = StrictMath.log(ceiling / CrashRules.START);
-        int width = right - left - 2;
+        double span = ceiling - CrashRules.START;
+        int width = right - left - 8;
         int height = bottom - top - 16;
-        int baseline = bottom - 2;
-        int previousY = baseline;
-        for (int column = 0; column <= width; column++) {
-            double tick = head * column / Math.max(1, width);
-            double value = CrashRules.START * StrictMath.pow(rules.growthPerTick().doubleValue(), tick);
-            double share = Math.min(1, StrictMath.log(value / CrashRules.START) / span);
-            int pointX = left + 1 + column;
-            int pointY = baseline - (int) Math.round(share * height);
-            // The area under the curve, then the curve itself joined to the previous column.
-            g.fill(pointX, pointY, pointX + 1, baseline, (colour & 0x00ffffff) | 0x30000000);
-            g.fill(pointX, Math.min(pointY, previousY), pointX + 1, Math.max(pointY, previousY) + 2, colour);
+        int baseline = bottom - 4;
+        float previousX = left + 4, previousY = baseline;
+        for (int column = 0; column <= width; column += 2) {
+            double at = head * column / Math.max(1, width);
+            double value = CrashRules.START * StrictMath.pow(rules.growthPerTick().doubleValue(), at);
+            double share = Math.min(1, (value - CrashRules.START) / span);
+            float pointX = left + 4 + column;
+            float pointY = baseline - (float) (share * height);
+            g.fill((int) pointX, (int) pointY, (int) pointX + 2, baseline, (colour & 0x00ffffff) | 0x28000000);
+            ArenaShapes.line(g, previousX, previousY, pointX, pointY, 2.5f, colour);
+            previousX = pointX;
             previousY = pointY;
         }
-        int headX = left + 1 + width;
-        int headY = previousY;
         if (crashed < 0) {
-            g.fill(headX - 2, headY - 2, headX + 3, headY + 3, colour);
+            ArenaShapes.rounded(g, previousX - 3, previousY - 3, 6, 6, 3, GameScreens.TEXT);
             return;
         }
         // The flight ended here: a short burst marks the exact point, then only the curve remains.
         if (crashed >= BURST_TICKS) return;
         double radius = 3 + crashed * 1.6;
+        int fade = (int) (0xff * (1 - (double) crashed / BURST_TICKS)) << 24;
         for (int ray = 0; ray < BURST_RAYS; ray++) {
             double angle = ray * 2 * Math.PI / BURST_RAYS;
-            int sparkX = headX + (int) Math.round(Math.cos(angle) * radius);
-            int sparkY = headY + (int) Math.round(Math.sin(angle) * radius);
-            int fade = (int) (0xff * (1 - (double) crashed / BURST_TICKS)) << 24;
-            g.fill(sparkX - 1, sparkY - 1, sparkX + 2, sparkY + 2, (GameScreens.RED & 0x00ffffff) | fade);
+            float sparkX = previousX + (float) (Math.cos(angle) * radius);
+            float sparkY = previousY + (float) (Math.sin(angle) * radius);
+            ArenaShapes.rounded(g, sparkX - 1.5f, sparkY - 1.5f, 3, 3, 1.5f, (GameScreens.RED & 0x00ffffff) | fade);
         }
     }
 
-    private void renderTable(GuiGraphics g, int x, int y) {
-        g.drawString(font, tr("crash_table_title"), x + 183, y + 36, GameScreens.MUTED, false);
-        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.crash_table",
-                menu.participants(), GameScreens.value(menu.pot())), x + 183, y + 50, 124, GameScreens.TEXT);
-        if (menu.lastCrashPoint() > 0) {
-            GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.crash_previous",
-                            GameScreens.multiplier(menu.lastCrashPoint())),
-                    x + 183, y + 62, 124, GameScreens.MUTED);
-        }
-        g.drawString(font, tr("winnings"), x + 183, y + 80, GameScreens.MUTED, false);
-        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.winnings_amount",
-                        GameScreens.value(menu.winnings())), x + 183, y + 92, 124,
-                menu.winnings() > 0 ? GameScreens.GREEN : GameScreens.MUTED);
-    }
-
-    private void renderSeat(GuiGraphics g, int x, int y) {
-        Component seat;
-        int colour = GameScreens.MUTED;
+    private void renderSeat(GuiGraphics g, int sx, int sy) {
         switch (menu.state()) {
             case CrashMenu.STATE_ENGAGED -> {
-                seat = Component.translatable("gui.gamblingitems.crash_engaged", GameScreens.value(menu.stake()));
-                colour = GameScreens.GOLD;
+                GameScreens.label(g, font, tr("engaged"), sx, sy, 90);
+                GameScreens.heading(g, font, Component.literal(GameScreens.value(menu.stake())), sx, sy + 12, 2, GameScreens.TEXT);
             }
             case CrashMenu.STATE_CASHED -> {
-                seat = Component.translatable("gui.gamblingitems.crash_cashed",
-                        GameScreens.multiplier(menu.settlement()), GameScreens.value(menu.paid()));
-                colour = GameScreens.GREEN;
+                GameScreens.label(g, font, Component.translatable("gui.gamblingitems.crash_cashed_label",
+                        GameScreens.multiplier(menu.settlement())), sx, sy, 90);
+                GameScreens.heading(g, font, Component.literal("+" + GameScreens.value(menu.paid())), sx, sy + 12, 2, GameScreens.GOLD);
             }
             case CrashMenu.STATE_LOST -> {
-                seat = Component.translatable("gui.gamblingitems.crash_lost", GameScreens.value(menu.stake()));
-                colour = GameScreens.RED;
+                GameScreens.label(g, font, tr("crash_lost_label"), sx, sy, 90);
+                GameScreens.heading(g, font, Component.literal("-" + GameScreens.value(menu.stake())), sx, sy + 12, 2, GameScreens.RED);
             }
-            default -> seat = menu.plannedStake() > 0 && !menu.isPayable() ? tr("bet_unpayable")
-                    : Component.translatable("gui.gamblingitems.crash_ready", GameScreens.value(menu.plannedStake()));
+            default -> {
+                GameScreens.label(g, font, tr("stake"), sx, sy, 90);
+                GameScreens.heading(g, font, Component.literal(GameScreens.value(menu.plannedStake())), sx, sy + 12, 2,
+                        menu.plannedStake() > 0 && !menu.isPayable() ? GameScreens.RED : GameScreens.TEXT);
+            }
         }
-        GameScreens.fitted(g, font, seat, x + 12, y + 146, 160, colour);
     }
-
-    @Override protected void renderLabels(GuiGraphics g, int x, int y) {}
 }

@@ -1,71 +1,72 @@
 package dev.gamblingitems.fabric.client;
 
+import dev.gamblingitems.core.GameMode;
 import dev.gamblingitems.core.blackjack.BlackjackRules;
 import dev.gamblingitems.core.blackjack.BlackjackRules.Outcome;
 import dev.gamblingitems.fabric.blackjack.BlackjackMenu;
 import dev.gamblingitems.fabric.blackjack.BlackjackSettings;
 import dev.gamblingitems.fabric.blackjack.BlackjackTable;
+import dev.gamblingitems.fabric.menu.CasinoLayout;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
 
 /** A hand against the house: the cards are drawn as cards, and only face up ones are known. */
-public final class BlackjackScreen extends AbstractContainerScreen<BlackjackMenu> {
+public final class BlackjackScreen extends CasinoScreen<BlackjackMenu> {
     private static final int FELT = 0xff14472c, FELT_LINE = 0xff2d6b46;
     private static final int CARD = 0xfff3f6fb, CARD_BACK = 0xff7a2130, CARD_EDGE = 0xff20262f;
     private static final int CARD_WIDTH = 24, CARD_HEIGHT = 34, CARD_GAP = 6;
     /** A card takes this many ticks to land on the felt. */
     private static final int ANIMATION = 6;
-    private static final int TABLE_X = 16, DEALER_Y = 44, PLAYER_Y = 86;
+    private static final int GX = CasinoLayout.GAME_X, GY = CasinoLayout.CONTENT_Y, GW = CasinoLayout.GAME_WIDTH;
+    private static final int GH = CasinoLayout.CONTENT_HEIGHT;
+    private static final int SX = CasinoLayout.SIDE_X, SW = CasinoLayout.SIDE_WIDTH;
+    private static final int TABLE_X = GX + 10, DEALER_Y = GY + 15, PLAYER_Y = GY + 66;
     private Button deal, hit, stand, doubleDown, collect;
     /** How many cards each row held last tick, and how long ago the newest one was dealt. */
     private int seenHand, seenDealer, handDealt = ANIMATION, dealerDealt = ANIMATION;
 
     public BlackjackScreen(BlackjackMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        imageWidth = 360;
-        imageHeight = 260;
     }
 
-    /** Every game explains itself, in the language of the player. */
-    private final GameRules rules = new GameRules("blackjack");
+    @Override protected GameMode mode() { return GameMode.BLACKJACK; }
+    @Override protected boolean portable() { return menu.portable(); }
+    @Override protected Component subtitle() {
+        return Component.translatable("gui.gamblingitems.blackjack_subtitle", GameScreens.value(menu.settings().minimumStake()));
+    }
 
-    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // While the rules are up they take every click, so nothing is played by accident.
-        if (rules.open()) {
-            rules.close();
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
+    @Override protected boolean gameClicked(double mouseX, double mouseY, int button) {
+        return false;
     }
 
     @Override protected void init() {
         super.init();
-        addRenderableWidget(rules.button(leftPos + imageWidth - 30, topPos + 6));
-        deal = addRenderableWidget(Button.builder(tr("deal"), button -> click(BlackjackMenu.DEAL_BUTTON))
-                .bounds(leftPos + 236, topPos + 44, 108, 18).build());
-        hit = addRenderableWidget(Button.builder(tr("hit"), button -> click(BlackjackMenu.HIT_BUTTON))
-                .bounds(leftPos + 236, topPos + 66, 52, 18).build());
-        stand = addRenderableWidget(Button.builder(tr("stand"), button -> click(BlackjackMenu.STAND_BUTTON))
-                .bounds(leftPos + 292, topPos + 66, 52, 18).build());
-        doubleDown = addRenderableWidget(Button.builder(tr("double"), button -> click(BlackjackMenu.DOUBLE_BUTTON))
-                .bounds(leftPos + 236, topPos + 88, 108, 18).build());
+        int bx = leftPos + CasinoLayout.SLIP_X + 8, by = topPos + CasinoLayout.SLIP_Y + 52, bw = CasinoLayout.SLIP_WIDTH - 16;
+        int third = (bw - 8) / 3;
+        deal = addRenderableWidget(CasinoButton.primary(tr("deal"), button -> click(BlackjackMenu.DEAL_BUTTON))
+                .bounds(bx, by, bw, 20).build());
+        hit = addRenderableWidget(CasinoButton.primary(tr("hit"), button -> click(BlackjackMenu.HIT_BUTTON))
+                .bounds(bx, by, third, 20).build());
+        stand = addRenderableWidget(CasinoButton.builder(tr("stand"), button -> click(BlackjackMenu.STAND_BUTTON))
+                .bounds(bx + third + 4, by, third, 20).build());
+        doubleDown = addRenderableWidget(CasinoButton.builder(tr("double"), button -> click(BlackjackMenu.DOUBLE_BUTTON))
+                .bounds(bx + 2 * (third + 4), by, bw - 2 * (third + 4), 20).build());
         doubleDown.setTooltip(Tooltip.create(tr("double_help")));
-        collect = addRenderableWidget(Button.builder(tr("collect_winnings"),
+        collect = addRenderableWidget(CasinoButton.builder(tr("collect_short"),
                         button -> click(BlackjackMenu.COLLECT_BUTTON))
-                .bounds(leftPos + 236, topPos + 132, 108, 18).build());
+                .bounds(leftPos + SX + 6, topPos + GY + GH - 22, SW - 12, 16).build());
         collect.setTooltip(Tooltip.create(tr("collect_help")));
+        refreshActions();
     }
 
     private void click(int button) {
         if (minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId, button);
     }
-
-    private static Component tr(String key) { return Component.translatable("gui.gamblingitems." + key); }
 
     @Override protected void containerTick() {
         super.containerTick();
@@ -77,47 +78,44 @@ public final class BlackjackScreen extends AbstractContainerScreen<BlackjackMenu
         seenDealer = dealer;
         if (handDealt < ANIMATION) handDealt++;
         if (dealerDealt < ANIMATION) dealerDealt++;
+        refreshActions();
+    }
+
+    /** Before a hand the slip offers to deal; during one it offers the three moves instead. */
+    private void refreshActions() {
+        boolean playing = menu.phase() == BlackjackTable.Phase.PLAYER;
+        deal.visible = !playing;
+        hit.visible = stand.visible = doubleDown.visible = playing;
         deal.active = menu.canDeal();
         deal.setMessage(menu.plannedStake() > 0
                 ? Component.translatable("gui.gamblingitems.start_amount", GameScreens.value(menu.plannedStake()))
                 : tr("start_hand"));
+        if (menu.plannedStake() > 0 && !menu.isPayable()) deal.setTooltip(Tooltip.create(tr("bet_unpayable")));
+        else deal.setTooltip(null);
         hit.active = menu.canAct();
         stand.active = menu.canAct();
         doubleDown.active = menu.canDouble();
         collect.active = menu.winnings() > 0;
+        collect.setMessage(menu.winnings() > 0
+                ? Component.translatable("gui.gamblingitems.collect_amount", GameScreens.value(menu.winnings()))
+                : tr("collect_short"));
     }
 
-    @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        if (rules.open()) {
-            rules.render(graphics, font, width, height);
-            return;
-        }
-        renderTooltip(graphics, mouseX, mouseY);
-    }
-
-    @Override protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
+    @Override protected void renderGame(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
         int x = leftPos, y = topPos;
-        g.fill(x, y, x + imageWidth, y + imageHeight, GameScreens.BORDER);
-        g.fill(x + 1, y + 1, x + imageWidth - 1, y + imageHeight - 1, GameScreens.INK);
-        g.fill(x + 1, y + 1, x + imageWidth - 1, y + 3, GameScreens.GOLD);
-        g.drawString(font, title, x + 12, y + 11, GameScreens.TEXT, false);
-        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.blackjack_subtitle",
-                        GameScreens.value(menu.settings().minimumStake())),
-                x + 12, y + 22, imageWidth - 24, GameScreens.MUTED);
-        g.fill(x + 8, y + 32, x + 228, y + 170, FELT);
-        g.fill(x + 8, y + 32, x + 228, y + 34, FELT_LINE);
-        g.fill(x + 232, y + 32, x + 352, y + 170, GameScreens.PANEL);
+        GameScreens.rounded(g, x + GX, y + GY, GW, GH, FELT_LINE);
+        GameScreens.rounded(g, x + GX + 1, y + GY + 1, GW - 2, GH - 2, FELT);
         renderHands(g, x, y, partialTick);
-        renderStatus(g, x, y);
-        g.drawString(font, tr("chips_on_table"), x + BlackjackMenu.STAKE_X,
-                y + BlackjackMenu.ENGAGED_Y - 9, GameScreens.MUTED, false);
-        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.chips_ready",
-                        GameScreens.value(menu.plannedStake())),
-                x + BlackjackMenu.STAKE_X, y + BlackjackMenu.INPUT_Y - 9, 96, GameScreens.MUTED);
-        GameScreens.slots(g, menu, x, y);
-        g.drawString(font, tr("inventory"), x + 12, y + 183, GameScreens.MUTED, false);
-        g.drawString(font, tr("protected"), x + 12, y + 239, GameScreens.GREEN, false);
+
+        GameScreens.card(g, x + SX, y + GY, SW, GH);
+        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.bet_row", GameScreens.value(menu.plannedStake())),
+                x + BlackjackMenu.STAKE_X, y + BlackjackMenu.INPUT_Y - 11, SW - 16, GameScreens.MUTED);
+        GameScreens.label(g, font, tr("chips_on_table"), x + BlackjackMenu.STAKE_X, y + BlackjackMenu.ENGAGED_Y - 11, SW - 16);
+        for (Slot slot : menu.slots)
+            if (!(slot.container instanceof Inventory)) GameScreens.slot(g, x + slot.x, y + slot.y);
+
+        slip(g);
+        renderStatus(g, x + CasinoLayout.SLIP_X + 8, y + CasinoLayout.SLIP_Y + 8);
     }
 
     /** How far the newest card of a row still has to travel, from one to zero. */
@@ -141,7 +139,7 @@ public final class BlackjackScreen extends AbstractContainerScreen<BlackjackMenu
         }
         String dealerTotal = menu.dealerHidden()
                 ? menu.dealerTotal() + "+" : String.valueOf(menu.dealerTotal());
-        g.drawString(font, dealerTotal, x + TABLE_X + 160, y + DEALER_Y + 12, GameScreens.TEXT, false);
+        g.drawString(font, dealerTotal, x + GX + GW - 10 - font.width(dealerTotal), y + DEALER_Y + 12, GameScreens.TEXT, false);
 
         // The seat is named, so a player reads their own score at a glance.
         String seat = minecraft.player == null ? tr("your_hand").getString()
@@ -156,9 +154,8 @@ public final class BlackjackScreen extends AbstractContainerScreen<BlackjackMenu
         int total = menu.handTotal();
         int colour = total > BlackjackRules.BLACKJACK ? GameScreens.RED
                 : total == BlackjackRules.BLACKJACK ? GameScreens.GREEN : GameScreens.TEXT;
-        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.blackjack_seat", seat,
-                        total == 0 ? "-" : String.valueOf(total)),
-                x + TABLE_X + 140, y + PLAYER_Y + 12, 80, colour);
+        String score = total == 0 ? "-" : String.valueOf(total);
+        g.drawString(font, score, x + GX + GW - 10 - font.width(score), y + PLAYER_Y + 12, colour, false);
     }
 
     /** One card, face up: its rank and its suit, in the colour of that suit. */
@@ -199,7 +196,16 @@ public final class BlackjackScreen extends AbstractContainerScreen<BlackjackMenu
         };
     }
 
-    private void renderStatus(GuiGraphics g, int x, int y) {
+    private void renderStatus(GuiGraphics g, int sx, int sy) {
+        boolean inHand = menu.phase() != BlackjackTable.Phase.IDLE || menu.stake() > 0;
+        long shown = inHand ? menu.stake() : menu.plannedStake();
+        GameScreens.label(g, font, tr(inHand ? "engaged" : "stake"), sx, sy, 90);
+        GameScreens.heading(g, font, Component.literal(GameScreens.value(shown)), sx, sy + 12, 2,
+                !inHand && shown > 0 && !menu.isPayable() ? GameScreens.RED : GameScreens.TEXT);
+        GameScreens.label(g, font, tr("winnings"), sx + 100, sy, 66);
+        GameScreens.fitted(g, font, Component.literal(GameScreens.value(menu.winnings())), sx + 100, sy + 12, 66,
+                menu.winnings() > 0 ? GameScreens.GOLD : GameScreens.MUTED);
+
         Component status = switch (menu.phase()) {
             case IDLE -> menu.outcome() == Outcome.PLAYING ? tr("blackjack_ready") : outcomeText();
             case PLAYER -> tr("blackjack_your_turn");
@@ -212,16 +218,11 @@ public final class BlackjackScreen extends AbstractContainerScreen<BlackjackMenu
             case PUSH -> GameScreens.GOLD;
             case PLAYING -> GameScreens.MUTED;
         };
-        GameScreens.fitted(g, font, status, x + TABLE_X, y + 132, 200, colour);
-        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.blackjack_stake",
-                        GameScreens.value(menu.stake())), x + TABLE_X, y + 146, 200, GameScreens.MUTED);
-        g.drawString(font, tr("winnings"), x + 236, y + 112, GameScreens.MUTED, false);
-        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.winnings_amount",
-                        GameScreens.value(menu.winnings())), x + 236, y + 122, 108,
-                menu.winnings() > 0 ? GameScreens.GREEN : GameScreens.MUTED);
         if (menu.phase() == BlackjackTable.Phase.IDLE && menu.plannedStake() > 0 && !menu.isPayable()) {
-            GameScreens.fitted(g, font, tr("bet_unpayable"), x + TABLE_X, y + 160, 200, GameScreens.RED);
+            status = tr("bet_unpayable");
+            colour = GameScreens.RED;
         }
+        GameScreens.fitted(g, font, status, sx, sy + 32, CasinoLayout.SLIP_WIDTH - 16, colour);
     }
 
     private Component outcomeText() {

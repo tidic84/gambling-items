@@ -49,13 +49,17 @@ public final class KeyDrops {
     private record Drop(CaseRarity rarity, float chance) {}
 
     /** The pools each loader adds to a vanilla loot table as it loads. */
-    public static List<LootPool.Builder> poolsFor(ResourceKey<LootTable> table) {
+    //#if MC >= 1.20.5
+    public static List<LootPool.Builder> poolsFor(ResourceKey<LootTable> table) { return poolsFor(table.location()); }
+    static List<Drop> dropsFor(ResourceKey<LootTable> table) { return dropsFor(table.location()); }
+    //#endif
+
+    public static List<LootPool.Builder> poolsFor(ResourceLocation table) {
         return dropsFor(table).stream().map(KeyDrops::pool).toList();
     }
 
     /** What a given entity table should also drop. Anything else drops no key at all. */
-    static List<Drop> dropsFor(ResourceKey<LootTable> table) {
-        ResourceLocation id = table.location();
+    static List<Drop> dropsFor(ResourceLocation id) {
         if (!id.getNamespace().equals("minecraft") || !id.getPath().startsWith("entities/")) return List.of();
         String mob = id.getPath().substring("entities/".length());
         if (CHAMPIONS.containsKey(mob)) {
@@ -78,7 +82,9 @@ public final class KeyDrops {
 
     private static LootPool.Builder pool(Drop drop) {
         return LootPool.lootPool()
+                //#if MC < 26.3
                 .setRolls(ConstantValue.exactly(1))
+                //#endif
                 .add(LootItem.lootTableItem(ModContent.key(drop.rarity())))
                 .when(LootItemKilledByPlayerCondition.killedByPlayer())
                 .when(LootItemRandomChanceCondition.randomChance(drop.chance()));

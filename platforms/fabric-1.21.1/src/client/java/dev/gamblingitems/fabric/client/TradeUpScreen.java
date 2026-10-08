@@ -1,193 +1,183 @@
 package dev.gamblingitems.fabric.client;
 
+import dev.gamblingitems.core.GameMode;
+import dev.gamblingitems.fabric.menu.CasinoLayout;
 import dev.gamblingitems.fabric.tradeup.TradeUpMenu;
 import dev.gamblingitems.fabric.tradeup.TradeUpTable;
 import dev.gamblingitems.fabric.value.ValueCatalog;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
-public final class TradeUpScreen extends AbstractContainerScreen<TradeUpMenu> {
-    private static final int INK = 0xff0d131c, PANEL = 0xff172231, BORDER = 0xff304358;
-    private static final int TEXT = 0xffe8eff6, MUTED = 0xff91a6ba, GOLD = 0xffffce69, GREEN = 0xff6cdeb7;
-    private static final int CELL = 22, VISIBLE_CELLS = 7, LOOPS = 4;
+/** Five comparable items in, one better item out: the contract, its odds, and the reel that settles it. */
+public final class TradeUpScreen extends CasinoScreen<TradeUpMenu> {
+    private static final int LOOPS = 5, CELL = 30;
+    private static final int GX = CasinoLayout.GAME_X, GY = CasinoLayout.CONTENT_Y;
+    private static final int SX = CasinoLayout.SIDE_X, SW = CasinoLayout.SIDE_WIDTH;
+    private static final int LIST_Y = GY + 18, LIST_HEIGHT = CasinoLayout.CONTENT_HEIGHT - 22;
+    private final OddsList odds = new OddsList();
+    private final CasinoSounds.Reel ticks = new CasinoSounds.Reel();
     private Button trade;
     /** Kept so the reel can still show the contract after the server has consumed the stake. */
     private TradeUpTable shown;
+    private boolean wasAnimating;
+    /** The value played, still shown while the reel turns after the server has taken the items. */
+    private long stake;
 
     public TradeUpScreen(TradeUpMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        imageWidth = 320;
-        imageHeight = 238;
     }
 
-    /** Every game explains itself, in the language of the player. */
-    private final GameRules rules = new GameRules("trade_up");
-
-    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // While the rules are up they take every click, so nothing is played by accident.
-        if (rules.open()) {
-            rules.close();
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
+    @Override protected GameMode mode() { return GameMode.TRADE_UP; }
+    @Override protected boolean portable() { return menu.portable(); }
 
     @Override protected void init() {
         super.init();
-        addRenderableWidget(rules.button(leftPos + imageWidth - 30, topPos + 6));
-        trade = addRenderableWidget(Button.builder(tr("trade"), button -> {
-            if (minecraft.gameMode != null) {
-                minecraft.gameMode.handleInventoryButtonClick(menu.containerId, TradeUpMenu.SPIN_BUTTON);
-            }
-        }).bounds(leftPos + 14, topPos + 120, 153, 18).build());
+        trade = addRenderableWidget(CasinoButton.primary(tr("trade"), button -> {
+                    if (settled()) collect(TradeUpMenu.REWARD_SLOT); else send(TradeUpMenu.SPIN_BUTTON);
+                })
+                .bounds(leftPos + CasinoLayout.SLIP_X + 8, topPos + CasinoLayout.SLIP_Y + 52, CasinoLayout.SLIP_WIDTH - 16, 20).build());
         trade.setTooltip(Tooltip.create(Component.translatable("gui.gamblingitems.trade_warning",
                 menu.setup().settings().requiredUnits(), ratio())));
+        refresh();
     }
 
-    private static Component tr(String key) { return Component.translatable("gui.gamblingitems." + key); }
     private String ratio() {
-        return BigDecimal.valueOf(menu.setup().settings().unitRatioBasisPoints(), 4)
-                .stripTrailingZeros().toPlainString();
+        return BigDecimal.valueOf(menu.setup().settings().unitRatioBasisPoints(), 4).stripTrailingZeros().toPlainString();
     }
-    private static String value(long value) { return BigDecimal.valueOf(value, 3).stripTrailingZeros().toPlainString(); }
 
     @Override protected void containerTick() {
         super.containerTick();
-        trade.active = menu.canSpin();
-        trade.setMessage(menu.isAnimating() ? tr("rolling") : tr("trade"));
         // The contract stays on screen until the reward is collected, then follows the slots again.
-        if (!menu.isAnimating() && menu.reward().isEmpty()) shown = menu.table().orElse(null);
-    }
-
-    @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        if (rules.open()) {
-            rules.render(graphics, font, width, height);
-            return;
+        if (!menu.isAnimating() && menu.reward().isEmpty()) {
+            TradeUpTable table = menu.table().orElse(null);
+            if (table == null || shown == null || !table.rewards().equals(shown.rewards())) odds.reset();
+            shown = table;
         }
-        renderTooltip(graphics, mouseX, mouseY);
+        if (wasAnimating && !menu.isAnimating() && !menu.reward().isEmpty()) {
+            CasinoSounds.win();
+            if (shown != null) odds.reveal(menu.resultIndex(), shown.rewards().size(), LIST_HEIGHT);
+        }
+        if (!menu.isAnimating() && menu.reward().isEmpty()) stake = menu.stakeValue();
+        wasAnimating = menu.isAnimating();
+        refresh();
     }
 
-    @Override protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
+    private boolean settled() { return !menu.isAnimating() && !menu.reward().isEmpty(); }
+
+    private void refresh() {
+        trade.active = menu.canSpin() || settled();
+        int required = menu.setup().settings().requiredUnits();
+        trade.setMessage(menu.isAnimating() ? tr("rolling")
+                : !menu.reward().isEmpty() ? tr("collect_short")
+                : Component.translatable("gui.gamblingitems.arena.exchange", required));
+    }
+
+    private List<OddsList.Row> rows() {
+        List<OddsList.Row> rows = new ArrayList<>();
+        if (shown == null) return rows;
+        boolean settled = !menu.isAnimating() && !menu.reward().isEmpty();
+        for (int i = 0; i < shown.rewards().size(); i++) {
+            ValueCatalog.Entry entry = shown.rewards().get(i);
+            String chance = shown.percentOf(i).setScale(1, RoundingMode.HALF_UP).toPlainString() + "%";
+            rows.add(new OddsList.Row(entry.stack(), chance, GameScreens.GOLD,
+                    Component.translatable("gui.gamblingitems.arena.item_value", GameScreens.value(entry.value())),
+                    true, settled && menu.resultIndex() == i));
+        }
+        return rows;
+    }
+
+    @Override protected void renderGame(GuiGraphics g, float tick, int mouseX, int mouseY) {
         int x = leftPos, y = topPos;
-        g.fill(x, y, x + imageWidth, y + imageHeight, BORDER);
-        g.fill(x + 1, y + 1, x + imageWidth - 1, y + imageHeight - 1, INK);
-        g.fill(x + 1, y + 1, x + imageWidth - 1, y + 3, GOLD);
-        g.drawString(font, title, x + 12, y + 11, TEXT, false);
-        g.drawString(font, Component.translatable("gui.gamblingitems.trade_up_subtitle",
-                menu.setup().settings().requiredUnits(), ratio()), x + 12, y + 23, MUTED, false);
-        g.fill(x + 8, y + 34, x + 174, y + 115, PANEL);
-        g.fill(x + 178, y + 32, x + 310, y + 119, PANEL);
-        renderReel(g, x, y, partialTick);
-        g.drawString(font, tr("input"), x + 16, y + 78, MUTED, false);
-        g.drawString(font, tr("reward"), x + 140, y + 78, MUTED, false);
-        for (int slot = 0; slot < TradeUpMenu.INPUT_SLOTS; slot++) slot(g, x + 20 + slot * 22, y + 88);
-        slot(g, x + 146, y + 88);
-        renderStatus(g, x, y);
-        renderContract(g, x, y);
-        g.drawString(font, Component.translatable("gui.gamblingitems.value", value(menu.stakeValue())),
-                x + 12, y + 144, MUTED, false);
-        for (int row = 0; row < 3; row++)
-            for (int col = 0; col < 9; col++) slot(g, x + 79 + col * 18, y + 155 + row * 18);
-        for (int col = 0; col < 9; col++) slot(g, x + 79 + col * 18, y + 213);
-        g.drawString(font, tr("inventory"), x + 12, y + 161, MUTED, false);
-        g.drawString(font, tr("shift_click"), x + 12, y + 178, MUTED, false);
-        g.drawString(font, tr("protected"), x + 12, y + 217, GREEN, false);
-    }
-
-    private void renderReel(GuiGraphics g, int x, int y, float partialTick) {
-        int left = x + 12, right = x + 170, top = y + 40, bottom = y + 72;
-        g.fill(left, top, right, bottom, 0xff091018);
-        List<ValueCatalog.Entry> rewards = shown == null ? List.of() : shown.rewards();
-        if (rewards.isEmpty()) {
-            g.drawCenteredString(font, tr("no_contract"), (left + right) / 2, top + 13, MUTED);
+        int required = menu.setup().settings().requiredUnits();
+        GameScreens.card(g, x + GX, y + GY, CasinoLayout.GAME_WIDTH, CasinoLayout.CONTENT_HEIGHT);
+        GameScreens.label(g, font, tr("arena.contract_items"), x + GX + 8, y + GY + 7, 150);
+        String units = menu.stakedUnits() + " / " + required;
+        GameScreens.rightAligned(g, font, units, x + GX + CasinoLayout.GAME_WIDTH - 8, y + GY + 7,
+                menu.stakedUnits() == required ? GameScreens.GREEN : GameScreens.GOLD);
+        if (menu.isAnimating()) {
+            renderReel(g, x, y, tick);
         } else {
-            double position = reelPosition(rewards.size(), partialTick);
-            int centre = (left + right) / 2 - 8;
-            int cell = (int) Math.floor(position);
-            double shift = position - cell;
-            g.enableScissor(left + 1, top + 1, right - 1, bottom - 1);
-            for (int offset = -VISIBLE_CELLS / 2; offset <= VISIBLE_CELLS / 2; offset++) {
-                int index = Math.floorMod(cell + offset, rewards.size());
-                int drawX = centre + (int) Math.round((offset - shift) * CELL);
-                g.renderFakeItem(rewards.get(index).stack(), drawX, top + 8);
-            }
-            g.disableScissor();
-            g.fill(centre - 2, top + 1, centre - 1, bottom - 1, GOLD);
-            g.fill(centre + 17, top + 1, centre + 18, bottom - 1, GOLD);
+            for (int index = 0; index < TradeUpMenu.INPUT_SLOTS; index++)
+                GameScreens.well(g, font, x + TradeUpMenu.INPUT_X + index * TradeUpMenu.INPUT_GAP, y + TradeUpMenu.INPUT_Y,
+                        !menu.getSlot(index).hasItem(), menu.getSlot(index).hasItem() ? GameScreens.GREEN : 0);
+            g.drawCenteredString(font, "→", x + TradeUpMenu.REWARD_X - 18, y + TradeUpMenu.REWARD_Y + 4, GameScreens.DIM);
+            boolean won = !menu.reward().isEmpty();
+            if (won) GameScreens.ring(g, x + TradeUpMenu.REWARD_X - 4, y + TradeUpMenu.REWARD_Y - 4, 24, 24, GameScreens.GOLD);
+            GameScreens.well(g, font, x + TradeUpMenu.REWARD_X, y + TradeUpMenu.REWARD_Y, false, 0);
+            if (!won) g.drawCenteredString(font, "?", x + TradeUpMenu.REWARD_X + 8, y + TradeUpMenu.REWARD_Y + 4, GameScreens.DIM);
         }
-        g.fill(left, top, right, top + 1, BORDER);
-        g.fill(left, bottom - 1, right, bottom, BORDER);
-    }
+        renderStatus(g, x, y);
+        GameScreens.paragraph(g, font, Component.translatable("gui.gamblingitems.trade_up_subtitle", required, ratio()),
+                x + GX + 8, y + GY + 80, CasinoLayout.GAME_WIDTH - 16, 2, GameScreens.DIM);
 
-    /** The reel only replays the decision the server already made. */
-    private double reelPosition(int size, float partialTick) {
-        int index = menu.resultIndex();
-        if (index < 0 || index >= size) return 0;
-        double stop = (double) LOOPS * size + index;
-        if (!menu.isAnimating()) return stop;
-        double progress = Math.min(1, (TradeUpMenu.ANIMATION_TICKS - menu.remainingTicks() + partialTick)
-                / TradeUpMenu.ANIMATION_TICKS);
-        return stop * (1 - Math.pow(1 - progress, 3));
+        GameScreens.card(g, x + SX, y + GY, SW, CasinoLayout.CONTENT_HEIGHT);
+        GameScreens.label(g, font, tr("possible_rewards"), x + SX + 6, y + GY + 7, SW - 12);
+        if (shown == null) {
+            GameScreens.paragraph(g, font, tr("no_contract_hint"), x + SX + 6, y + LIST_Y + 4, SW - 12, 6, GameScreens.DIM);
+        } else {
+            odds.render(g, font, rows(), x + SX + 4, y + LIST_Y, SW - 6, LIST_HEIGHT, mouseX, mouseY);
+        }
+
+        slip(g);
+        int sx = x + CasinoLayout.SLIP_X + 8, sy = y + CasinoLayout.SLIP_Y + 8;
+        boolean settled = !menu.reward().isEmpty() && !menu.isAnimating();
+        GameScreens.label(g, font, tr(settled ? "reward" : "stake"), sx, sy, 80);
+        GameScreens.heading(g, font, Component.literal(GameScreens.value(settled ? menu.catalog().valueOf(menu.reward()) : menu.isAnimating() ? stake : menu.stakeValue())),
+                sx, sy + 12, 2, settled ? GameScreens.GOLD : GameScreens.TEXT);
+        GameScreens.label(g, font, tr("average_reward"), sx + 92, sy, 80);
+        g.drawString(font, shown == null ? "—" : GameScreens.value(shown.averageValue(menu.setup()).setScale(0, RoundingMode.HALF_UP).longValueExact()),
+                sx + 92, sy + 16, GameScreens.GOLD, false);
     }
 
     private void renderStatus(GuiGraphics g, int x, int y) {
         int units = menu.stakedUnits();
         int required = menu.setup().settings().requiredUnits();
         Component status;
-        int color = MUTED;
+        int colour = GameScreens.MUTED;
         if (menu.isAnimating()) {
             status = tr("rolling");
         } else if (!menu.reward().isEmpty()) {
-            status = tr("collect");
-            color = GREEN;
+            status = Component.translatable("gui.gamblingitems.won_item", menu.reward().getHoverName());
+            colour = GameScreens.GOLD;
         } else if (units == 0) {
             status = Component.translatable("gui.gamblingitems.trade_insert", required);
         } else if (units != required) {
             status = Component.translatable("gui.gamblingitems.trade_units", units, required);
         } else if (menu.table().isEmpty()) {
             status = tr("trade_impossible");
+            colour = GameScreens.RED;
         } else {
             status = tr("ready");
+            colour = GameScreens.GREEN;
         }
-        g.drawCenteredString(font, status, x + 91, y + 106, color);
+        GameScreens.fitted(g, font, status, x + GX + 8, y + GY + 64, CasinoLayout.GAME_WIDTH - 16, colour);
     }
 
-    private void renderContract(GuiGraphics g, int x, int y) {
-        g.drawString(font, tr("contract"), x + 183, y + 36, MUTED, false);
-        if (shown == null) {
-            g.drawCenteredString(font, tr("no_contract"), x + 244, y + 70, MUTED);
-            return;
-        }
-        List<ValueCatalog.Entry> rewards = shown.rewards();
-        for (int index = 0; index < rewards.size() && index < 6; index++) {
-            int row = y + 48 + index * 12;
-            ItemStack stack = rewards.get(index).stack();
-            g.renderFakeItem(stack, x + 182, row - 4);
-            boolean won = !menu.isAnimating() && menu.resultIndex() == index && !menu.reward().isEmpty();
-            g.drawString(font, font.plainSubstrByWidth(stack.getHoverName().getString(), 62),
-                    x + 200, row, won ? GREEN : TEXT, false);
-            String chance = shown.percentOf(index).setScale(2, RoundingMode.HALF_UP).toPlainString() + "%";
-            g.drawString(font, chance, x + 306 - font.width(chance), row, won ? GREEN : GOLD, false);
-        }
-        g.drawString(font, Component.translatable("gui.gamblingitems.average",
-                        value(shown.averageValue(menu.setup()).setScale(0, RoundingMode.HALF_UP).longValueExact()),
-                        value(shown.totalStake())),
-                x + 183, y + 108, MUTED, false);
+    private void renderReel(GuiGraphics g, int x, int y, float tick) {
+        List<ItemStack> items = shown == null ? List.of() : shown.rewards().stream().map(ValueCatalog.Entry::stack).toList();
+        double progress = Math.min(1, (TradeUpMenu.ANIMATION_TICKS - menu.remainingTicks() + tick) / TradeUpMenu.ANIMATION_TICKS);
+        int index = menu.resultIndex();
+        double stop = items.isEmpty() || index < 0 ? 0 : (double) LOOPS * items.size() + index;
+        double position = stop * GameScreens.eased(progress);
+        ticks.follow(position, progress);
+        GameScreens.reel(g, items, position, x + GX + 6, y + GY + 18, CasinoLayout.GAME_WIDTH - 12, 40, CELL, 1.5f);
     }
 
-    private static void slot(GuiGraphics g, int x, int y) {
-        g.fill(x - 1, y - 1, x + 17, y + 17, BORDER);
-        g.fill(x, y, x + 16, y + 16, 0xff091018);
+    @Override protected void renderOverlay(GuiGraphics g, int mouseX, int mouseY, float tick) {
+        if (shown != null) odds.tooltip(g, font, rows(), leftPos + SX + 4, topPos + LIST_Y, SW - 6, LIST_HEIGHT, mouseX, mouseY);
     }
 
-    @Override protected void renderLabels(GuiGraphics g, int x, int y) {}
+    @Override protected boolean gameScrolled(double x, double y, double amount) {
+        if (shown == null || !inside(x, y, SX, GY, SW, CasinoLayout.CONTENT_HEIGHT)) return false;
+        odds.scroll(shown.rewards().size(), LIST_HEIGHT, amount);
+        return true;
+    }
 }

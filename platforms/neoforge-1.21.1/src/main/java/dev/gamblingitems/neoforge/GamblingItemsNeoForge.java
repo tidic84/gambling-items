@@ -14,9 +14,7 @@ import dev.gamblingitems.fabric.roulette.RouletteGames;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 import net.minecraft.commands.Commands;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.bus.api.IEventBus;
@@ -29,7 +27,9 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+//#if MC >= 1.20.5
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+//#endif
 import net.neoforged.neoforge.registries.RegisterEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +43,10 @@ public final class GamblingItemsNeoForge {
     public GamblingItemsNeoForge(IEventBus modBus) {
         // Every registry is open during the registration events, so the first one registers it all.
         modBus.addListener(RegisterEvent.class, event -> ModContent.initialize());
+        //#if MC < 1.20.5
+        //$ // A second mod entry point for the client side only exists since NeoForge 20.5.
+        //$ if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) dev.gamblingitems.neoforge.client.GamblingItemsNeoForgeClient.register(modBus);
+        //#endif
         modBus.addListener(BuildCreativeModeTabContentsEvent.class, event -> {
             if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
                 ModContent.creativeEntries().forEach(event::accept);
@@ -52,7 +56,7 @@ public final class GamblingItemsNeoForge {
         IEventBus game = NeoForge.EVENT_BUS;
         // Keys are found on mobs, so the cases have a price that is played for, not bought.
         game.addListener(LootTableLoadEvent.class, event ->
-                KeyDrops.poolsFor(ResourceKey.create(Registries.LOOT_TABLE, event.getName()))
+                KeyDrops.poolsFor(event.getName())
                         .forEach(pool -> event.getTable().addPool(pool.build())));
         game.addListener(ServerAboutToStartEvent.class, event -> ModConfig.load(event.getServer()));
         // Sent to every player at once only after a /reload succeeded.
@@ -60,8 +64,14 @@ public final class GamblingItemsNeoForge {
             if (event.getPlayer() == null) ModConfig.load(event.getPlayerList().getServer());
         });
         // Shared rounds live on the server, not in a block: a flight survives an unloaded chunk.
+        //#if MC >= 1.20.5
         game.addListener(ServerTickEvent.Post.class, event -> {
             MinecraftServer server = event.getServer();
+        //#else
+        //$ game.addListener(net.neoforged.neoforge.event.TickEvent.ServerTickEvent.class, event -> {
+        //$     if (event.phase != net.neoforged.neoforge.event.TickEvent.Phase.END) return;
+        //$     MinecraftServer server = event.getServer();
+        //#endif
             CrashGames.tick(server);
             RouletteGames.tick(server);
             BlackjackTables.tick(server);
@@ -95,10 +105,15 @@ public final class GamblingItemsNeoForge {
                 event.getDispatcher().register(Commands.literal("gamblingitems")
                         .then(Commands.literal("info").executes(context -> {
                             context.getSource().sendSuccess(() -> Component.literal(
-                                    "Gambling Items | NeoForge 1.21.1 | Playable: " + availableModes
+                                    "Gambling Items | NeoForge | Playable: " + availableModes
                                     + " | Use a terminal or a station. Roadmap: " + plannedModes), false);
                             return 1;
                         }))));
         LOGGER.info("Gambling Items loaded. Playable: {}. Planned: {}", availableModes, plannedModes);
+        // Release checks start a real server once per Minecraft version; it stops when the world is up.
+        if (Boolean.getBoolean("gamblingitems.smoke")) game.addListener(net.neoforged.neoforge.event.server.ServerStartedEvent.class, event -> {
+            LOGGER.info("Gambling Items smoke test: server started");
+            event.getServer().halt(false);
+        });
     }
 }

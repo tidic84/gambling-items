@@ -14,7 +14,8 @@ public final class UpgradeMenus {
     public static void open(ServerPlayer player, ContainerLevelAccess access) {
         if (player.isSpectator()) return;
         UpgradeSetup setup = ModConfig.upgrader();
-        Platform.openMenu(player, Component.translatable("screen.gamblingitems.upgrader"), setup, UpgradeSetup.CODEC,
+        Platform.openMenu(player, Component.translatable("screen.gamblingitems.upgrader"), new dev.gamblingitems.fabric.menu.Opening<>(setup, access == ContainerLevelAccess.NULL),
+                dev.gamblingitems.fabric.menu.Opening.codec(UpgradeSetup.CODEC),
                 (id, inventory, ignored) -> new UpgradeMenu(id, inventory, setup,
                         PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.UPGRADER), access));
     }

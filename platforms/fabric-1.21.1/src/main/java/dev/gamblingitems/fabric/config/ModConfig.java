@@ -350,8 +350,8 @@ public final class ModConfig {
 
     private static ResourceLocation item(String raw) {
         ResourceLocation id = ResourceLocation.parse(raw);
-        if (!BuiltInRegistries.ITEM.containsKey(id) || BuiltInRegistries.ITEM.get(id) == Items.AIR
-                || BuiltInRegistries.ITEM.get(id) instanceof dev.gamblingitems.fabric.item.KeyItem) {
+        if (!BuiltInRegistries.ITEM.containsKey(id) || dev.gamblingitems.fabric.Compat.item(id) == Items.AIR
+                || dev.gamblingitems.fabric.Compat.item(id) instanceof dev.gamblingitems.fabric.item.KeyItem) {
             throw new IllegalArgumentException("Unsupported item: " + id);
         }
         return id;
@@ -359,7 +359,7 @@ public final class ModConfig {
 
     private static void requireValued(ValueCatalog catalog, ResourceLocation id, int count, String caseId) {
         if (count < 1 || count > 64) throw new IllegalArgumentException("Invalid amount in case " + caseId);
-        if (catalog.valueOf(new ItemStack(BuiltInRegistries.ITEM.get(id), count)) <= 0) {
+        if (catalog.valueOf(new ItemStack(dev.gamblingitems.fabric.Compat.item(id), count)) <= 0) {
             throw new IllegalArgumentException("Case " + caseId + " uses the unvalued item " + id);
         }
     }

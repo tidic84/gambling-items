@@ -41,6 +41,14 @@ public final class BingoMenu extends AbstractContainerMenu {
     private final BingoGame game;
     private final SimpleContainerData data = new SimpleContainerData(DATA_SIZE);
 
+    /** Opened from a portable item, so its window shows the tabs of the other games of that item. */
+    private boolean portable;
+
+    public BingoMenu(int syncId, Inventory inventory, BingoSetup setup, boolean portable) {
+        this(syncId, inventory, setup);
+        this.portable = portable;
+    }
+
     public BingoMenu(int syncId, Inventory inventory, BingoSetup setup) {
         this(syncId, inventory, setup, new SimpleContainer(BingoSettings.VAULT_SIZE), null);
     }
@@ -72,6 +80,7 @@ public final class BingoMenu extends AbstractContainerMenu {
     }
 
     public BingoSetup setup() { return setup; }
+    public boolean portable() { return portable; }
     public BingoSettings settings() { return setup.settings(); }
     public ValueCatalog catalog() { return setup.catalog(); }
     public BingoGame.Phase phase() { return BingoGame.Phase.fromId(data.get(PHASE)); }
@@ -131,6 +140,8 @@ public final class BingoMenu extends AbstractContainerMenu {
     }
 
     @Override public boolean clickMenuButton(Player player, int button) {
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) {
             return false;
         }
@@ -201,7 +212,7 @@ public final class BingoMenu extends AbstractContainerMenu {
                 > BingoGames.REACH * BingoGames.REACH) {
             return false;
         }
-        return dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.BINGO)
+        return dev.gamblingitems.fabric.item.TerminalItem.hasAccess(player, GameMode.BINGO)
                 || (game.level().getBlockState(pos).getBlock() instanceof GameSurface surface
                         && surface.mode() == GameMode.BINGO);
     }

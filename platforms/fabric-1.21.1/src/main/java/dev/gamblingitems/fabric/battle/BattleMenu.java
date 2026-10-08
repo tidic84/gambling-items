@@ -24,7 +24,7 @@ import net.minecraft.world.item.ItemStack;
 public final class BattleMenu extends AbstractContainerMenu {
     public static final int JOIN_BUTTON = 1000, LEAVE_BUTTON = 1001, START_BUTTON = 1002,
             COLLECT_BUTTON = 1003, CASE_BUTTON = 1100, ROUNDS_BUTTON = 1200;
-    public static final int STAKE_X = 16, ENGAGED_Y = 118, INPUT_Y = 148;
+    public static final int STAKE_X = 194, ENGAGED_Y = 210, INPUT_Y = 172;
     public static final int INVENTORY_START = 2 * BattleSettings.STAKE_SLOTS;
     // Small numbers first, then the prize, which needs two slots to survive the packet.
     private static final int PHASE = 0, PHASE_TICKS = 1, CASE_INDEX = 2, ROUNDS = 3, ROUND = 4,
@@ -38,18 +38,27 @@ public final class BattleMenu extends AbstractContainerMenu {
     private final Container vault;
     private final BattleSetup setup;
     private final BattleLobby lobby;
+    private final boolean portable;
     private final SimpleContainerData data = new SimpleContainerData(DATA_SIZE);
 
-    public BattleMenu(int syncId, Inventory inventory, BattleSetup setup) {
-        this(syncId, inventory, setup, new SimpleContainer(BattleSettings.VAULT_SIZE), null);
+    public BattleMenu(int syncId, Inventory inventory, BattleSetup setup) { this(syncId, inventory, setup, false); }
+
+    public BattleMenu(int syncId, Inventory inventory, BattleSetup setup, boolean portable) {
+        this(syncId, inventory, setup, new SimpleContainer(BattleSettings.VAULT_SIZE), null, portable);
     }
 
     public BattleMenu(int syncId, Inventory inventory, BattleSetup setup, Container vault, BattleLobby lobby) {
+        this(syncId, inventory, setup, vault, lobby, false);
+    }
+
+    public BattleMenu(int syncId, Inventory inventory, BattleSetup setup, Container vault, BattleLobby lobby,
+                      boolean portable) {
         super(ModContent.BATTLE_MENU, syncId);
         this.owner = inventory.player;
         this.setup = setup;
         this.vault = vault;
         this.lobby = lobby;
+        this.portable = portable;
         addDataSlots(data);
         for (int index = 0; index < BattleSettings.STAKE_SLOTS; index++) {
             addSlot(new Slot(vault, BattleSettings.INPUT_SLOT + index, STAKE_X + index * 18, INPUT_Y) {
@@ -65,13 +74,12 @@ public final class BattleMenu extends AbstractContainerMenu {
                 @Override public boolean mayPickup(Player player) { return !seated(); }
             });
         }
-        for (int row = 0; row < 3; row++)
-            for (int col = 0; col < 9; col++)
-                addSlot(new Slot(inventory, col + row * 9 + 9, 99 + col * 18, 177 + row * 18));
-        for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, col, 99 + col * 18, 235));
+        dev.gamblingitems.fabric.menu.CasinoLayout.inventory(inventory, this::addSlot);
     }
 
     public BattleSetup setup() { return setup; }
+    /** Opened from a portable item, so its window shows the tabs of the other games of that item. */
+    public boolean portable() { return portable; }
     public BattleSettings settings() { return setup.settings(); }
     public BattleLobby.Phase phase() { return BattleLobby.Phase.fromId(data.get(PHASE)); }
     public int phaseTicks() { return data.get(PHASE_TICKS); }
@@ -129,6 +137,8 @@ public final class BattleMenu extends AbstractContainerMenu {
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) {
             return false;
         }
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (lobby == null) return false;
         boolean handled;
         if (button >= CASE_BUTTON && button < CASE_BUTTON + setup.cases().cases().cases().size()) {
@@ -198,7 +208,7 @@ public final class BattleMenu extends AbstractContainerMenu {
                 > BattleLobbies.REACH * BattleLobbies.REACH) {
             return false;
         }
-        return dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.CASE_BATTLE)
+        return dev.gamblingitems.fabric.item.TerminalItem.hasAccess(player, GameMode.CASE_BATTLE)
                 || (lobby.level().getBlockState(pos).getBlock() instanceof GameSurface surface
                         && surface.mode() == GameMode.CASE_BATTLE);
     }

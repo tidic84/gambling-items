@@ -246,9 +246,12 @@ public class BlackjackGameTests implements FabricGameTest {
         Container vault = chips(table, ItemStack.EMPTY);
         // Five diamonds are fifty thousand in values: far beyond what one data slot can carry.
         vault.setItem(BlackjackSettings.FIRST_PAYOUT_SLOT, new ItemStack(Items.DIAMOND, 5));
+        // Blackjack is only played at its table; the terminal does not reach casino games.
+        var felt = helper.absolutePos(new net.minecraft.core.BlockPos(1, 1, 1));
+        helper.getLevel().setBlockAndUpdate(felt, dev.gamblingitems.fabric.ModContent.BLACKJACK_TABLE.defaultBlockState());
+        player.moveTo(felt.getX() + .5, felt.getY(), felt.getZ() + 2.5);
         BlackjackMenu menu = new BlackjackMenu(1, player.getInventory(), setup(), vault, table,
-                net.minecraft.world.inventory.ContainerLevelAccess.NULL);
-        player.getInventory().setItem(0, new ItemStack(dev.gamblingitems.fabric.ModContent.TERMINAL));
+                net.minecraft.world.inventory.ContainerLevelAccess.create(helper.getLevel(), felt));
         menu.broadcastChanges();
         helper.assertTrue(menu.winnings() == 50_000, "The screen shows a gain, not a negative number");
         helper.assertTrue(menu.clickMenuButton(player, BlackjackMenu.COLLECT_BUTTON), "Collecting is accepted");

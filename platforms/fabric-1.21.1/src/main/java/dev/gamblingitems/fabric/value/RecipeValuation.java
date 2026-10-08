@@ -14,9 +14,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+//#if MC < 1.21.2
 import net.minecraft.world.item.crafting.DecoratedPotRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.SmithingRecipe;
+//#endif
 
 /** Reads vanilla and mod recipes after datapacks load and exports the provenance of each price. */
 public final class RecipeValuation {
@@ -39,39 +41,23 @@ public final class RecipeValuation {
         var recipes = new ArrayList<RecipeValues.Recipe>();
         JsonArray skipped = new JsonArray();
         if (settings.get("enabled").getAsBoolean()) {
-            // Stable recipe order makes conversion cycles and reports reproducible.
-            var holders = server.getRecipeManager().getRecipes().stream()
-                    .sorted(Comparator.comparing(holder -> holder.id().toString())).toList();
-            for (var holder : holders) {
+            for (var read : read(server)) {
                 try {
-                    var recipe = holder.value();
-                    ItemStack output = recipe.getResultItem(server.registryAccess());
-                    if (recipe instanceof DecoratedPotRecipe) output = new ItemStack(Items.DECORATED_POT);
-                    if (!plain(output) || excluded.contains(id(output))) { skipped.add(holder.id().toString()); continue; }
+                    ItemStack output = read.output();
+                    if (!plain(output) || excluded.contains(id(output))) { skipped.add(read.id()); continue; }
                     var ingredients = new ArrayList<List<String>>();
-                    List<Ingredient> inputs = recipe.getIngredients();
-                    if (recipe instanceof SmithingRecipe smithing) {
-                        // Smithing exposes predicates instead of the normal ingredient list.
-                        // Reading those also supports transform recipes added by other mods.
-                        inputs = List.of(matching(smithing::isTemplateIngredient), matching(smithing::isBaseIngredient),
-                                matching(smithing::isAdditionIngredient));
-                    } else if (recipe instanceof DecoratedPotRecipe) {
-                        inputs = java.util.Collections.nCopies(4, Ingredient.of(Items.BRICK));
-                    }
-                    for (var ingredient : inputs) {
-                        if (ingredient.isEmpty()) continue; // Empty cells of shaped recipes.
-                        var alternatives = new ArrayList<String>();
-                        for (ItemStack stack : ingredient.getItems()) {
-                            if (plain(stack) && !excluded.contains(id(stack))) alternatives.add(id(stack));
-                        }
-                        ingredients.add(alternatives);
+                    for (var alternatives : read.inputs()) {
+                        if (alternatives.isEmpty()) continue; // Empty cells of shaped recipes.
+                        var ids = new ArrayList<String>();
+                        for (ItemStack stack : alternatives) if (plain(stack) && !excluded.contains(id(stack))) ids.add(id(stack));
+                        ingredients.add(ids);
                     }
                     if (ingredients.stream().anyMatch(List::isEmpty)) {
-                        skipped.add(holder.id().toString());
+                        skipped.add(read.id());
                         continue;
                     }
                     if (ingredients.isEmpty()) {
-                        skipped.add(holder.id().toString());
+                        skipped.add(read.id());
                         // A custom machine can expose its output without standard ingredients.
                         // Keep that craftable target, marked as an estimate in the report.
                         recipes.add(new RecipeValues.Recipe(id(output), 1, List.of(List.of(id(output)))));
@@ -79,7 +65,7 @@ public final class RecipeValuation {
                         recipes.add(new RecipeValues.Recipe(id(output), output.getCount(), ingredients));
                     }
                 } catch (RuntimeException exception) {
-                    skipped.add(holder.id() + ": " + exception.getClass().getSimpleName());
+                    skipped.add(read.id() + ": " + exception.getClass().getSimpleName());
                 }
             }
         }
@@ -105,10 +91,90 @@ public final class RecipeValuation {
         return new Result(new ValueCatalog(entries), report);
     }
 
+    /** One recipe as the valuation needs it: what it makes, and the alternatives of each input. */
+    private record Read(String id, ItemStack output, List<List<ItemStack>> inputs) {}
+
+    /** Every recipe of the server, in a stable order so conversion cycles and reports are reproducible. */
+    private static List<Read> read(MinecraftServer server) {
+        var reads = new ArrayList<Read>();
+        //#if MC >= 1.20.2
+        var holders = server.getRecipeManager().getRecipes().stream()
+                .sorted(Comparator.comparing(holder -> holder.id().toString())).toList();
+        //#else
+        //$ // Before 1.20.2 a recipe carried its own id, without a holder around it.
+        //$ var holders = server.getRecipeManager().getRecipes().stream()
+        //$         .sorted(Comparator.comparing(recipe -> recipe.getId().toString())).toList();
+        //#endif
+        //#if MC >= 1.21.2
+        //$ // Recipes describe themselves through displays since 1.21.2, the same ones the recipe book shows.
+        //$ // Read while the server starts, before any level exists: the context is built from the server itself.
+        //#if MC >= 26.3
+        //$ var context = net.minecraft.util.context.ContextMap.builder()
+        //$         .set(net.minecraft.world.item.crafting.display.SlotDisplayContext.REGISTRIES, server.registryAccess())
+        //$         .buildAndValidate(net.minecraft.world.item.crafting.display.SlotDisplayContext.CONTEXT);
+        //#else
+        //$ var context = new net.minecraft.util.context.ContextMap.Builder()
+        //$         .withParameter(net.minecraft.world.item.crafting.display.SlotDisplayContext.FUEL_VALUES, server.fuelValues())
+        //$         .withParameter(net.minecraft.world.item.crafting.display.SlotDisplayContext.REGISTRIES, server.registryAccess())
+        //$         .create(net.minecraft.world.item.crafting.display.SlotDisplayContext.CONTEXT);
+        //#endif
+        //$ for (var holder : holders) {
+        //$     String name = holder.id().toString();
+        //$     try {
+        //$         for (var display : holder.value().display()) {
+        //$             List<net.minecraft.world.item.crafting.display.SlotDisplay> slots;
+        //$             if (display instanceof net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay shaped) slots = shaped.ingredients();
+        //$             else if (display instanceof net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay shapeless) slots = shapeless.ingredients();
+        //$             else if (display instanceof net.minecraft.world.item.crafting.display.FurnaceRecipeDisplay furnace) slots = List.of(furnace.ingredient());
+        //$             else if (display instanceof net.minecraft.world.item.crafting.display.StonecutterRecipeDisplay cutter) slots = List.of(cutter.input());
+        //$             else if (display instanceof net.minecraft.world.item.crafting.display.SmithingRecipeDisplay smithing) slots = List.of(smithing.template(), smithing.base(), smithing.addition());
+        //$             else { reads.add(new Read(name, ItemStack.EMPTY, List.of())); continue; }
+        //$             var inputs = new ArrayList<List<ItemStack>>();
+        //$             for (var slot : slots) inputs.add(slot.resolveForStacks(context));
+        //$             reads.add(new Read(name, display.result().resolveForFirstStack(context), inputs));
+        //$         }
+        //$     } catch (RuntimeException exception) {
+        //$         reads.add(new Read(name + ": " + exception.getClass().getSimpleName(), ItemStack.EMPTY, List.of()));
+        //$     }
+        //$ }
+        //#else
+        for (var holder : holders) {
+            //#if MC >= 1.20.2
+            var recipe = holder.value();
+            String name = holder.id().toString();
+            //#else
+            //$ var recipe = holder;
+            //$ String name = holder.getId().toString();
+            //#endif
+            try {
+                ItemStack output = recipe.getResultItem(server.registryAccess());
+                if (recipe instanceof DecoratedPotRecipe) output = new ItemStack(Items.DECORATED_POT);
+                List<Ingredient> ingredients = recipe.getIngredients();
+                if (recipe instanceof SmithingRecipe smithing) {
+                    // Smithing exposes predicates instead of the normal ingredient list.
+                    // Reading those also supports transform recipes added by other mods.
+                    ingredients = List.of(matching(smithing::isTemplateIngredient), matching(smithing::isBaseIngredient),
+                            matching(smithing::isAdditionIngredient));
+                } else if (recipe instanceof DecoratedPotRecipe) {
+                    ingredients = java.util.Collections.nCopies(4, Ingredient.of(Items.BRICK));
+                }
+                var inputs = new ArrayList<List<ItemStack>>();
+                for (var ingredient : ingredients) inputs.add(ingredient.isEmpty() ? List.of() : List.of(ingredient.getItems()));
+                reads.add(new Read(name, output, inputs));
+            } catch (RuntimeException exception) {
+                reads.add(new Read(name + ": " + exception.getClass().getSimpleName(), ItemStack.EMPTY, List.of()));
+            }
+        }
+        //#endif
+        return reads;
+    }
+
     private static String id(ItemStack stack) { return BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(); }
+    //#if MC < 1.21.2
     private static Ingredient matching(java.util.function.Predicate<ItemStack> predicate) {
         return Ingredient.of(BuiltInRegistries.ITEM.stream().map(ItemStack::new).filter(predicate));
     }
+    //#endif
     private static boolean plain(ItemStack stack) {
         return !stack.isEmpty() && !(stack.getItem() instanceof KeyItem)
                 && ItemStack.isSameItemSameComponents(stack, new ItemStack(stack.getItem()));

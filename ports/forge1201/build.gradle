@@ -1,0 +1,40 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev.legacyforge' version '2.0.147'
+}
+project.ext.loader = 'neoforge'
+apply from: '../common.gradle'
+
+// NeoForge for Minecraft 1.20.1 is the Forge 47 line, published by NeoForged.
+legacyForge {
+    enable { neoForgeVersion = target.neoforge }
+    runs {
+        client {
+            client()
+            gameDirectory = file("run/${mc}-client")
+            if (providers.gradleProperty('clientSmoke').isPresent()) {
+                systemProperty 'gamblingitems.clientsmoke', 'true'
+                jvmArgument '-Xmx2g'
+                programArguments.addAll('--quickPlaySingleplayer', 'world')
+            }
+        }
+        server {
+            server()
+            gameDirectory = file("run/${mc}")
+            programArgument '--nogui'
+            systemProperty 'gamblingitems.smoke', 'true'
+            jvmArgument '-Xmx1500m'
+        }
+    }
+    mods { gamblingitems { sourceSet sourceSets.main } }
+}
+mixin {
+    add sourceSets.main, 'gamblingitems.refmap.json'
+    config 'gamblingitems.client.mixins.json'
+}
+dependencies {
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+}
+tasks.named('jar') {
+    manifest.attributes('MixinConfigs': 'gamblingitems.client.mixins.json')
+}

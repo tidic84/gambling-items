@@ -27,7 +27,7 @@ public record CaseCatalog(List<CaseDefinition> cases) {
     public boolean isPrice(ItemStack stack) {
         if (stack.isEmpty()) return false;
         for (CaseDefinition definition : cases) {
-            ItemStack single = new ItemStack(BuiltInRegistries.ITEM.get(definition.priceItem()));
+            ItemStack single = new ItemStack(dev.gamblingitems.fabric.Compat.item(definition.priceItem()));
             if (ItemStack.isSameItemSameComponents(stack, single)) return true;
         }
         return false;

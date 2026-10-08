@@ -48,6 +48,14 @@ public final class SlotMenu extends AbstractContainerMenu {
     private final SimpleContainerData data = new SimpleContainerData(DATA_SIZE);
     private long animationEnd;
 
+    /** Opened from a portable item, so its window shows the tabs of the other games of that item. */
+    private boolean portable;
+
+    public SlotMenu(int syncId, Inventory inventory, SlotSetup setup, boolean portable) {
+        this(syncId, inventory, setup);
+        this.portable = portable;
+    }
+
     public SlotMenu(int syncId, Inventory inventory, SlotSetup setup) {
         this(syncId, inventory, setup, new SimpleContainer(SlotSettings.VAULT_SIZE),
                 ContainerLevelAccess.NULL);
@@ -83,6 +91,7 @@ public final class SlotMenu extends AbstractContainerMenu {
     }
 
     public SlotSetup setup() { return setup; }
+    public boolean portable() { return portable; }
     public SlotSettings settings() { return setup.settings(); }
     public ValueCatalog catalog() { return setup.catalog(); }
     public int remainingTicks() { return data.get(TICKS); }
@@ -117,6 +126,8 @@ public final class SlotMenu extends AbstractContainerMenu {
     }
 
     @Override public boolean clickMenuButton(Player player, int button) {
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator()
                 || !stillValid(player)) {
             return false;
@@ -211,7 +222,7 @@ public final class SlotMenu extends AbstractContainerMenu {
                 (level, pos) -> level.getBlockState(pos).getBlock() instanceof GameSurface surface
                         && surface.mode() == GameMode.SLOT_MACHINE
                         && player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64,
-                dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.SLOT_MACHINE));
+                dev.gamblingitems.fabric.item.TerminalItem.hasAccess(player, GameMode.SLOT_MACHINE));
     }
 
     @Override public void clicked(int slot, int button, ClickType type, Player player) {

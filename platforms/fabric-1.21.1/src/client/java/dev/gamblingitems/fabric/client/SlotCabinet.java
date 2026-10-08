@@ -6,7 +6,6 @@ import dev.gamblingitems.core.slots.SlotRules;
 import dev.gamblingitems.fabric.block.GameStationEntity;
 import dev.gamblingitems.fabric.block.SlotMachineBlock;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 
@@ -38,7 +37,7 @@ public final class SlotCabinet {
     }
 
     public static void render(GameStationEntity station, float partialTick, PoseStack pose,
-                              MultiBufferSource buffers, Font font) {
+                              WorldCanvas buffers, Font font) {
         double now = station.getLevel().getGameTime() + partialTick;
         int ticks = Math.max(1, station.animationTicks);
         double progress = station.startedAt == 0 ? 1
@@ -67,7 +66,7 @@ public final class SlotCabinet {
     }
 
     /** The playing side: the marquee above, the three reels, the payline and the lever. */
-    private static void front(GameStationEntity station, PoseStack pose, MultiBufferSource buffers,
+    private static void front(GameStationEntity station, PoseStack pose, WorldCanvas buffers,
                               Font font, double now, double progress, boolean playing) {
         quad(pose, buffers, -64, ROOF, 64, 64, BODY, 0);
         quad(pose, buffers, -60, ROOF + 4, 60, 58, BODY_LIGHT, 1);
@@ -125,7 +124,7 @@ public final class SlotCabinet {
     }
 
     /** The best lines of the paytable, printed on the belly of the cabinet. */
-    private static void paytable(PoseStack pose, MultiBufferSource buffers, Font font) {
+    private static void paytable(PoseStack pose, WorldCanvas buffers, Font font) {
         // Above the tray, which stands out of the cabinet itself.
         panel(pose, buffers, -52, -50, 52, 14, 0xff141b25, 2);
         label(pose, buffers, font, Component.translatable("gui.gamblingitems.slot_paytable").getString(),
@@ -145,7 +144,7 @@ public final class SlotCabinet {
     }
 
     /** A flank: trims from top to bottom, a grille of vents, and the slot the coins go in. */
-    private static void flank(PoseStack pose, MultiBufferSource buffers, boolean running, double now) {
+    private static void flank(PoseStack pose, WorldCanvas buffers, boolean running, double now) {
         quad(pose, buffers, -64, ROOF, 64, 64, BODY, 0);
         quad(pose, buffers, -58, ROOF + 4, 58, 58, BODY_LIGHT, 1);
         // Two dark red rails running the height of the cabinet.
@@ -171,7 +170,7 @@ public final class SlotCabinet {
     }
 
     /** The back: a bolted service hatch, plus the vents the cabinet breathes through. */
-    private static void back(PoseStack pose, MultiBufferSource buffers, Font font) {
+    private static void back(PoseStack pose, WorldCanvas buffers, Font font) {
         quad(pose, buffers, -64, ROOF, 64, 64, BODY, 0);
         quad(pose, buffers, -58, ROOF + 4, 58, 58, 0xff222d3b, 1);
         quad(pose, buffers, -44, -180, 44, -40, 0xff192230, 2);
@@ -193,7 +192,7 @@ public final class SlotCabinet {
      * The lever, standing out of the right flank of the cabinet: an arm and a ball, on a pivot.
      * It is pulled down as a round starts and rises back on its own once the reels have stopped.
      */
-    private static void lever(GameStationEntity station, PoseStack pose, MultiBufferSource buffers,
+    private static void lever(GameStationEntity station, PoseStack pose, WorldCanvas buffers,
                               double progress, boolean playing) {
         // Down in the first third of a pull, then back up: a hand lets go of a lever.
         double pulled = !playing ? 0
@@ -219,10 +218,9 @@ public final class SlotCabinet {
     }
 
     /** A box centred on the current origin, drawn as its six faces. */
-    private static void box(PoseStack pose, MultiBufferSource buffers, float halfX, float halfY,
+    private static void box(PoseStack pose, WorldCanvas buffers, float halfX, float halfY,
                             float halfZ, int colour) {
-        var vertices = buffers.getBuffer(RenderType.gui());
-        var matrix = pose.last().pose();
+        buffers.quads(pose, (matrix, vertices) -> {
         float[][] corners = {
                 {-halfX, -halfY, -halfZ}, {halfX, -halfY, -halfZ},
                 {halfX, halfY, -halfZ}, {-halfX, halfY, -halfZ},
@@ -242,10 +240,10 @@ public final class SlotCabinet {
                     | (int) (((colour >> 8) & 255) * brightness) << 8
                     | (int) ((colour & 255) * brightness);
             for (int index : face) {
-                vertices.addVertex(matrix, corners[index][0], corners[index][1], corners[index][2])
-                        .setColor(shaded);
+                WorldCanvas.vertex(vertices, matrix, corners[index][0], corners[index][1], corners[index][2], shaded);
             }
         }
+        });
     }
 
     /** The line a cabinet was told to show, as "0,4,7"; every unknown reel stays blank. */
@@ -264,30 +262,30 @@ public final class SlotCabinet {
         return line;
     }
 
-    private static void quad(PoseStack pose, MultiBufferSource buffers, float x1, float y1,
+    private static void quad(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                              float x2, float y2, int colour, float lift) {
-        var vertices = buffers.getBuffer(RenderType.gui());
-        var matrix = pose.last().pose();
-        vertices.addVertex(matrix, x1, y1, lift).setColor(colour);
-        vertices.addVertex(matrix, x1, y2, lift).setColor(colour);
-        vertices.addVertex(matrix, x2, y2, lift).setColor(colour);
-        vertices.addVertex(matrix, x2, y1, lift).setColor(colour);
+        buffers.quads(pose, (matrix, vertices) -> {
+        WorldCanvas.vertex(vertices, matrix, x1, y1, lift, colour);
+        WorldCanvas.vertex(vertices, matrix, x1, y2, lift, colour);
+        WorldCanvas.vertex(vertices, matrix, x2, y2, lift, colour);
+        WorldCanvas.vertex(vertices, matrix, x2, y1, lift, colour);
+        });
     }
 
-    private static void symbol(PoseStack pose, MultiBufferSource buffers, int symbol,
+    private static void symbol(PoseStack pose, WorldCanvas buffers, int symbol,
                                float x, float y, float size, float lift) {
         SlotSymbols.draw(symbol, x, y, size,
                 (x1, y1, x2, y2, colour) -> quad(pose, buffers, x1, y1, x2, y2, colour, lift));
     }
 
-    private static void reelSymbol(PoseStack pose, MultiBufferSource buffers, int symbol, float x, float y) {
+    private static void reelSymbol(PoseStack pose, WorldCanvas buffers, int symbol, float x, float y) {
         SlotSymbols.draw(symbol, x, y, 27, (x1, y1, x2, y2, colour) -> {
             float top = Math.max(-165, y1), bottom = Math.min(-125, y2);
             if (top < bottom) quad(pose, buffers, x1, top, x2, bottom, colour, 7);
         });
     }
 
-    private static void panel(PoseStack pose, MultiBufferSource buffers, float x1, float y1,
+    private static void panel(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                               float x2, float y2, int colour, float lift) {
         quad(pose, buffers, x1, y1, x2, y2, WINDOW, lift);
         quad(pose, buffers, x1, y1, x2, y1 + 2, SILVER, lift + 0.2f);
@@ -296,15 +294,14 @@ public final class SlotCabinet {
     }
 
     /** Writes on the cabinet, the given point being the middle of the line at any size. */
-    private static void label(PoseStack pose, MultiBufferSource buffers, Font font, String text,
+    private static void label(PoseStack pose, WorldCanvas buffers, Font font, String text,
                               float x, float y, int colour, float scale, float lift) {
         if (text.isEmpty()) return;
         pose.pushPose();
         pose.translate(x, y, lift + 0.4f);
         float fitted = Math.min(scale, 104f / Math.max(1, font.width(text)));
         pose.scale(fitted, fitted, fitted);
-        font.drawInBatch(text, -font.width(text) / 2f, -4.5f, colour, false, pose.last().pose(), buffers,
-                Font.DisplayMode.NORMAL, 0, 0xF000F0);
+        buffers.text(pose, font, text, -font.width(text) / 2f, -4.5f, colour, 0xF000F0);
         pose.popPose();
     }
 }

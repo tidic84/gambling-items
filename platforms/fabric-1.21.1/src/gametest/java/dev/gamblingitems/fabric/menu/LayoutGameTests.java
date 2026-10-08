@@ -3,10 +3,13 @@ package dev.gamblingitems.fabric.menu;
 import dev.gamblingitems.fabric.battle.BattleMenu;
 import dev.gamblingitems.fabric.bingo.BingoMenu;
 import dev.gamblingitems.fabric.blackjack.BlackjackMenu;
+import dev.gamblingitems.fabric.cases.CaseMenu;
 import dev.gamblingitems.fabric.config.ModConfig;
 import dev.gamblingitems.fabric.crash.CrashMenu;
 import dev.gamblingitems.fabric.roulette.RouletteMenu;
 import dev.gamblingitems.fabric.slots.SlotMenu;
+import dev.gamblingitems.fabric.tradeup.TradeUpMenu;
+import dev.gamblingitems.fabric.upgrade.UpgradeMenu;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
@@ -31,7 +34,8 @@ public class LayoutGameTests implements FabricGameTest {
                 new BlackjackMenu(3, player.getInventory(), ModConfig.blackjack()),
                 new BattleMenu(4, player.getInventory(), ModConfig.battle()),
                 new BingoMenu(5, player.getInventory(), ModConfig.bingo()),
-                new SlotMenu(6, player.getInventory(), ModConfig.slots()));
+                new SlotMenu(6, player.getInventory(), ModConfig.slots()),
+                new TradeUpMenu(7, player.getInventory(), ModConfig.tradeUp()));
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
@@ -66,6 +70,26 @@ public class LayoutGameTests implements FabricGameTest {
                     helper.assertFalse(sameColumn && labelInside,
                             name + " writes the label of the row at " + row.y + " inside the row at " + other.y);
                 }
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void casinoSlotsStayInsideTheirWindows(GameTestHelper helper) {
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        for (AbstractContainerMenu menu : List.of(
+                new CrashMenu(1, player.getInventory(), ModConfig.crash()),
+                new TradeUpMenu(2, player.getInventory(), ModConfig.tradeUp()),
+                new UpgradeMenu(3, player.getInventory(), ModConfig.upgrader()),
+                new CaseMenu(4, player.getInventory(), ModConfig.cases()),
+                new BattleMenu(5, player.getInventory(), ModConfig.battle()),
+                new BlackjackMenu(6, player.getInventory(), ModConfig.blackjack()))) {
+            for (Slot slot : menu.slots) {
+                // Below the header, inside the window and clear of its rounded corners.
+                helper.assertTrue(slot.x >= 8 && slot.x + SLOT <= CasinoLayout.WIDTH - 8
+                                && slot.y >= 36 && slot.y + SLOT <= CasinoLayout.HEIGHT - 6,
+                        menu.getClass().getSimpleName() + " has a slot outside its window at " + slot.x + "," + slot.y);
             }
         }
         helper.succeed();

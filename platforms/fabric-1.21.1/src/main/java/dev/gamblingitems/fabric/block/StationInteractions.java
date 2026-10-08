@@ -62,7 +62,7 @@ public final class StationInteractions {
         publish(station, roulette);
         station.preview(player.getName().getString(), preview(roulette));
         String area = bet.type().needsChoice() ? bet.type().id() + " " + bet.choice() : bet.type().id();
-        player.displayClientMessage(Component.translatable(changed
+        dev.gamblingitems.fabric.Compat.message(player, Component.translatable(changed
                         ? "gui.gamblingitems.panel.accepted" : "gui.gamblingitems.panel.rejected")
                 .append(" ").append(area), true);
     }
@@ -99,7 +99,7 @@ public final class StationInteractions {
             else if (menu instanceof BingoMenu) changed = menu.clickMenuButton(player, BingoMenu.COLLECT_BUTTON);
             else changed = !menu.quickMoveStack(player, inputs(menu)).isEmpty();
         } else if (button == 7 || (button == 5 && menu instanceof CrashMenu)) {
-            player.displayClientMessage(Component.translatable("gui.gamblingitems.panel.help"), false);
+            dev.gamblingitems.fabric.Compat.message(player, Component.translatable("gui.gamblingitems.panel.help"), false);
             changed = true;
         } else if (menu instanceof RouletteMenu) {
             // The panel offers the three simplest areas of the felt; the screen offers the whole table.
@@ -150,7 +150,7 @@ public final class StationInteractions {
                 station.rollingText = String.format(Locale.ROOT, "%.1f%%", upgrade.chance() * 100);
         }
         station.preview(player.getName().getString(), preview);
-        player.displayClientMessage(Component.translatable(changed ? "gui.gamblingitems.panel.accepted" : "gui.gamblingitems.panel.rejected")
+        dev.gamblingitems.fabric.Compat.message(player, Component.translatable(changed ? "gui.gamblingitems.panel.accepted" : "gui.gamblingitems.panel.rejected")
                 .append(" ").append(preview), true);
     }
 
@@ -177,7 +177,7 @@ public final class StationInteractions {
         }
         menu.broadcastChanges();
         station.preview(player.getName().getString(), String.valueOf(menu.plannedStake()));
-        player.displayClientMessage(Component.translatable("gui.gamblingitems.panel." + (changed ? feedback : "rejected"))
+        dev.gamblingitems.fabric.Compat.message(player, Component.translatable("gui.gamblingitems.panel." + (changed ? feedback : "rejected"))
                 .append(" ").append(Component.translatable("gui.gamblingitems.panel.crash_balance",
                         menu.plannedStake(), menu.stake(), menu.paid(), menu.winnings())), true);
     }

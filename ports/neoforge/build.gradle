@@ -1,0 +1,29 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.147'
+}
+project.ext.loader = 'neoforge'
+apply from: '../common.gradle'
+
+neoForge {
+    version = target.neoforge
+    runs {
+        client {
+            client()
+            gameDirectory = file("run/${mc}-client")
+            if (providers.gradleProperty('clientSmoke').isPresent()) {
+                systemProperty 'gamblingitems.clientsmoke', 'true'
+                jvmArgument '-Xmx2g'
+                programArguments.addAll('--quickPlaySingleplayer', 'world')
+            }
+        }
+        server {
+            server()
+            gameDirectory = file("run/${mc}")
+            programArgument '--nogui'
+            systemProperty 'gamblingitems.smoke', 'true'
+            jvmArgument '-Xmx1500m'
+        }
+    }
+    mods { gamblingitems { sourceSet sourceSets.main } }
+}

@@ -15,7 +15,8 @@ public final class BlackjackMenus {
         BlackjackTable table = BlackjackTables.of(player.server, player.getUUID());
         // The hand keeps the settings it was dealt with, whatever the configuration says now.
         BlackjackSetup setup = table.setup();
-        Platform.openMenu(player, Component.translatable("screen.gamblingitems.blackjack"), setup, BlackjackSetup.CODEC,
+        Platform.openMenu(player, Component.translatable("screen.gamblingitems.blackjack"), new dev.gamblingitems.fabric.menu.Opening<>(setup, access == ContainerLevelAccess.NULL),
+                dev.gamblingitems.fabric.menu.Opening.codec(BlackjackSetup.CODEC),
                 (id, inventory, ignored) -> new BlackjackMenu(id, inventory, setup,
                         PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.BLACKJACK),
                         table, access));

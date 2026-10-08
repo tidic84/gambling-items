@@ -4,7 +4,7 @@
   "author": "Tidic & Romalaure",
   "game": "Minecraft",
   "projectClass": "Mods",
-  "summary": "Nine item-based games with craftable handheld devices, multiplayer stations, and configurable recipe-based item values.",
+  "summary": "Nine casino games played with your items: trade up and upgrades on an exchange terminal, crash, roulette, blackjack, bingo and slots in a pocket casino or at animated tables.",
   "descriptionFile": "description-en.md",
   "logoFile": "project-icon.png",
   "license": "All Rights Reserved",
@@ -13,14 +13,23 @@
   "experimental": false,
   "sourceUrl": "https://github.com/tidic84/gambling-items",
   "file": {
-    "path": "gambling-items-fabric-1.21.1-0.2.0-beta.2.jar",
-    "displayName": "Gambling Items 0.2.0-beta.2 - Fabric 1.21.1",
-    "releaseType": "Beta",
-    "gameVersions": ["1.21.1"],
-    "modLoaders": ["Fabric"],
+    "path": "gambling-items-fabric-1.21.1-0.2.0-beta.7.jar",
+    "displayName": "Gambling Items 0.2.0-beta.7 - Fabric 1.21.1",
+    "releaseType": "Release",
+    "gameVersions": [
+      "1.21.1"
+    ],
+    "modLoaders": [
+      "Fabric"
+    ],
     "javaVersion": "Java 21",
     "changelogFile": "changelog-en.md",
-    "requiredDependencies": [{"slug": "fabric-api", "relation": "requiredDependency"}],
+    "requiredDependencies": [
+      {
+        "slug": "fabric-api",
+        "relation": "requiredDependency"
+      }
+    ],
     "clientRequired": true,
     "serverRequired": true
   }

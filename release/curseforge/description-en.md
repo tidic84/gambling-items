@@ -1,53 +1,52 @@
 # Gambling Items
 
-Turn your Minecraft inventory into the stakes for nine games. Craft a dedicated handheld device to play anywhere, or build a gaming room with animated stations, tables and a slot machine.
+Turn your Minecraft inventory into the stakes of nine casino games. Trade up and upgrade your items on a portable terminal, carry a pocket casino, or build a gaming room with animated stations, tables and a slot machine.
 
-## Nine games, nine handheld items
+## Two portable items
 
-- **Upgrader:** choose the item you want to win. Your stake and the target's value determine the chance shown before you play.
-- **Trade Up:** exchange five items of similar value for a reward from the displayed contract.
-- **Cases:** open six tiers of loot cases using keys dropped by mobs.
-- **Crash:** place item stakes, watch the shared multiplier rise and cash out before it crashes.
-- **Roulette:** play a European wheel with numbers 0–36 and multiple types of bets.
+- **Exchange terminal:** the item games, as tabs — Trade Up, Upgrader, Cases and Case Battles.
+- **Pocket casino:** the casino games, as tabs — Crash, Roulette, Blackjack, Bingo and Slots. It joins a table within 64 blocks, or opens one where you stand.
+
+Each item reopens the last game you played. Switching tab keeps your cursor where it was.
+
+## Nine games
+
+- **Trade Up:** exchange five items of similar value for a reward from the displayed contract, with every chance shown before you play.
+- **Upgrader:** stake an item and choose the one you want to win. The value of your stake and of your target set the odds, shown on a ring before you spin.
+- **Cases:** open loot cases with keys dropped by mobs. The reel slows down like a real case opening and stops on what the server drew.
+- **Case Battles:** two to four players open the same cases; the highest total takes everything.
+- **Crash:** stake items, watch the shared multiplier climb and cash out before it crashes.
+- **Roulette:** a European wheel with numbers 0–36 and every classic bet.
 - **Blackjack:** play against the dealer, with 3:2 blackjack payouts and returned stakes on ties.
-- **Case Battles:** two to four players open the same cases; the highest total wins the rewards.
 - **Bingo:** buy a card and follow a shared draw.
-- **Slot Machine:** spin three animated reels with pixel-art symbols and a visible payout table.
+- **Slot Machine:** three animated reels with pixel-art symbols and a visible payout table.
 
-Each game has its own craftable round token with a distinct emblem, such as cards for blackjack, a wheel for roulette and triple sevens for slots. Tokens are small in hand and held like ordinary items. Right-click one to open that game without placing a block. A portable terminal also provides access to all nine games.
+## A casino interface
 
-For Crash, roulette, bingo and case battles, handheld devices join an existing table within 64 blocks or create one at your position. Nearby players can join with their own devices. A case battle still needs multiple participants.
+Every game uses the same layout: the game on the left, the odds on the right, your full inventory and a betting slip with one big button. Green stakes, gold pays. Reels tick as items pass the marker, winning lines light up, and wins and losses have their sound.
 
 ## Build a gaming room
 
-Place game stations, roulette and blackjack tables, a bingo table, or a red-and-steel slot machine. Shared displays show ongoing games to nearby players. Portable devices and blocks use the same per-player winnings storage for their corresponding game.
-
-## Choose your Upgrader reward
-
-Put a stack into the stake slot, search for a target, and select it. Search supports item names, identifiers such as `minecraft:diamond`, and mod namespaces such as `@yourmod`.
-
-The target's value must exceed the value of your stake. A more valuable target gives a lower chance. For example, at a 90% configured return rate, a stake worth 1 has a 9% chance of winning a target worth 10, or a 4.5% chance of winning one worth 20.
+Place game stations, roulette, blackjack and bingo tables, or a red-and-steel slot machine. Their screens show the games in progress to nearby players, and the tables can be played directly on the felt. Opened from a block, a game shows on its own, without tabs.
 
 ## Recipe-based values and modpack settings
 
-The server builds an item catalogue from loaded vanilla, mod and datapack recipes, including smithing transformations. Values account for ingredients, output quantities and alternative recipes. More than 1,000 items are available in the tested vanilla configuration.
+The server builds an item catalogue from the loaded vanilla, mod and datapack recipes. Values account for ingredients, output quantities and alternative recipes.
 
-Server owners can set explicit prices, namespace fallback values and item exclusions in `config/gamblingitems/games.json`. The generated `resolved-values.json` report shows the final prices and identifies estimated values. Run `/reload` and reopen a game to load updated settings; active rounds keep their existing settings.
+Server owners can set explicit prices, namespace fallback values, item exclusions and a casino currency in `config/gamblingitems/games.json`. The generated `resolved-values.json` report shows the final prices. Run `/reload` to load updated settings; rounds in progress keep their settings.
 
-Automatic prices are estimates. Custom machines may use energy, fluids or recipe data that the mod cannot interpret. Unknown resources receive configurable fallback prices. Dynamic recipes without an identifiable output are reported. Items with custom names, enchantments, stored contents or extra components are not accepted as ordinary stakes. Case keys are kept outside the value market.
+Automatic prices are estimates: custom machines may use energy, fluids or recipe data the mod cannot read, and receive configurable fallback prices. Items with custom names, enchantments or stored contents are not accepted as ordinary stakes.
 
-## Installation
+## Versions
 
-1. Use **Minecraft Java 1.21.1** with **Java 21** and **Fabric Loader 0.16.14 or newer**.
-2. Install [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api), version **0.116.7+1.21.1 or a newer version compatible with Minecraft 1.21.1**.
-3. Put the Gambling Items JAR in the `mods` folder.
-4. For multiplayer, install the mod and Fabric API on both the server and every client.
+One file per Minecraft version and loader, from **Minecraft 1.20.1 to 26.3**, for **Fabric** and **NeoForge** (Forge 47 on 1.20.1). Pick the file that matches your exact Minecraft version and loader.
 
-English and French translations are included. This build targets Fabric 1.21.1; Forge, NeoForge and other Minecraft versions are not supported.
+- Fabric: 1.20.1–1.20.4, 1.20.6, 1.21–1.21.11, 26.1–26.3. Needs [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api).
+- NeoForge: 1.20.4, 1.20.6, 1.21–1.21.11, 26.1–26.3; Forge on 1.20.1.
+- Java 17 for 1.20.1–1.20.4, Java 21 for 1.20.6–1.21.11, Java 25 for 26.x.
+- In multiplayer, install the same file on the server and on every client.
 
-## Beta status
+English and French translations are included.
 
-This is a beta release. Core rule tests and Fabric server integration tests pass. Broader modpack compatibility and manual client gameplay testing are still needed. Back up an existing world before updating a beta.
-
-**Author:** Tidic & Romalaure  
+**Authors:** Tidic & Romalaure  
 **License:** All Rights Reserved

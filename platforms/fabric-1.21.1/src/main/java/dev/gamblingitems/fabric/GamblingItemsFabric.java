@@ -8,7 +8,11 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
+//#if MC >= 1.21
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
+//#else
+//$ import net.fabricmc.fabric.api.loot.v2.LootTableEvents;
+//#endif
 import dev.gamblingitems.fabric.crash.CrashGames;
 import dev.gamblingitems.fabric.battle.BattleLobbies;
 import dev.gamblingitems.fabric.bingo.BingoGames;
@@ -34,9 +38,19 @@ public final class GamblingItemsFabric implements ModInitializer {
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS)
                 .register(entries -> ModContent.creativeEntries().forEach(entries::accept));
         // Keys are found on mobs, so the cases have a price that is played for, not bought.
+        //#if MC >= 1.21
         LootTableEvents.MODIFY.register((key, builder, source, registries) -> {
             if (source.isBuiltin()) KeyDrops.poolsFor(key).forEach(builder::withPool);
         });
+        //#elif MC >= 1.20.5
+        //$ LootTableEvents.MODIFY.register((key, builder, source) -> {
+        //$     if (source.isBuiltin()) KeyDrops.poolsFor(key).forEach(builder::withPool);
+        //$ });
+        //#else
+        //$ LootTableEvents.MODIFY.register((resources, loot, id, builder, source) -> {
+        //$     if (source.isBuiltin()) KeyDrops.poolsFor(id).forEach(builder::withPool);
+        //$ });
+        //#endif
         ServerLifecycleEvents.SERVER_STARTING.register(ModConfig::load);
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {
             if (success) ModConfig.load(server);
@@ -70,10 +84,15 @@ public final class GamblingItemsFabric implements ModInitializer {
                 dispatcher.register(Commands.literal("gamblingitems")
                         .then(Commands.literal("info").executes(context -> {
                             context.getSource().sendSuccess(() -> Component.literal(
-                                    "Gambling Items | Fabric 1.21.1 | Playable: " + availableModes
+                                    "Gambling Items | Fabric | Playable: " + availableModes
                                     + " | Use a terminal or a station. Roadmap: " + plannedModes), false);
                             return 1;
                         }))));
         LOGGER.info("Gambling Items loaded. Playable: {}. Planned: {}", availableModes, plannedModes);
+        // Release checks start a real server once per Minecraft version; it stops when the world is up.
+        if (Boolean.getBoolean("gamblingitems.smoke")) ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            LOGGER.info("Gambling Items smoke test: server started");
+            server.halt(false);
+        });
     }
 }

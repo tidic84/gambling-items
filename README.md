@@ -20,7 +20,7 @@ Toute mise se fait en objets cot�s, jamais dans une mati�re impos�e : c'es
 
 Le serveur d�cide de chaque r�sultat avant l'animation, consomme la mise une seule fois et garde les gains non r�cup�r�s dans un coffre par joueur et par jeu, accessible depuis n'importe quel terminal ou borne.
 
-Les manches partagées (Crash, roulette, bingo, battles) appartiennent au serveur. Les items portables rejoignent une table à moins de 64 blocs ou en ouvrent une sur place sans bloc. Fermer une interface ou casser une borne n'interrompt pas une manche engagée. Un arrêt du serveur annule une manche non réglée et rend chaque mise engagée une seule fois.
+Les manches partagées (Crash, roulette, bingo, battles) appartiennent au serveur. Le casino de poche rejoint une table à moins de 64 blocs ou en ouvre une sur place ; le terminal d'échange porte les jeux d'objets (Trade Up, Upgrader, caisses, battles). Fermer une interface ou casser une borne n'interrompt pas une manche engagée. Un arrêt du serveur annule une manche non réglée et rend chaque mise engagée une seule fois.
 
 Aucun support NeoForge ou 26.2 n'est livr� pour le moment.
 

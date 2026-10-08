@@ -1,5 +1,7 @@
 package dev.gamblingitems.fabric.block;
 
+import dev.gamblingitems.fabric.Nbt;
+
 import dev.gamblingitems.core.GameMode;
 import dev.gamblingitems.fabric.ModContent;
 import net.minecraft.core.BlockPos;
@@ -86,8 +88,16 @@ public final class GameStationEntity extends BlockEntity {
         level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
     }
 
+    //#if MC >= 1.21.6
+    //$ @Override protected void saveAdditional(net.minecraft.world.level.storage.ValueOutput tag) {
+    //$     super.saveAdditional(tag);
+    //#elif MC < 1.20.5
+    //$ @Override protected void saveAdditional(CompoundTag tag) {
+    //$     super.saveAdditional(tag);
+    //#else
     @Override protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
+    //#endif
         tag.putString("player", playerName);
         tag.putString("rolling", rollingText);
         tag.putString("result", resultKey);
@@ -111,31 +121,43 @@ public final class GameStationEntity extends BlockEntity {
         tag.putLong("phaseEnd", phaseEnd);
     }
 
+    //#if MC >= 1.21.6
+    //$ @Override protected void loadAdditional(net.minecraft.world.level.storage.ValueInput tag) {
+    //$     super.loadAdditional(tag);
+    //#elif MC < 1.20.5
+    //$ @Override public void load(CompoundTag tag) {
+    //$     super.load(tag);
+    //#else
     @Override protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        playerName = tag.getString("player");
-        rollingText = tag.getString("rolling");
-        resultKey = tag.getString("result");
-        resultItem = tag.getString("resultItem");
-        highlight = tag.getBoolean("highlight");
-        startedAt = tag.getLong("startedAt");
-        durationTicks = tag.getInt("duration");
-        previewPlayer = tag.getString("previewPlayer");
-        previewText = tag.getString("previewText");
-        publicBets = tag.getString("publicBets");
-        cards = tag.getString("cards");
-        drawn = tag.getString("drawn");
-        reels = tag.getString("reels");
-        stakeItems = tag.getString("stakeItems");
-        reelItems = tag.getString("reelItems");
-        wheelColours = tag.getString("wheelColours");
-        phase = tag.contains("phase") ? tag.getInt("phase") : -1;
-        targetSlot = tag.contains("targetSlot") ? tag.getInt("targetSlot") : -1;
-        animationTicks = tag.getInt("animationTicks");
-        multiplier = tag.getInt("multiplier");
-        phaseEnd = tag.getLong("phaseEnd");
+    //#endif
+        playerName = Nbt.string(tag, "player");
+        rollingText = Nbt.string(tag, "rolling");
+        resultKey = Nbt.string(tag, "result");
+        resultItem = Nbt.string(tag, "resultItem");
+        highlight = Nbt.bool(tag, "highlight");
+        startedAt = Nbt.longValue(tag, "startedAt");
+        durationTicks = Nbt.integer(tag, "duration", 0);
+        previewPlayer = Nbt.string(tag, "previewPlayer");
+        previewText = Nbt.string(tag, "previewText");
+        publicBets = Nbt.string(tag, "publicBets");
+        cards = Nbt.string(tag, "cards");
+        drawn = Nbt.string(tag, "drawn");
+        reels = Nbt.string(tag, "reels");
+        stakeItems = Nbt.string(tag, "stakeItems");
+        reelItems = Nbt.string(tag, "reelItems");
+        wheelColours = Nbt.string(tag, "wheelColours");
+        phase = Nbt.integer(tag, "phase", -1);
+        targetSlot = Nbt.integer(tag, "targetSlot", -1);
+        animationTicks = Nbt.integer(tag, "animationTicks", 0);
+        multiplier = Nbt.integer(tag, "multiplier", 0);
+        phaseEnd = Nbt.longValue(tag, "phaseEnd");
     }
 
+    //#if MC >= 1.20.5
     @Override public CompoundTag getUpdateTag(HolderLookup.Provider registries) { return saveWithoutMetadata(registries); }
+    //#else
+    //$ @Override public CompoundTag getUpdateTag() { return saveWithoutMetadata(); }
+    //#endif
     @Override public ClientboundBlockEntityDataPacket getUpdatePacket() { return ClientboundBlockEntityDataPacket.create(this); }
 }

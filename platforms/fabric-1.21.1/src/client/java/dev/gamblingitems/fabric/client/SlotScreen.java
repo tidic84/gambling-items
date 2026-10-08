@@ -1,11 +1,11 @@
 package dev.gamblingitems.fabric.client;
 
+import dev.gamblingitems.core.GameMode;
 import dev.gamblingitems.core.slots.SlotRules;
 import dev.gamblingitems.fabric.slots.SlotMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
@@ -13,39 +13,39 @@ import net.minecraft.world.entity.player.Inventory;
  * The window of a cabinet: three reels, the paytable next to them, and the credit prepared
  * underneath. The reels only replay the line the server has already drawn and paid.
  */
-public final class SlotScreen extends AbstractContainerScreen<SlotMenu> {
+public final class SlotScreen extends CasinoScreen<SlotMenu> {
     private static final int REEL_X = 20, REEL_Y = 44, REEL_WIDTH = 50, REEL_HEIGHT = 56, REEL_GAP = 6;
-    private static final int WINDOW = 0xff091018, PAY_X = 196, PAY_WIDTH = 112;
+    private static final int WINDOW = GameScreens.HOLE, PAY_X = 196, PAY_WIDTH = 112;
     private static final int CRIMSON = 0xff942c3c, STEEL = 0xff8795a1, PAPER = 0xfff0eadb;
     /** The reels stop one after the other, the last one a third of a pull after the first. */
     private static final float STAGGER = 0.16f;
-    private final GameRules rules = new GameRules("slot_machine");
     private Button spin, collect;
 
     public SlotScreen(SlotMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title);
-        imageWidth = 320;
-        imageHeight = 278;
+        super(menu, inventory, title, 320, 278);
+    }
+
+    @Override protected GameMode mode() { return GameMode.SLOT_MACHINE; }
+    @Override protected boolean portable() { return menu.portable(); }
+    @Override protected Component subtitle() {
+        return Component.translatable("gui.gamblingitems.slot_subtitle", GameScreens.value(menu.settings().minimumStake()));
     }
 
     @Override protected void init() {
         super.init();
-        spin = addRenderableWidget(Button.builder(tr("slot_spin"), button -> click(SlotMenu.SPIN_BUTTON))
+        spin = addRenderableWidget(CasinoButton.primary(tr("slot_spin"), button -> click(SlotMenu.SPIN_BUTTON))
                 .bounds(leftPos + PAY_X, topPos + 154, PAY_WIDTH, 18).build());
         spin.setTooltip(Tooltip.create(Component.translatable("gui.gamblingitems.slot_spin_help",
                 GameScreens.value(menu.settings().minimumStake()))));
-        collect = addRenderableWidget(Button.builder(tr("collect_winnings"),
+        collect = addRenderableWidget(CasinoButton.builder(tr("collect_winnings"),
                         button -> click(SlotMenu.COLLECT_BUTTON))
                 .bounds(leftPos + PAY_X, topPos + 176, PAY_WIDTH, 18).build());
         collect.setTooltip(Tooltip.create(tr("collect_help")));
-        addRenderableWidget(rules.button(leftPos + imageWidth - 30, topPos + 6));
     }
 
     private void click(int button) {
         if (minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId, button);
     }
-
-    private static Component tr(String key) { return Component.translatable("gui.gamblingitems." + key); }
 
     @Override protected void containerTick() {
         super.containerTick();
@@ -53,34 +53,12 @@ public final class SlotScreen extends AbstractContainerScreen<SlotMenu> {
         collect.active = menu.winnings() > 0;
     }
 
-    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // While the rules are up they take every click, so nothing is played by accident.
-        if (rules.open()) {
-            rules.close();
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
+    @Override protected boolean gameClicked(double mouseX, double mouseY, int button) {
+        return false;
     }
 
-    @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        if (rules.open()) {
-            rules.render(graphics, font, width, height);
-            return;
-        }
-        renderTooltip(graphics, mouseX, mouseY);
-    }
-
-    @Override protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
+    @Override protected void renderGame(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
         int x = leftPos, y = topPos;
-        g.fill(x + 4, y + 4, x + imageWidth + 4, y + imageHeight + 4, 0x88000000);
-        panel(g, x, y, imageWidth, imageHeight, GameScreens.INK);
-        g.fillGradient(x + 3, y + 3, x + imageWidth - 3, y + 31, 0xff702333, 0xff311b29);
-        g.fill(x + 3, y + 3, x + imageWidth - 3, y + 5, CRIMSON);
-        GameScreens.fitted(g, font, title, x + 12, y + 11, imageWidth - 54, GameScreens.TEXT);
-        GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.slot_subtitle",
-                        GameScreens.value(menu.settings().minimumStake())),
-                x + 12, y + 22, imageWidth - 60, GameScreens.MUTED);
         panel(g, x + 12, y + 34, 176, 101, WINDOW);
         panel(g, x + PAY_X, y + 34, PAY_WIDTH, 116, GameScreens.PANEL);
         renderReels(g, x, y, partialTick);
@@ -90,7 +68,6 @@ public final class SlotScreen extends AbstractContainerScreen<SlotMenu> {
                 x + SlotMenu.STAKE_X, y + SlotMenu.INPUT_Y - 9, 150, GameScreens.MUTED);
         GameScreens.slots(g, menu, x, y);
         GameScreens.fitted(g, font, tr("inventory"), x + 12, y + 203, 62, GameScreens.MUTED);
-        GameScreens.fitted(g, font, tr("protected"), x + 20, y + 178, 164, GameScreens.GREEN);
     }
 
     /** The three windows, still on a drawn line and rolling while the pull plays out. */

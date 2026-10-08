@@ -45,6 +45,14 @@ public final class RouletteMenu extends AbstractContainerMenu {
     private final RouletteGame game;
     private final SimpleContainerData data = new SimpleContainerData(DATA_SIZE);
 
+    /** Opened from a portable item, so its window shows the tabs of the other games of that item. */
+    private boolean portable;
+
+    public RouletteMenu(int syncId, Inventory inventory, RouletteSetup setup, boolean portable) {
+        this(syncId, inventory, setup);
+        this.portable = portable;
+    }
+
     public RouletteMenu(int syncId, Inventory inventory, RouletteSetup setup) {
         this(syncId, inventory, setup, new SimpleContainer(RouletteSettings.VAULT_SIZE), null);
     }
@@ -78,6 +86,7 @@ public final class RouletteMenu extends AbstractContainerMenu {
     }
 
     public RouletteSetup setup() { return setup; }
+    public boolean portable() { return portable; }
     public RouletteSettings settings() { return setup.settings(); }
     public ValueCatalog catalog() { return setup.catalog(); }
     public RouletteGame.Phase phase() { return RouletteGame.Phase.fromId(data.get(PHASE)); }
@@ -127,6 +136,8 @@ public final class RouletteMenu extends AbstractContainerMenu {
     }
 
     @Override public boolean clickMenuButton(Player player, int button) {
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) {
             return false;
         }
@@ -199,7 +210,7 @@ public final class RouletteMenu extends AbstractContainerMenu {
                 > RouletteGames.REACH * RouletteGames.REACH) {
             return false;
         }
-        return dev.gamblingitems.fabric.item.GameItem.hasAccess(player, GameMode.ROULETTE)
+        return dev.gamblingitems.fabric.item.TerminalItem.hasAccess(player, GameMode.ROULETTE)
                 || (game.level().getBlockState(pos).getBlock() instanceof GameSurface surface
                         && surface.mode() == GameMode.ROULETTE);
     }

@@ -10,7 +10,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+//#if MC >= 1.20.5 && MC < 1.21.2
 import net.minecraft.world.ItemInteractionResult;
+//#endif
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ContainerLevelAccess;
@@ -25,7 +27,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -40,17 +42,20 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * five others point back to it. Right-clicking any of them sits the player down at that game.
  */
 public final class GameTableBlock extends BaseEntityBlock implements GameSurface {
-    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+    public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     /** Which of the six blocks this is: the front row is 0 to 2, the back row 3 to 5. */
     public static final IntegerProperty PART = IntegerProperty.create("part", 0, 5);
     /** The game is played on the middle block of the front row. */
     public static final int ANCHOR_PART = 1;
     /** A table is waist high, so players can see the felt from where they stand. */
     private static final VoxelShape SHAPE = Block.box(0, 0, 0, 16, 13, 16);
+    // Blocks declare a codec from 1.20.3 to 26.2.
+    //#if MC >= 1.20.3 && MC < 26.3
     public static final MapCodec<GameTableBlock> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             Codec.STRING.fieldOf("mode").forGetter(block -> block.mode().id()),
             propertiesCodec()).apply(instance, (mode, properties) ->
                     new GameTableBlock(GameMode.fromId(mode), properties)));
+    //#endif
 
     private final GameMode mode;
 
@@ -62,7 +67,9 @@ public final class GameTableBlock extends BaseEntityBlock implements GameSurface
 
     @Override public GameMode mode() { return mode; }
 
+    //#if MC >= 1.20.3 && MC < 26.3
     @Override protected MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
+    //#endif
 
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(FACING, PART);
@@ -95,9 +102,15 @@ public final class GameTableBlock extends BaseEntityBlock implements GameSurface
         }
     }
 
+    // Breaking any part of the furniture removes the others.
+    //#if MC >= 1.21.5
+    //$ @Override protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level, BlockPos pos, boolean moving) {
+    //$     super.affectNeighborsAfterRemoval(state, level, pos, moving);
+    //#else
     @Override protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState next, boolean moving) {
         super.onRemove(state, level, pos, next, moving);
         if (state.is(next.getBlock()) || level.isClientSide) return;
+    //#endif
         BlockPos root = anchor(pos, state);
         for (int part = 0; part < 6; part++) {
             BlockPos target = partPos(root, state.getValue(FACING), part);
@@ -126,18 +139,36 @@ public final class GameTableBlock extends BaseEntityBlock implements GameSurface
 
     @Override protected RenderShape getRenderShape(BlockState state) { return RenderShape.MODEL; }
 
+    //#if MC >= 1.20.5
     @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                           Player player, BlockHitResult hit) {
         sitDown(state, level, pos, player, hit);
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return dev.gamblingitems.fabric.Compat.handled(level);
     }
 
-    @Override protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level,
+    //#if MC >= 1.21.2
+    //$ @Override protected InteractionResult useItemOn(
+    //#else
+    @Override protected ItemInteractionResult useItemOn(
+    //#endif
+            ItemStack stack, BlockState state, Level level,
                                                         BlockPos pos, Player player, InteractionHand hand,
                                                         BlockHitResult hit) {
         if (hand == InteractionHand.MAIN_HAND) sitDown(state, level, pos, player, hit);
+        //#if MC >= 1.21.2
+        //$ return dev.gamblingitems.fabric.Compat.handled(level);
+        //#else
         return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        //#endif
     }
+    //#else
+    //$ // Before 1.20.5 one method answered a click, with or without an item in hand.
+    //$ @Override public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
+    //$         InteractionHand hand, BlockHitResult hit) {
+    //$     if (hand == InteractionHand.MAIN_HAND) sitDown(state, level, pos, player, hit);
+    //$     return InteractionResult.sidedSuccess(level.isClientSide);
+    //$ }
+    //#endif
 
     /**
      * A table is played on where it is touched: the controls printed along the near edge answer

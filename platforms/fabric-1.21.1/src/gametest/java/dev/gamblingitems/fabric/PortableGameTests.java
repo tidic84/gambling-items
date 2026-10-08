@@ -2,7 +2,9 @@ package dev.gamblingitems.fabric;
 
 import dev.gamblingitems.core.GameMode;
 import dev.gamblingitems.fabric.config.ModConfig;
-import dev.gamblingitems.fabric.item.GameItem;
+import dev.gamblingitems.fabric.item.TerminalItem;
+import dev.gamblingitems.fabric.menu.GameMenus;
+import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -12,32 +14,48 @@ import net.minecraft.world.item.Items;
 
 public class PortableGameTests implements FabricGameTest {
     @GameTest(template = EMPTY_STRUCTURE)
-    public void everyDedicatedItemOpensItsGameWithoutABlockOrTerminal(GameTestHelper helper) {
+    public void theTerminalOpensItsItemGamesWithoutABlock(GameTestHelper helper) {
         var player = helper.makeMockServerPlayerInLevel();
         player.setPos(12000, 100, 12000);
-        for (GameMode mode : GameMode.values()) {
-            player.getInventory().clearContent();
-            player.getInventory().setItem(0, new ItemStack(ModContent.gameItem(mode)));
-            player.getInventory().selected = 0;
-            var item = (GameItem) ModContent.gameItem(mode);
-            item.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
-            helper.assertTrue(player.containerMenu != player.inventoryMenu, mode + " opens a menu");
+        player.getInventory().setItem(0, new ItemStack(ModContent.TERMINAL));
+        for (GameMode mode : GameMenus.TERMINAL) {
+            helper.assertTrue(GameMenus.open(player, mode, ContainerLevelAccess.NULL), mode + " opens from the terminal");
             helper.assertTrue(player.containerMenu.stillValid(player), mode + " stays open without a station");
             var id = net.minecraft.core.registries.BuiltInRegistries.MENU.getKey(player.containerMenu.getType());
-            helper.assertTrue(id.equals(ModContent.id(mode.id())), "The dedicated item opens " + mode);
+            helper.assertTrue(id.equals(ModContent.id(mode.id())), "The terminal opens " + mode);
             player.closeContainer();
         }
         helper.succeed();
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
-    public void accessIsSpecificToTheGameAndIncludesTheOffhand(GameTestHelper helper) {
+    public void thePocketCasinoOpensCasinoGamesWithoutABlock(GameTestHelper helper) {
         var player = helper.makeMockServerPlayerInLevel();
-        player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(ModContent.gameItem(GameMode.UPGRADER)));
-        helper.assertTrue(GameItem.hasAccess(player, GameMode.UPGRADER), "Offhand upgrader is usable");
-        helper.assertFalse(GameItem.hasAccess(player, GameMode.CRASH), "An upgrader does not authorize Crash");
+        player.setPos(12000, 100, 12000);
+        player.getInventory().setItem(0, new ItemStack(ModContent.POCKET_CASINO));
+        for (GameMode mode : GameMenus.CASINO) {
+            helper.assertTrue(GameMenus.open(player, mode, ContainerLevelAccess.NULL), mode + " opens from the pocket casino");
+            helper.assertTrue(player.containerMenu.stillValid(player), mode + " stays open without a block");
+            var id = net.minecraft.core.registries.BuiltInRegistries.MENU.getKey(player.containerMenu.getType());
+            helper.assertTrue(id.equals(ModContent.id(mode.id())), "The pocket casino opens " + mode);
+            player.closeContainer();
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void eachPortableItemReachesItsOwnGamesOnly(GameTestHelper helper) {
+        var player = helper.makeMockServerPlayerInLevel();
+        player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(ModContent.TERMINAL));
+        for (GameMode mode : GameMode.values())
+            helper.assertTrue(TerminalItem.hasAccess(player, mode) == GameMenus.TERMINAL.contains(mode),
+                    "The exchange terminal reaches " + mode + " only if it is an item game");
+        player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(ModContent.POCKET_CASINO));
+        for (GameMode mode : GameMode.values())
+            helper.assertTrue(TerminalItem.hasAccess(player, mode) == GameMenus.CASINO.contains(mode),
+                    "The pocket casino reaches " + mode + " only if it is a casino game");
         player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
-        helper.assertFalse(GameItem.hasAccess(player, GameMode.UPGRADER), "Removing the item removes access");
+        helper.assertFalse(TerminalItem.hasAccess(player, GameMode.CRASH), "Removing the item removes access");
         helper.succeed();
     }
 
@@ -50,12 +68,8 @@ public class PortableGameTests implements FabricGameTest {
         helper.assertTrue(catalog.valueOf(new ItemStack(Items.NETHERITE_AXE)) >
                 catalog.valueOf(new ItemStack(Items.NETHERITE_INGOT)), "Smithing includes its base equipment and template");
         helper.assertTrue(catalog.valueOf(new ItemStack(Items.DECORATED_POT)) > 0, "Special pot recipe has a plain target");
-        for (GameMode mode : GameMode.values()) {
-            helper.assertTrue(catalog.valueOf(new ItemStack(ModContent.gameItem(mode))) > 0,
-                    "A recipe in a mod namespace is automatically valued: " + mode);
-            helper.assertTrue(helper.getLevel().getRecipeManager().byKey(ModContent.id(mode.id() + "_item")).isPresent(),
-                    "Each handheld game can be crafted: " + mode);
-        }
+        helper.assertTrue(catalog.valueOf(new ItemStack(ModContent.TERMINAL)) > 0,
+                "A recipe in a mod namespace is automatically valued");
         helper.succeed();
     }
 
@@ -77,7 +91,7 @@ public class PortableGameTests implements FabricGameTest {
 
     @GameTest(template = EMPTY_STRUCTURE)
     public void explicitModValuesOverrideRecipesAndExclusionsRemoveTargets(GameTestHelper helper) {
-        var id = ModContent.id("upgrader_item");
+        var id = ModContent.id("terminal");
         var configured = new dev.gamblingitems.fabric.value.ValueCatalog(java.util.List.of(
                 new dev.gamblingitems.fabric.value.ValueCatalog.Entry(id, 54321)));
         var options = com.google.gson.JsonParser.parseString("""
@@ -85,7 +99,7 @@ public class PortableGameTests implements FabricGameTest {
                  "excludedItems":["minecraft:diamond_block"]}
                 """).getAsJsonObject();
         var result = dev.gamblingitems.fabric.value.RecipeValuation.build(helper.getLevel().getServer(), configured, options);
-        helper.assertTrue(result.catalog().valueOf(new ItemStack(ModContent.gameItem(GameMode.UPGRADER))) == 54321,
+        helper.assertTrue(result.catalog().valueOf(new ItemStack(ModContent.TERMINAL)) == 54321,
                 "Explicit price wins over a modded recipe");
         helper.assertTrue(result.catalog().valueOf(new ItemStack(Items.DIAMOND_BLOCK)) == 0, "Excluded target stays absent");
         helper.assertTrue(result.report().getAsJsonObject("items").getAsJsonObject(id.toString())

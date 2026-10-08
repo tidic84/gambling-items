@@ -1,0 +1,32 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version '1.14.10'
+}
+project.ext.loader = 'fabric'
+apply from: '../common.gradle'
+
+dependencies {
+    minecraft "com.mojang:minecraft:${mc}"
+    mappings loom.officialMojangMappings()
+    modImplementation 'net.fabricmc:fabric-loader:0.17.3'
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${target.fabric_api}"
+}
+
+loom {
+    runs {
+        // Release check of the interface: joins the world of the server check, opens every game, takes screenshots.
+        client {
+            runDir "run/${mc}-client"
+            if (providers.gradleProperty('clientSmoke').isPresent()) {
+                vmArg '-Dgamblingitems.clientsmoke=true'
+                vmArg '-Xmx2g'
+                programArgs '--quickPlaySingleplayer', 'world'
+            }
+        }
+        server {
+            runDir "run/${mc}"
+            programArgs '--nogui'
+            vmArg '-Dgamblingitems.smoke=true'
+            vmArg '-Xmx1500m'
+        }
+    }
+}

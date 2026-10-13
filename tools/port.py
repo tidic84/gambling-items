@@ -209,7 +209,12 @@ def generate_resources(loader, mc, out):
             if key >= version_key('1.21.6'):
                 mixins = mixins.replace('"MouseHandlerAccessor"', '"MouseHandlerAccessor", "GuiGraphicsAccessor"')
             if loader == 'neoforge' and mc == '1.20.1':
-                mixins = mixins.replace('"required": true,', '"required": true,\n  "minVersion": "0.8",')
+                config = json.loads(mixins)
+                config['minVersion'] = '0.8'
+                # Forge 47 runs SRG names. The processor generates this file,
+                # but Mixin only loads it when the config explicitly names it.
+                config['refmap'] = 'gamblingitems.refmap.json'
+                mixins = json.dumps(config, indent=2) + '\n'
             target.write_text(mixins, encoding='utf-8')
         elif relative == 'fabric.mod.json':
             target.write_text(fabric_metadata(file.read_text(encoding='utf-8'), mc), encoding='utf-8')

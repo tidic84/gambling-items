@@ -7,3 +7,5 @@
 *.log
 dist/
 __pycache__/
+.capture-instance/
+marketing/*/source/

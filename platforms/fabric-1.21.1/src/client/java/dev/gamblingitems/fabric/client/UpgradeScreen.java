@@ -184,7 +184,7 @@ public final class UpgradeScreen extends CasinoScreen<UpgradeMenu> {
 
     @Override protected boolean gameClicked(double x, double y, int button) {
         int index = targets.at(filtered.size(), leftPos + SX + 4, topPos + LIST_Y, SW - 6, LIST_HEIGHT, x, y);
-        if (button != 0 || index < 0 || menu.isAnimating()) return false;
+        if (button != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT || index < 0 || menu.isAnimating()) return false;
         send(filtered.get(index));
         return true;
     }

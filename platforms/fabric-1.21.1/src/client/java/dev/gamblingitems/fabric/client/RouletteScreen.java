@@ -56,7 +56,7 @@ public final class RouletteScreen extends CasinoScreen<RouletteMenu> {
     }
 
     @Override protected boolean gameClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && menu.canBet()) {
+        if (button == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && menu.canBet()) {
             RouletteTable.Area area = RouletteTable.at(areas,
                     (int) mouseX - leftPos - TABLE_X, (int) mouseY - topPos - TABLE_Y);
             if (area != null) {

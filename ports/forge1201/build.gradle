@@ -38,3 +38,47 @@ dependencies {
 tasks.named('jar') {
     manifest.attributes('MixinConfigs': 'gamblingitems.client.mixins.json')
 }
+
+// A server smoke test never applies these client mixins. Verify the production
+// JAR as well, so a generated-but-unreferenced refmap cannot ship again.
+def productionJar = tasks.named('jar', Jar)
+tasks.register('verifyMixinRefmap') {
+    group = 'verification'
+    description = 'Verify that the Forge 1.20.1 production JAR loads its mouse mixin mappings.'
+    dependsOn productionJar
+    inputs.file(productionJar.flatMap { it.archiveFile })
+    doLast {
+        def jarFile = productionJar.get().archiveFile.get().asFile
+        new java.util.zip.ZipFile(jarFile).withCloseable { zip ->
+            def readJson = { String name ->
+                def entry = zip.getEntry(name)
+                if (entry == null) throw new GradleException("Missing ${name} in ${jarFile.name}")
+                zip.getInputStream(entry).withCloseable { stream ->
+                    new groovy.json.JsonSlurper().parse(stream, 'UTF-8')
+                }
+            }
+            def config = readJson('gamblingitems.client.mixins.json')
+            if (config.refmap != 'gamblingitems.refmap.json') {
+                throw new GradleException('Forge 1.20.1 client mixins must declare gamblingitems.refmap.json')
+            }
+            def refmap = readJson(config.refmap)
+            def expected = [
+                'dev/gamblingitems/fabric/client/mixin/MouseGrabMixin': [
+                    grabMouse: 'Lnet/minecraft/client/MouseHandler;m_91601_()V'
+                ],
+                'dev/gamblingitems/fabric/client/mixin/MouseHandlerAccessor': [
+                    xpos: 'f_91507_:D', ypos: 'f_91508_:D'
+                ]
+            ]
+            expected.each { mixinName, references ->
+                references.each { sourceName, runtimeName ->
+                    if (refmap.mappings?[mixinName]?[sourceName] != runtimeName ||
+                            refmap.data?.searge?[mixinName]?[sourceName] != runtimeName) {
+                        throw new GradleException("Missing SRG mapping for ${mixinName}.${sourceName}")
+                    }
+                }
+            }
+        }
+    }
+}
+tasks.named('check') { dependsOn 'verifyMixinRefmap' }

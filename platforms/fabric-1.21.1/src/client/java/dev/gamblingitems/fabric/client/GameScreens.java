@@ -11,19 +11,19 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * The casino look shared by every window of the mod: a night-blue room, raised cards, green for
- * the action that stakes something, gold for what is won.
+ * The casino look shared by every window of the mod: a night-blue room with brass trim, graphite
+ * cards, casino green for the action that stakes something, brass for what is won.
  */
 public final class GameScreens {
     /** Surfaces, from the room to the raised controls. */
-    public static final int INK = 0xff0f212e, PANEL = 0xff1a2c38, RAISED = 0xff213743, HOVER = 0xff2f4553;
-    public static final int BORDER = 0xff2f4553, HOLE = 0xff0a1822, HEADER = 0xff0b1923;
-    public static final int TEXT = 0xffffffff, MUTED = 0xffb1bad3, DIM = 0xff6f8396;
-    /** Green stakes, gold pays, red loses, blue marks what is selected. */
-    public static final int GREEN = 0xff00e701, GREEN_HOVER = 0xff3dff3e, ON_GREEN = 0xff04210a;
-    public static final int GOLD = 0xffffc83d, RED = 0xffed4163, ACCENT = 0xff1475e1;
+    public static final int INK = 0xff0e1622, PANEL = 0xff18212d, RAISED = 0xff222c39, HOVER = 0xff2e3a4a;
+    public static final int BORDER = 0xff6b5631, HOLE = 0xff080d14, HEADER = 0xff0a1019;
+    public static final int TEXT = 0xfff3eee2, MUTED = 0xffbfb8a8, DIM = 0xff7f7a70;
+    /** Green stakes, brass pays, red loses, cyan marks what is selected. Text on green keeps 4.5:1. */
+    public static final int GREEN = 0xff17784a, GREEN_HOVER = 0xff1f8f58, ON_GREEN = 0xfff3eee2;
+    public static final int GOLD = 0xffd9b25a, RED = 0xffd2434f, ACCENT = 0xff4cc3d9;
     public static final int ACCENT_FILL = GREEN, ACCENT_HOVER = GREEN_HOVER, ON_ACCENT = ON_GREEN;
-    public static final int SELECTION = 0xff557086;
+    public static final int SELECTION = 0xff3f5266;
     public static final int RADIUS = 4;
 
     private GameScreens() {}

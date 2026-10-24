@@ -30,7 +30,7 @@ public final class CasinoButton extends Button {
                 text = !active ? GameScreens.DIM : GameScreens.ON_GREEN;
             }
             case SECONDARY -> {
-                fill = !active ? 0xff1d3341 : hot ? GameScreens.HOVER : GameScreens.RAISED;
+                fill = !active ? 0xff1a222d : hot ? GameScreens.HOVER : GameScreens.RAISED;
                 text = !active ? GameScreens.DIM : GameScreens.TEXT;
             }
             default -> {
@@ -39,7 +39,7 @@ public final class CasinoButton extends Button {
             }
         }
         if (style == Style.PRIMARY && active)
-            ArenaShapes.rounded(g, getX(), getY() + 1, width, height, GameScreens.RADIUS, 0xff00a301);
+            ArenaShapes.rounded(g, getX(), getY() + 1, width, height, GameScreens.RADIUS, 0xff0f5534);
         if (fill != 0) ArenaShapes.rounded(g, getX(), getY(), width, height, GameScreens.RADIUS, fill);
         Font font = Minecraft.getInstance().font;
         String label = getMessage().getString();

@@ -45,7 +45,7 @@ final class OddsList {
             if (index >= rows.size()) break;
             Row row = rows.get(index);
             int top = y + line * ROW;
-            if (row.marked()) GameScreens.rounded(g, x, top, width - 4, ROW - 1, 0xff1f4a2a);
+            if (row.marked()) GameScreens.rounded(g, x, top, width - 4, ROW - 1, 0xff1a3d2a);
             else if (index == hovered && row.enabled()) GameScreens.rounded(g, x, top, width - 4, ROW - 1, GameScreens.RAISED);
             g.renderFakeItem(row.stack(), x + 1, top);
             int figureX = x + width - 7 - font.width(row.figure());

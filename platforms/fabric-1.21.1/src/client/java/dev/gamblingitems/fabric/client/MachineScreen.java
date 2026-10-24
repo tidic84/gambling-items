@@ -106,6 +106,7 @@ public final class MachineScreen extends CasinoScreen<MachineMenu> {
         double progress = progress(partialTick);
         double now = (minecraft.level == null ? 0 : minecraft.level.getGameTime()) + partialTick;
         boolean shown = menu.shown() >= 0;
+        ArenaShapes.flush(g);
         g.enableScissor(x + SHOW_X + 1, y + SHOW_Y + 1, x + SHOW_X + SHOW_WIDTH - 1, y + SHOW_Y + 74);
         float cx = x + SHOW_X + SHOW_WIDTH / 2f, cy = y + SHOW_Y + 37;
         switch (mode()) {
@@ -116,6 +117,7 @@ public final class MachineScreen extends CasinoScreen<MachineMenu> {
             case CAPSULE_GACHA -> gacha(g, cx, cy, progress, shown, now);
             default -> dial(g, x + SHOW_X, y + SHOW_Y, progress, shown, now);
         }
+        ArenaShapes.flush(g);
         g.disableScissor();
         status(g, x, y);
         odds(g, x, y, mouseX, mouseY);
@@ -322,25 +324,25 @@ public final class MachineScreen extends CasinoScreen<MachineMenu> {
     /** Eight rows of pins over nine pockets, and the ball finding its way down. */
     private void pachinko(GuiGraphics g, float cx, int y, double progress, boolean shown) {
         int[] multipliers = menu.table().multipliers();
-        float spacing = 8.5f, top = y + 8, rowHeight = 6.6f;
+        float spacing = 11f, top = y + 6, rowHeight = 5.6f;
         for (int row = 0; row < MachineTable.PACHINKO_ROWS; row++) {
             for (int pin = 0; pin <= row; pin++) {
                 float px = cx + (pin - row / 2f) * spacing;
                 ArenaShapes.disc(g, px, top + row * rowHeight + rowHeight, 1.1f, STEEL);
             }
         }
-        float pockets = top + MachineTable.PACHINKO_ROWS * rowHeight + 6;
+        float pockets = top + MachineTable.PACHINKO_ROWS * rowHeight + 5;
         int landed = shown && progress >= 1 ? menu.shown() : -1;
         for (int pocket = 0; pocket < MachineTable.PACHINKO_POCKETS; pocket++) {
             float px = cx + (pocket - MachineTable.PACHINKO_ROWS / 2f) * spacing;
             int colour = MachineMotion.tier(multipliers[pocket]);
-            GameScreens.rounded(g, (int) (px - 4), (int) pockets, 8, 9, pocket == landed ? GameScreens.TEXT : colour);
+            GameScreens.rounded(g, (int) (px - 4), (int) pockets, 8, 8, pocket == landed ? GameScreens.TEXT : colour);
         }
         for (int pocket = 0; pocket < MachineTable.PACHINKO_POCKETS; pocket++) {
             float px = cx + (pocket - MachineTable.PACHINKO_ROWS / 2f) * spacing;
             String label = BigDecimal.valueOf(multipliers[pocket], 2).stripTrailingZeros().toPlainString();
             GuiPose.push(g);
-            GuiPose.translate(g, px, pockets + 11);
+            GuiPose.translate(g, px, pockets + 10);
             GuiPose.scale(g, 0.5f);
             g.drawCenteredString(font, label, 0, 0, pocket == landed ? GameScreens.GOLD : GameScreens.MUTED);
             GuiPose.pop(g);

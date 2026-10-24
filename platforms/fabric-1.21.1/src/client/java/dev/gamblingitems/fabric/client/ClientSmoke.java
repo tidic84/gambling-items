@@ -5,6 +5,9 @@ import dev.gamblingitems.fabric.ModContent;
 import dev.gamblingitems.fabric.menu.GameMenus;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import dev.gamblingitems.fabric.machines.MachineMenu;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.world.inventory.ContainerLevelAccess;
@@ -21,10 +24,16 @@ public final class ClientSmoke {
     private static final int STEP = 60, SETTLE = 40;
     private static final List<GameMode> MODES = new ArrayList<>();
     private static int ticks = -1;
+    // Machines are only opened at their block: the smoke places one in front of the player and plays it once.
+    private static final Map<GameMode, Block> MACHINES = Map.of(GameMode.LUCKY_WHEEL, ModContent.LUCKY_WHEEL,
+            GameMode.COIN_PUSHER, ModContent.COIN_PUSHER, GameMode.PRIZE_CLAW, ModContent.PRIZE_CLAW,
+            GameMode.PACHINKO, ModContent.PACHINKO, GameMode.CAPSULE_GACHA, ModContent.CAPSULE_GACHA,
+            GameMode.HIGH_STAKES, ModContent.HIGH_STAKES);
 
     static {
         MODES.addAll(GameMenus.TERMINAL);
         MODES.addAll(GameMenus.CASINO);
+        MODES.addAll(GameMenus.MACHINES);
     }
 
     private ClientSmoke() {}
@@ -51,7 +60,21 @@ public final class ClientSmoke {
         GameMode mode = MODES.get(step);
         if (phase == 0) server.execute(() -> {
             var player = server.getPlayerList().getPlayer(id);
-            if (player != null) GameMenus.open(player, mode, ContainerLevelAccess.NULL);
+            if (player == null) return;
+            Block machine = MACHINES.get(mode);
+            if (machine == null) {
+                GameMenus.open(player, mode, ContainerLevelAccess.NULL);
+                return;
+            }
+            var pos = player.blockPosition().relative(player.getDirection(), 2);
+            player.level().setBlockAndUpdate(pos, machine.defaultBlockState());
+            GameMenus.open(player, mode, ContainerLevelAccess.create(player.level(), pos));
+        });
+        if (phase == SETTLE / 2) server.execute(() -> {
+            var player = server.getPlayerList().getPlayer(id);
+            if (player == null || !(player.containerMenu instanceof MachineMenu menu)) return;
+            menu.getSlot(0).set(new ItemStack(Items.DIAMOND, 2));
+            menu.clickMenuButton(player, MachineMenu.PLAY_BUTTON);
         });
         if (phase == SETTLE) {
             String name = "gamblingitems-smoke-" + mode.id() + (minecraft.screen instanceof CasinoScreen<?> ? "" : "-NOSCREEN") + ".png";

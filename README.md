@@ -1,6 +1,6 @@
 # Gambling Items
 
-Nine item-based games for Minecraft Java Edition, with portable devices, animated machines and shared multiplayer tables.
+Nine item-based games and six prize machines for Minecraft Java Edition, with portable devices, animated machines and shared multiplayer tables.
 
 [Download on CurseForge](https://www.curseforge.com/minecraft/mc-mods/gambling-items) · [Join the Discord](https://discord.gg/cDzqrK5mN6)
 
@@ -20,6 +20,8 @@ The **Exchange terminal** opens Trade Up, Upgrader, Cases and Case Battles. The 
 | Bingo | Buy a card and follow the shared draw. |
 | Slots | Spin three reels and check the payout table beside them. |
 
+**Prize machines** are blocks played on the spot: Lucky Wheel, Coin Pusher, Prize Claw, Pachinko, Capsule Gacha and the High Stakes Terminal. Each shows its exact odds and average return; the server draws and settles the play before the animation starts. See [prize machines](docs/MACHINES.md) (in French).
+
 Games use Minecraft items. The server handles outcomes, stakes and unclaimed rewards. Shared rounds continue when an interface closes.
 
 ## Installation
@@ -38,6 +40,8 @@ English and French interfaces are included. Loader availability varies by Minecr
 Server settings live in `config/gamblingitems/games.json`. Adjust item values, game settings and exclusions to suit your modpack. The catalogue can estimate values from vanilla and modded crafting recipes; explicit configured values take priority.
 
 An optional casino currency lets you assign values to one or more vanilla or modded items. It is disabled by default. Selected casino games then accept and pay that currency; exchange games keep using the item catalogue. Restart the server after changing currency settings.
+
+Each player can set the casino sound volume and reduced motion in `config/gamblingitems/client.json`, described in [prize machines](docs/MACHINES.md).
 
 See [portable devices and item values](ITEMS_AND_VALUES.md) for recipes and the limits of automatic valuation. This detailed guide is currently in French.
 

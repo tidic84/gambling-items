@@ -100,4 +100,6 @@ Les tables pondérées des caisses sont normalisées une seule fois au chargemen
 
 Le Crash sépare nettement ce qui est public de ce qui ne l'est pas : le multiplicateur et la mise totale sont envoyés à tous, le seuil de crash reste dans le serveur jusqu'au crash. La mise engagée reste dans le coffre du joueur jusqu'au règlement, si bien qu'un arrêt brutal la laisse à son propriétaire au lieu de la perdre. La roulette reprend ce moteur de phases : mises, verrouillage, rotation, paiement. Son tirage est fait au verrouillage et envoyé aux clients, dont la roue ne fait que le rejouer ; seul le Crash garde une valeur secrète, parce qu'il est le seul où l'on peut encore agir pendant la manche.
 
+Les six machines à lots partagent un seul moteur : une table pure du cœur (`MachineTable`) calcule chances exactes, retour moyen et tirage, un seul menu (`MachineMenu`) règle la mise, et chaque machine ne diffère que par sa table et son dessin. Le serveur tire et paie avant l'animation ; le meuble reçoit la table et le résultat par la mise à jour de son bloc. Voir [docs/MACHINES.md](docs/MACHINES.md).
+
 Les sept jeux sont en place ; ce qui reste porte sur l'équilibrage, les visuels et les portages. Cette architecture facilite leur réutilisation ; elle n'est pas une promesse de portage automatique ni un support déjà testé de NeoForge ou de 26.2.

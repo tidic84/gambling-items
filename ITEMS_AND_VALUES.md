@@ -96,7 +96,7 @@ Par défaut, les jeux de casino acceptent n'importe quel objet coté et paient l
 
 - `enabled` : `false` par défaut, ce qui conserve le fonctionnement en objets cotés.
 - `items` : chaque identifiant avec sa valeur, exprimée en unités de monnaie. Les décimales sont acceptées jusqu'au millième (`0.5` vaut une demi-unité). Les items doivent appartenir à des mods installés, et les clés de caisse sont refusées. Seuls les exemplaires ordinaires comptent : un item renommé, enchanté ou porteur de données en plus n'est pas accepté.
-- `games` : les jeux concernés, parmi `crash`, `roulette`, `blackjack`, `bingo` et `slotMachine`. Un jeu retiré de la liste garde les objets cotés.
+- `games` : les jeux concernés, parmi `crash`, `roulette`, `blackjack`, `bingo`, `slotMachine` et les six machines à lots (`luckyWheel`, `coinPusher`, `prizeClaw`, `pachinko`, `capsuleGacha`, `highStakes`). Un jeu retiré de la liste garde les objets cotés.
 
 L'Upgrader, le Trade Up, les caisses et les battles de caisses ne sont jamais concernés : ils continuent d'utiliser le catalogue de valeurs.
 

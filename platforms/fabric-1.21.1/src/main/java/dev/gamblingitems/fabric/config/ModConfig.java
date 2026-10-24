@@ -119,7 +119,7 @@ public final class ModConfig {
     }
 
     /** Brings an older file to the current schema. Custom tuning is kept; obsolete defaults can be migrated. */
-    private static boolean migrate(JsonObject json) {
+    static boolean migrate(JsonObject json) {
         int schema = json.get("schemaVersion").getAsInt();
         if (schema == SCHEMA_VERSION) return false;
         if (schema < 2 || schema > SCHEMA_VERSION) throw new IllegalArgumentException("Unknown config schema");
@@ -192,7 +192,7 @@ public final class ModConfig {
         if (schema < 20) {
             json.add("machines", defaultMachines());
             JsonArray games = json.getAsJsonObject("currency").getAsJsonArray("games");
-            if (games.contains(new JsonPrimitive("slotMachine"))) MACHINE_KEYS.values().forEach(games::add);
+            if (games != null && games.contains(new JsonPrimitive("slotMachine"))) MACHINE_KEYS.values().forEach(games::add);
         }
         json.addProperty("schemaVersion", SCHEMA_VERSION);
         return true;

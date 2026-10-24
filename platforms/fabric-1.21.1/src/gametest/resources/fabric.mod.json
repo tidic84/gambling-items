@@ -16,6 +16,8 @@
       "dev.gamblingitems.fabric.battle.BattleGameTests",
       "dev.gamblingitems.fabric.bingo.BingoGameTests",
       "dev.gamblingitems.fabric.slots.SlotGameTests",
+      "dev.gamblingitems.fabric.machines.MachineGameTests",
+      "dev.gamblingitems.fabric.config.MigrationGameTests",
       "dev.gamblingitems.fabric.block.StationGameTests",
       "dev.gamblingitems.fabric.block.PanelReachGameTests",
       "dev.gamblingitems.fabric.block.TableGameTests",

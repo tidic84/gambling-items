@@ -19,6 +19,8 @@ public final class TerminalItem extends Item {
 
     /** Anywhere in the inventory, offhand included, each portable item gives access to its own games only. */
     public static boolean hasAccess(Player player, GameMode mode) {
+        // The prize machines are played at their block only; no portable item reaches them.
+        if (GameMenus.MACHINES.contains(mode)) return false;
         var item = GameMenus.TERMINAL.contains(mode) ? ModContent.TERMINAL : ModContent.POCKET_CASINO;
         return player.getInventory().contains(new ItemStack(item));
     }

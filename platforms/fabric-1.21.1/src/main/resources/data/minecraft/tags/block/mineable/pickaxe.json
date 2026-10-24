@@ -9,6 +9,12 @@
     "gamblingitems:blackjack_station",
     "gamblingitems:battle_station",
     "gamblingitems:bingo_station",
-    "gamblingitems:slot_machine"
+    "gamblingitems:slot_machine",
+    "gamblingitems:lucky_wheel",
+    "gamblingitems:coin_pusher",
+    "gamblingitems:prize_claw",
+    "gamblingitems:pachinko",
+    "gamblingitems:capsule_gacha",
+    "gamblingitems:high_stakes"
   ]
 }

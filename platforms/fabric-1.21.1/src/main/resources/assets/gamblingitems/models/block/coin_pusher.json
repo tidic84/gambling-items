@@ -1,0 +1,6 @@
+{
+  "parent": "gamblingitems:block/slot_machine",
+  "textures": {
+    "front": "gamblingitems:block/coin_pusher_front"
+  }
+}

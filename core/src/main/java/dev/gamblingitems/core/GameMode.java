@@ -10,7 +10,14 @@ public enum GameMode {
     CASE_BATTLE("case_battle"),
     BLACKJACK("blackjack"),
     BINGO("bingo"),
-    SLOT_MACHINE("slot_machine");
+    SLOT_MACHINE("slot_machine"),
+    // The prize machines; new modes are only ever appended, the tabs of a window count on the order.
+    LUCKY_WHEEL("lucky_wheel"),
+    COIN_PUSHER("coin_pusher"),
+    PRIZE_CLAW("prize_claw"),
+    PACHINKO("pachinko"),
+    CAPSULE_GACHA("capsule_gacha"),
+    HIGH_STAKES("high_stakes");
 
     private final String id;
 

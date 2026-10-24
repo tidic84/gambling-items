@@ -10,7 +10,7 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 
 /**
- * The four sides of a slot machine, drawn across the two blocks and a half of its cabinet: the
+ * The four sides of a slot machine or prize machine, drawn across the two blocks and a half of its cabinet: the
  * reels at the front, at the height of the eyes of whoever stands at it, trims and vents along the
  * flanks, the service hatch at the back. The arched roof is part of the block model, and the lever
  * is a piece of geometry of its own, so it can be pulled.
@@ -20,15 +20,15 @@ import net.minecraft.network.chat.Component;
  * -214, where the roof begins to arch away and nothing is written any more.
  */
 public final class SlotCabinet {
-    private static final int BODY = 0xff1b2430, BODY_LIGHT = 0xff2b3a4c, WINDOW = 0xff070b12;
-    /** The cabinet is trimmed in dark red; nothing on it is gold. */
-    private static final int TRIM = 0xff8e1c1c, TRIM_DARK = 0xff5a1010, TEXT = 0xffe8eff6;
-    private static final int SILVER = 0xffb9c4d0, GREEN = 0xff6cdeb7, RED = 0xffe8687d;
+    static final int BODY = 0xff1b2430, BODY_LIGHT = 0xff2b3a4c, WINDOW = 0xff070b12;
+    /** The cabinet is trimmed in brass; its lamps are deep red. */
+    static final int TRIM = 0xffb08d43, TRIM_DARK = 0xff6b5631, TEXT = 0xfff3eee2;
+    static final int SILVER = 0xffb9c4d0, GREEN = 0xff6cdeb7, RED = 0xffe8687d;
     private static final int REEL_WIDTH = 36, REEL_GAP = 4;
     /** The reels stop one after the other, the last one a third of a pull after the first. */
     private static final double STAGGER = 0.16;
     /** The highest line of the cabinet that is still a flat face rather than roof. */
-    private static final float ROOF = -214;
+    static final float ROOF = -214;
 
     private SlotCabinet() {}
 
@@ -41,13 +41,18 @@ public final class SlotCabinet {
         double now = station.getLevel().getGameTime() + partialTick;
         int ticks = Math.max(1, station.animationTicks);
         double progress = station.startedAt == 0 ? 1
-                : Math.max(0, Math.min(1, (now - station.startedAt) / ticks));
+                : MachineMotion.progress((now - station.startedAt) / ticks);
         boolean playing = station.animating();
-        lever(station, pose, buffers, progress, playing);
+        boolean slots = station.mode() == dev.gamblingitems.core.GameMode.SLOT_MACHINE;
+        if (slots) lever(station, pose, buffers, progress, playing);
+        else MachineCabinet.parts(station, pose, buffers, progress, playing);
         for (int quarter = 0; quarter < 4; quarter++) {
             face(pose, station, quarter);
             switch (quarter) {
-                case 0 -> front(station, pose, buffers, font, now, progress, playing);
+                case 0 -> {
+                    if (slots) front(station, pose, buffers, font, now, progress, playing);
+                    else MachineCabinet.front(station, pose, buffers, font, now, progress, playing);
+                }
                 case 2 -> back(pose, buffers, font);
                 default -> flank(pose, buffers, playing && progress < 1, now);
             }
@@ -56,7 +61,7 @@ public final class SlotCabinet {
     }
 
     /** Puts the pose on one of the four faces of the cabinet, a hair outside the block. */
-    private static void face(PoseStack pose, GameStationEntity station, int quarter) {
+    static void face(PoseStack pose, GameStationEntity station, int quarter) {
         pose.pushPose();
         pose.translate(0.5, 0.5, 0.5);
         pose.mulPose(Axis.YP.rotationDegrees(-station.getBlockState()
@@ -218,7 +223,7 @@ public final class SlotCabinet {
     }
 
     /** A box centred on the current origin, drawn as its six faces. */
-    private static void box(PoseStack pose, WorldCanvas buffers, float halfX, float halfY,
+    static void box(PoseStack pose, WorldCanvas buffers, float halfX, float halfY,
                             float halfZ, int colour) {
         buffers.quads(pose, (matrix, vertices) -> {
         float[][] corners = {
@@ -262,7 +267,7 @@ public final class SlotCabinet {
         return line;
     }
 
-    private static void quad(PoseStack pose, WorldCanvas buffers, float x1, float y1,
+    static void quad(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                              float x2, float y2, int colour, float lift) {
         buffers.quads(pose, (matrix, vertices) -> {
         WorldCanvas.vertex(vertices, matrix, x1, y1, lift, colour);
@@ -285,7 +290,7 @@ public final class SlotCabinet {
         });
     }
 
-    private static void panel(PoseStack pose, WorldCanvas buffers, float x1, float y1,
+    static void panel(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                               float x2, float y2, int colour, float lift) {
         quad(pose, buffers, x1, y1, x2, y2, WINDOW, lift);
         quad(pose, buffers, x1, y1, x2, y1 + 2, SILVER, lift + 0.2f);
@@ -294,7 +299,7 @@ public final class SlotCabinet {
     }
 
     /** Writes on the cabinet, the given point being the middle of the line at any size. */
-    private static void label(PoseStack pose, WorldCanvas buffers, Font font, String text,
+    static void label(PoseStack pose, WorldCanvas buffers, Font font, String text,
                               float x, float y, int colour, float scale, float lift) {
         if (text.isEmpty()) return;
         pose.pushPose();

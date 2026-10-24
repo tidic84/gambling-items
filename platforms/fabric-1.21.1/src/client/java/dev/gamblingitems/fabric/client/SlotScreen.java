@@ -19,7 +19,9 @@ public final class SlotScreen extends CasinoScreen<SlotMenu> {
     private static final int CRIMSON = 0xff942c3c, STEEL = 0xff8795a1, PAPER = 0xfff0eadb;
     /** The reels stop one after the other, the last one a third of a pull after the first. */
     private static final float STAGGER = 0.16f;
+    private final CasinoSounds.Reel ticker = new CasinoSounds.Reel();
     private Button spin, collect;
+    private boolean wasSpinning;
 
     public SlotScreen(SlotMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, 320, 278);
@@ -51,6 +53,16 @@ public final class SlotScreen extends CasinoScreen<SlotMenu> {
         super.containerTick();
         spin.active = menu.canSpin();
         collect.active = menu.winnings() > 0;
+        boolean spinning = menu.spinning();
+        if (!wasSpinning && spinning) {
+            ticker.reset();
+            CasinoSounds.start();
+        }
+        if (wasSpinning && !spinning && menu.state() == SlotMenu.STATE_RESULT) {
+            if (menu.multiplier() > 0) CasinoSounds.win();
+            else CasinoSounds.lose();
+        }
+        wasSpinning = spinning;
     }
 
     @Override protected boolean gameClicked(double mouseX, double mouseY, int button) {
@@ -75,8 +87,10 @@ public final class SlotScreen extends CasinoScreen<SlotMenu> {
         int[] reels = menu.reels();
         float left = menu.remainingTicks() - partialTick;
         float spinTicks = Math.max(1, menu.settings().spinTicks());
-        float progress = menu.spinning() ? 1 - Math.max(0, left) / spinTicks : 1;
+        float progress = menu.spinning() ? (float) MachineMotion.progress(1 - Math.max(0, left) / spinTicks) : 1;
         long ticks = minecraft.level == null ? 0 : minecraft.level.getGameTime();
+        // A click each time a symbol passes the window, until the last reel stops.
+        if (menu.spinning()) ticker.follow((ticks + partialTick) * 0.7, progress);
         for (int reel = 0; reel < SlotRules.REELS; reel++) {
             int windowX = x + REEL_X + reel * (REEL_WIDTH + REEL_GAP), windowY = y + REEL_Y;
             panel(g, windowX - 2, windowY - 2, REEL_WIDTH + 4, REEL_HEIGHT + 4, STEEL);

@@ -1,0 +1,6 @@
+{
+  "parent": "gamblingitems:block/slot_machine",
+  "textures": {
+    "front": "gamblingitems:block/pachinko_front"
+  }
+}

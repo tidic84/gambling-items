@@ -10,6 +10,10 @@ import dev.gamblingitems.core.cases.CaseRules;
 import dev.gamblingitems.fabric.battle.BattleSettings;
 import dev.gamblingitems.fabric.bingo.BingoSettings;
 import dev.gamblingitems.fabric.bingo.BingoSetup;
+import com.google.gson.JsonPrimitive;
+import dev.gamblingitems.core.GameMode;
+import dev.gamblingitems.fabric.machines.MachineSettings;
+import dev.gamblingitems.fabric.machines.MachineSetup;
 import dev.gamblingitems.fabric.slots.SlotSettings;
 import dev.gamblingitems.fabric.slots.SlotSetup;
 import dev.gamblingitems.fabric.battle.BattleSetup;
@@ -44,11 +48,14 @@ import net.minecraft.world.item.Items;
 
 /** Server-side settings. Item values are shared by every game; each game keeps its own tuning. */
 public final class ModConfig {
-    public static final int SCHEMA_VERSION = 19;
+    public static final int SCHEMA_VERSION = 20;
     /** One displayed unit of currency, so every screen counts in the currency's own units. */
     public static final long CURRENCY_UNIT = 1_000;
     /** The casino games that can be switched to a currency. Upgrader, trade up, cases and battles never are. */
-    public static final List<String> CURRENCY_GAMES = List.of("crash", "roulette", "blackjack", "bingo", "slotMachine");
+    public static final List<String> CURRENCY_GAMES = List.of("crash", "roulette", "blackjack", "bingo", "slotMachine",
+            "luckyWheel", "coinPusher", "prizeClaw", "pachinko", "capsuleGacha", "highStakes");
+    /** The key of each prize machine under "machines", which is also its name among the currency games. */
+    public static final Map<GameMode, String> MACHINE_KEYS = machineKeys();
     private static ValueCatalog values;
     private static UpgradeSetup upgrader;
     private static TradeUpSetup tradeUp;
@@ -59,6 +66,7 @@ public final class ModConfig {
     private static BattleSetup battle;
     private static BingoSetup bingo;
     private static SlotSetup slots;
+    private static Map<GameMode, MachineSetup> machines;
 
     private ModConfig() {}
 
@@ -72,6 +80,18 @@ public final class ModConfig {
     public static BattleSetup battle() { return require(battle); }
     public static BingoSetup bingo() { return require(bingo); }
     public static SlotSetup slots() { return require(slots); }
+    public static MachineSetup machine(GameMode mode) { return require(require(machines).get(mode)); }
+
+    private static Map<GameMode, String> machineKeys() {
+        Map<GameMode, String> keys = new java.util.EnumMap<>(GameMode.class);
+        keys.put(GameMode.LUCKY_WHEEL, "luckyWheel");
+        keys.put(GameMode.COIN_PUSHER, "coinPusher");
+        keys.put(GameMode.PRIZE_CLAW, "prizeClaw");
+        keys.put(GameMode.PACHINKO, "pachinko");
+        keys.put(GameMode.CAPSULE_GACHA, "capsuleGacha");
+        keys.put(GameMode.HIGH_STAKES, "highStakes");
+        return java.util.Collections.unmodifiableMap(keys);
+    }
 
     private static <T> T require(T loaded) {
         if (loaded == null) throw new IllegalStateException("Gambling Items configuration has not loaded");
@@ -167,6 +187,13 @@ public final class ModConfig {
                 currency.add("items", items);
             }
         }
+        // Schema 20 adds the prize machines. A currency that already pays the slot machine pays them
+        // too, since they are played the same way; otherwise the games it was given are kept as they were.
+        if (schema < 20) {
+            json.add("machines", defaultMachines());
+            JsonArray games = json.getAsJsonObject("currency").getAsJsonArray("games");
+            if (games.contains(new JsonPrimitive("slotMachine"))) MACHINE_KEYS.values().forEach(games::add);
+        }
         json.addProperty("schemaVersion", SCHEMA_VERSION);
         return true;
     }
@@ -195,6 +222,11 @@ public final class ModConfig {
         JsonObject bingoJson = json.getAsJsonObject("bingo");
         JsonObject slotsJson = json.getAsJsonObject("slotMachine");
         Map<String, ValueCatalog> casino = readCurrency(json.getAsJsonObject("currency"), catalog);
+        JsonObject machinesJson = json.getAsJsonObject("machines");
+        if (machinesJson == null) throw new IllegalArgumentException("Missing \"machines\"");
+        Map<GameMode, MachineSetup> machineSetups = new java.util.EnumMap<>(GameMode.class);
+        MACHINE_KEYS.forEach((mode, key) -> machineSetups.put(mode,
+                new MachineSetup(casino.get(key), readMachine(machinesJson, mode, key))));
         values = catalog;
         upgrader = new UpgradeSetup(catalog, upgraderJson.get("returnBasisPoints").getAsInt(),
                 upgraderJson.get("maximumChanceBasisPoints").getAsInt());
@@ -211,6 +243,7 @@ public final class ModConfig {
                 bingoJson.get("bettingTicks").getAsInt(),
                 bingoJson.get("drawTicks").getAsInt(),
                 bingoJson.get("resultTicks").getAsInt()));
+        machines = machineSetups;
         slots = new SlotSetup(casino.get("slotMachine"), new SlotSettings(
                 slotsJson.get("minimumStake").getAsLong(),
                 slotsJson.get("returnBasisPoints").getAsInt(),
@@ -399,8 +432,142 @@ public final class ModConfig {
         json.add("caseBattle", defaultBattle());
         json.add("bingo", defaultBingo());
         json.add("slotMachine", defaultSlots());
+        json.add("machines", defaultMachines());
         json.add("currency", defaultCurrency());
         return json;
+    }
+
+    /**
+     * One prize machine. Multipliers are written as they are read, 1.5 for one and a half times the
+     * stake, stake included; a claw grip is a percentage. A mistake names the machine and the field.
+     */
+    private static MachineSettings readMachine(JsonObject machines, GameMode mode, String key) {
+        String where = "machines." + key;
+        JsonObject json = machines.getAsJsonObject(key);
+        if (json == null) throw new IllegalArgumentException("Missing " + where);
+        try {
+            int[] multipliers, weights;
+            switch (mode) {
+                case PACHINKO -> {
+                    multipliers = hundredths(json.getAsJsonArray("pockets"), where + ".pockets");
+                    weights = new int[0];
+                }
+                case HIGH_STAKES -> {
+                    multipliers = hundredths(json.getAsJsonArray("targets"), where + ".targets");
+                    weights = new int[0];
+                }
+                default -> {
+                    JsonArray prizes = json.getAsJsonArray("prizes");
+                    if (prizes == null) throw new IllegalArgumentException("Missing " + where + ".prizes");
+                    multipliers = new int[prizes.size()];
+                    weights = new int[prizes.size()];
+                    for (int index = 0; index < prizes.size(); index++) {
+                        JsonObject prize = prizes.get(index).getAsJsonObject();
+                        String at = where + ".prizes[" + index + "]";
+                        multipliers[index] = hundredth(prize.get("multiplier"), at + ".multiplier");
+                        weights[index] = mode == GameMode.PRIZE_CLAW ? hundredth(prize.get("gripPercent"), at + ".gripPercent")
+                                : required(prize, "weight", at).getAsInt();
+                    }
+                }
+            }
+            return new MachineSettings(required(json, "enabled", where).getAsBoolean(),
+                    required(json, "minimumStake", where).getAsLong(), required(json, "maximumStake", where).getAsLong(),
+                    required(json, "returnBasisPoints", where).getAsInt(), required(json, "playTicks", where).getAsInt(),
+                    required(json, "resultTicks", where).getAsInt(),
+                    new dev.gamblingitems.core.machines.MachineTable(mode, multipliers, weights));
+        } catch (RuntimeException exception) {
+            String message = exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage();
+            throw new IllegalArgumentException(message.startsWith(where) ? message : where + ": " + message, exception);
+        }
+    }
+
+    private static JsonElement required(JsonObject json, String field, String where) {
+        JsonElement value = json.get(field);
+        if (value == null || value.isJsonNull()) throw new IllegalArgumentException("Missing " + where + "." + field);
+        return value;
+    }
+
+    private static int[] hundredths(JsonArray array, String where) {
+        if (array == null) throw new IllegalArgumentException("Missing " + where);
+        int[] values = new int[array.size()];
+        for (int index = 0; index < values.length; index++) values[index] = hundredth(array.get(index), where + "[" + index + "]");
+        return values;
+    }
+
+    /** 1.5 is read as 150; anything finer than a hundredth is refused rather than rounded. */
+    private static int hundredth(JsonElement element, String where) {
+        if (element == null) throw new IllegalArgumentException("Missing " + where);
+        try {
+            return element.getAsBigDecimal().movePointRight(2).intValueExact();
+        } catch (ArithmeticException | NumberFormatException | UnsupportedOperationException | IllegalStateException exception) {
+            throw new IllegalArgumentException(where + " must be a number with at most two decimals, not " + element);
+        }
+    }
+
+    private static JsonObject machine(long minimumStake, int returnBasisPoints, int playTicks) {
+        JsonObject json = new JsonObject();
+        json.addProperty("enabled", true);
+        json.addProperty("minimumStake", minimumStake);
+        json.addProperty("maximumStake", 0);
+        json.addProperty("returnBasisPoints", returnBasisPoints);
+        json.addProperty("playTicks", playTicks);
+        json.addProperty("resultTicks", 60);
+        return json;
+    }
+
+    /** Prizes as {multiplier, weight} pairs, or {multiplier, grip in percent} for a claw. */
+    private static JsonArray prizes(String weightName, String[][] prizes) {
+        JsonArray array = new JsonArray();
+        for (String[] prize : prizes) {
+            JsonObject entry = new JsonObject();
+            entry.add("multiplier", new JsonPrimitive(new java.math.BigDecimal(prize[0])));
+            entry.add(weightName, new JsonPrimitive(new java.math.BigDecimal(prize[1])));
+            array.add(entry);
+        }
+        return array;
+    }
+
+    private static JsonArray decimals(String... values) {
+        JsonArray array = new JsonArray();
+        for (String value : values) array.add(new JsonPrimitive(new java.math.BigDecimal(value)));
+        return array;
+    }
+
+    /**
+     * The default machines give back between 95 and 96.25% of what they take, computed exactly from
+     * their tables (MachineTableTest checks them). The smallest bet is one iron ingot, a diamond at
+     * the high stakes terminal.
+     */
+    private static JsonObject defaultMachines() {
+        JsonObject machines = new JsonObject();
+        // Twelve sectors of unequal size: the jackpot is a sliver, the blanks are wide.
+        JsonObject wheel = machine(1_000, 10_000, 100);
+        wheel.add("prizes", prizes("weight", new String[][] {{"0", "10"}, {"1.5", "8"}, {"0", "10"}, {"2", "6"},
+                {"0.5", "8"}, {"5", "2"}, {"0", "10"}, {"1.5", "8"}, {"0.5", "8"}, {"3", "4"}, {"0", "10"}, {"15", "1"}}));
+        machines.add("luckyWheel", wheel);
+        // What a push tips over the edge, as a share of the stake.
+        JsonObject pusher = machine(1_000, 10_000, 60);
+        pusher.add("prizes", prizes("weight", new String[][] {{"0", "57"}, {"0.5", "18"}, {"1", "12"}, {"2", "7"},
+                {"5", "3"}, {"10", "2"}, {"25", "1"}}));
+        machines.add("coinPusher", pusher);
+        // Seven positions: the heavier the prize, the looser the grip.
+        JsonObject claw = machine(1_000, 10_000, 100);
+        claw.add("prizes", prizes("gripPercent", new String[][] {{"1.5", "64"}, {"3", "32"}, {"8", "12"},
+                {"25", "3.8"}, {"3", "32"}, {"1.5", "64"}, {"5", "19.2"}}));
+        machines.add("prizeClaw", claw);
+        JsonObject pachinko = machine(1_000, 10_000, 80);
+        pachinko.add("pockets", decimals("5.6", "2.1", "1.1", "1", "0.4", "1", "1.1", "2.1", "5.6"));
+        machines.add("pachinko", pachinko);
+        // Five capsule colours, from the common white to the legendary gold.
+        JsonObject gacha = machine(1_000, 10_000, 70);
+        gacha.add("prizes", prizes("weight", new String[][] {{"0.3", "600"}, {"1", "250"}, {"2", "110"},
+                {"5", "35"}, {"25", "5"}}));
+        machines.add("capsuleGacha", gacha);
+        // Every target is fair before the return rate: 2x is reached once in two plays.
+        JsonObject highStakes = machine(10_000, 9_600, 50);
+        highStakes.add("targets", decimals("1.25", "1.5", "2", "3", "5", "10", "25", "100"));
+        machines.add("highStakes", highStakes);
+        return machines;
     }
 
     /** The smallest pull is one iron ingot, and the reels take two seconds to stop. */

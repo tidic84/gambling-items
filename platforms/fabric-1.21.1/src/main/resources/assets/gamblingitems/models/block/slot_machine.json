@@ -1,10 +1,11 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "body": "minecraft:block/polished_deepslate",
-    "trim": "minecraft:block/red_concrete",
-    "dark": "minecraft:block/polished_blackstone",
-    "particle": "minecraft:block/polished_deepslate"
+    "body": "gamblingitems:block/cabinet_body",
+    "trim": "gamblingitems:block/cabinet_brass",
+    "dark": "gamblingitems:block/cabinet_dark",
+    "particle": "gamblingitems:block/cabinet_body",
+    "front": "gamblingitems:block/slot_machine_front"
   },
   "elements": [
     {
@@ -20,7 +21,7 @@
       ],
       "faces": {
         "north": {
-          "texture": "#body"
+          "texture": "#front"
         },
         "south": {
           "texture": "#body"

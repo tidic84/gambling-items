@@ -13,7 +13,13 @@ public enum VaultSection {
     BLACKJACK("blackjack", dev.gamblingitems.fabric.blackjack.BlackjackSettings.VAULT_SIZE),
     CASE_BATTLE("case_battle", dev.gamblingitems.fabric.battle.BattleSettings.VAULT_SIZE),
     BINGO("bingo", dev.gamblingitems.fabric.bingo.BingoSettings.VAULT_SIZE),
-    SLOT_MACHINE("slot_machine", dev.gamblingitems.fabric.slots.SlotSettings.VAULT_SIZE);
+    SLOT_MACHINE("slot_machine", dev.gamblingitems.fabric.slots.SlotSettings.VAULT_SIZE),
+    LUCKY_WHEEL("lucky_wheel", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    COIN_PUSHER("coin_pusher", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    PRIZE_CLAW("prize_claw", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    PACHINKO("pachinko", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    CAPSULE_GACHA("capsule_gacha", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    HIGH_STAKES("high_stakes", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE);
 
     private final String id;
     private final int size;

@@ -75,6 +75,19 @@ public final class ModContent {
                             .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK)));
     public static final Item SLOT_MACHINE_ITEM = Registry.register(BuiltInRegistries.ITEM,
             id("slot_machine"), new BlockItem(SLOT_MACHINE, blockItemProperties("slot_machine")));
+    /** The prize machines stand in the same cabinet as a slot machine, each with its own front. */
+    public static final SlotMachineBlock LUCKY_WHEEL = machine("lucky_wheel", GameMode.LUCKY_WHEEL);
+    public static final Item LUCKY_WHEEL_ITEM = machineItem("lucky_wheel", LUCKY_WHEEL);
+    public static final SlotMachineBlock COIN_PUSHER = machine("coin_pusher", GameMode.COIN_PUSHER);
+    public static final Item COIN_PUSHER_ITEM = machineItem("coin_pusher", COIN_PUSHER);
+    public static final SlotMachineBlock PRIZE_CLAW = machine("prize_claw", GameMode.PRIZE_CLAW);
+    public static final Item PRIZE_CLAW_ITEM = machineItem("prize_claw", PRIZE_CLAW);
+    public static final SlotMachineBlock PACHINKO = machine("pachinko", GameMode.PACHINKO);
+    public static final Item PACHINKO_ITEM = machineItem("pachinko", PACHINKO);
+    public static final SlotMachineBlock CAPSULE_GACHA = machine("capsule_gacha", GameMode.CAPSULE_GACHA);
+    public static final Item CAPSULE_GACHA_ITEM = machineItem("capsule_gacha", CAPSULE_GACHA);
+    public static final SlotMachineBlock HIGH_STAKES = machine("high_stakes", GameMode.HIGH_STAKES);
+    public static final Item HIGH_STAKES_ITEM = machineItem("high_stakes", HIGH_STAKES);
     // The identifier of the first station is kept so existing worlds still read their block entities.
     public static final BlockEntityType<GameStationEntity> STATION_ENTITY = Registry.register(
             BuiltInRegistries.BLOCK_ENTITY_TYPE, id("upgrade_station"),
@@ -88,7 +101,8 @@ public final class ModContent {
                     UPGRADE_STATION, TRADE_UP_STATION,
                     CASE_STATION, CRASH_STATION, ROULETTE_STATION, BLACKJACK_STATION,
                     BATTLE_STATION, BINGO_STATION, BLACKJACK_TABLE, ROULETTE_TABLE,
-                    BINGO_TABLE, SLOT_MACHINE)
+                    BINGO_TABLE, SLOT_MACHINE, LUCKY_WHEEL, COIN_PUSHER, PRIZE_CLAW, PACHINKO,
+                    CAPSULE_GACHA, HIGH_STAKES)
             //#if MC >= 1.21.2 && LOADER == fabric
             //$ .build());
             //#elif MC >= 1.21.2
@@ -137,6 +151,12 @@ public final class ModContent {
                     Platform.menuType(
                     (id, inventory, opening) -> new SlotMenu(id, inventory, opening.setup(), opening.portable()),
                     Opening.codec(SlotSetup.CODEC)));
+    /** One window for every prize machine; the machine it plays travels in its setup. */
+    public static final MenuType<dev.gamblingitems.fabric.machines.MachineMenu> MACHINE_MENU =
+            Registry.register(BuiltInRegistries.MENU, id("prize_machine"),
+                    Platform.menuType(
+                    (id, inventory, opening) -> new dev.gamblingitems.fabric.machines.MachineMenu(id, inventory, opening.setup()),
+                    Opening.codec(dev.gamblingitems.fabric.machines.MachineSetup.CODEC)));
 
     private ModContent() {}
 
@@ -157,6 +177,16 @@ public final class ModContent {
         return Registry.register(BuiltInRegistries.BLOCK, id(path), new GameStationBlock(mode,
                 blockProperties(path).strength(3.5F).sound(SoundType.METAL).noOcclusion()
                         .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK)));
+    }
+
+    private static SlotMachineBlock machine(String path, GameMode mode) {
+        return Registry.register(BuiltInRegistries.BLOCK, id(path), new SlotMachineBlock(mode,
+                blockProperties(path).strength(3.5F).sound(SoundType.METAL).noOcclusion()
+                        .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK)));
+    }
+
+    private static Item machineItem(String path, SlotMachineBlock block) {
+        return Registry.register(BuiltInRegistries.ITEM, id(path), new BlockItem(block, blockItemProperties(path)));
     }
 
     private static GameTableBlock table(String path, GameMode mode) {
@@ -209,7 +239,8 @@ public final class ModContent {
         for (CaseRarity rarity : CaseRarity.values()) entries.add(key(rarity));
         entries.addAll(java.util.List.of(UPGRADE_STATION_ITEM, TRADE_UP_STATION_ITEM, CASE_STATION_ITEM,
                 CRASH_STATION_ITEM, ROULETTE_STATION_ITEM, BLACKJACK_STATION_ITEM, BATTLE_STATION_ITEM,
-                BLACKJACK_TABLE_ITEM, ROULETTE_TABLE_ITEM, BINGO_STATION_ITEM, BINGO_TABLE_ITEM, SLOT_MACHINE_ITEM));
+                BLACKJACK_TABLE_ITEM, ROULETTE_TABLE_ITEM, BINGO_STATION_ITEM, BINGO_TABLE_ITEM, SLOT_MACHINE_ITEM,
+                LUCKY_WHEEL_ITEM, COIN_PUSHER_ITEM, PRIZE_CLAW_ITEM, PACHINKO_ITEM, CAPSULE_GACHA_ITEM, HIGH_STAKES_ITEM));
         return entries;
     }
 }

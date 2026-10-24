@@ -1,0 +1,14 @@
+{
+  "ui.tick": {
+    "sounds": ["minecraft:note/hat"]
+  },
+  "ui.start": {
+    "sounds": ["minecraft:random/click"]
+  },
+  "ui.win": {
+    "sounds": ["minecraft:random/levelup"]
+  },
+  "ui.lose": {
+    "sounds": ["minecraft:note/bass"]
+  }
+}

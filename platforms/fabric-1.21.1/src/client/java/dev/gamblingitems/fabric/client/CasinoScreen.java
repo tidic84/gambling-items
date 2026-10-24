@@ -71,6 +71,12 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
             case BLACKJACK -> Items.PAPER;
             case BINGO -> Items.BOOK;
             case SLOT_MACHINE -> Items.GOLD_INGOT;
+            case LUCKY_WHEEL -> Items.SUNFLOWER;
+            case COIN_PUSHER -> Items.GOLD_NUGGET;
+            case PRIZE_CLAW -> Items.TRIPWIRE_HOOK;
+            case PACHINKO -> Items.SNOWBALL;
+            case CAPSULE_GACHA -> Items.HEART_OF_THE_SEA;
+            case HIGH_STAKES -> Items.NETHER_STAR;
         });
     }
 

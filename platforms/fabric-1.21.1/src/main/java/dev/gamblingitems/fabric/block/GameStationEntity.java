@@ -38,14 +38,24 @@ public final class GameStationEntity extends BlockEntity {
     /** Client side only: what the felt last drew, and when, so a new card can be dealt in. */
     public String seenCards = "";
     public long cardsChangedAt;
+    /** Server side only: what the seat fields were in the last packet built, see preview. */
+    private String sentPreview = "";
 
     public boolean animating() { return level != null && level.getGameTime() < startedAt + durationTicks; }
 
     public void preview(String player, String text) {
         previewPlayer = player;
         previewText = text;
+        // Seats call this every tick: only resend the block when what it shows has changed.
+        if (previewKey().equals(sentPreview)) return;
         setChanged();
         level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+    }
+
+    /** The fields a seat writes before calling preview. */
+    private String previewKey() {
+        return String.join("\n", previewPlayer, previewText, cards, String.valueOf(phase), stakeItems,
+                reelItems, rollingText);
     }
 
     public GameStationEntity(BlockPos pos, BlockState state) { super(ModContent.STATION_ENTITY, pos, state); }
@@ -155,9 +165,9 @@ public final class GameStationEntity extends BlockEntity {
     }
 
     //#if MC >= 1.20.5
-    @Override public CompoundTag getUpdateTag(HolderLookup.Provider registries) { return saveWithoutMetadata(registries); }
+    @Override public CompoundTag getUpdateTag(HolderLookup.Provider registries) { sentPreview = previewKey(); return saveWithoutMetadata(registries); }
     //#else
-    //$ @Override public CompoundTag getUpdateTag() { return saveWithoutMetadata(); }
+    //$ @Override public CompoundTag getUpdateTag() { sentPreview = previewKey(); return saveWithoutMetadata(); }
     //#endif
     @Override public ClientboundBlockEntityDataPacket getUpdatePacket() { return ClientboundBlockEntityDataPacket.create(this); }
 }

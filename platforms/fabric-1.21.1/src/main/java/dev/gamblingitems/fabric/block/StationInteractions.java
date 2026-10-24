@@ -25,6 +25,9 @@ import net.minecraft.world.item.ItemStack;
 public final class StationInteractions {
     private record Seat(ServerPlayer player, GameStationEntity station, AbstractContainerMenu menu) {}
     private static final Map<UUID, Seat> SEATS = new HashMap<>();
+    /** Felt and panel clicks per player this tick: a flood of use packets cannot multiply the work. */
+    private static final Map<UUID, Integer> CLICKS = new HashMap<>();
+    private static final int CLICKS_PER_TICK = 8;
     private StationInteractions() {}
 
     /** The seat of this player at this block, opened if they did not have one yet. */
@@ -47,6 +50,7 @@ public final class StationInteractions {
      */
     public static void bet(ServerPlayer player, GameStationEntity station,
                            dev.gamblingitems.core.roulette.RouletteWheel.Bet bet) {
+        if (throttled(player)) return;
         Seat seat = seat(player, station);
         if (seat == null || !(seat.menu instanceof RouletteMenu roulette)) return;
         roulette.broadcastChanges();
@@ -70,7 +74,7 @@ public final class StationInteractions {
     public static void click(ServerPlayer player, GameStationEntity station, int button) {
         if (button < 0 || button > 8 || player.isSpectator() || !player.isAlive()
                 || player.level() != station.getLevel()
-                || player.distanceToSqr(station.getBlockPos().getCenter()) > 36) return;
+                || player.distanceToSqr(station.getBlockPos().getCenter()) > 36 || throttled(player)) return;
         Seat seat = SEATS.get(player.getUUID());
         if (seat != null && seat.station != station) { close(player.getUUID()); seat = null; }
         if (button == 8) {
@@ -132,7 +136,8 @@ public final class StationInteractions {
         } else if (menu instanceof CrashMenu) {
             changed = menu.clickMenuButton(player, button == 3 ? CrashMenu.BET_BUTTON : CrashMenu.CASH_OUT_BUTTON);
         } else if (button == 4) {
-            if (!station.animating()) changed = menu.clickMenuButton(player, menu instanceof UpgradeMenu ? UpgradeMenu.SPIN_BUTTON : 1000);
+            if (!station.animating()) changed = menu.clickMenuButton(player, menu instanceof UpgradeMenu ? UpgradeMenu.SPIN_BUTTON
+                    : menu instanceof CaseMenu ? CaseMenu.OPEN_BUTTON : TradeUpMenu.SPIN_BUTTON);
         } else if (menu instanceof CaseMenu cases) {
             changed = menu.clickMenuButton(player, Math.floorMod(cases.selectedIndex() + (button == 3 ? -1 : 1), cases.setup().cases().cases().size()));
         } else if (menu instanceof UpgradeMenu upgrade) {
@@ -307,7 +312,12 @@ public final class StationInteractions {
         return "";
     }
 
+    private static boolean throttled(ServerPlayer player) {
+        return CLICKS.merge(player.getUUID(), 1, Integer::sum) > CLICKS_PER_TICK;
+    }
+
     public static void tick(MinecraftServer server) {
+        CLICKS.clear();
         for (Seat seat : new ArrayList<>(SEATS.values())) {
             ServerPlayer player = seat.player;
             if (player.hasDisconnected() || !player.isAlive() || player.level() != seat.station.getLevel()
@@ -329,5 +339,6 @@ public final class StationInteractions {
 
     public static void stop(MinecraftServer server) {
         for (UUID player : new ArrayList<>(SEATS.keySet())) close(player);
+        CLICKS.clear();
     }
 }

@@ -9,15 +9,15 @@ public final class CasinoSounds {
     private CasinoSounds() {}
 
     public static void tick(float pitch) {
-        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_HAT.value(), pitch, .25f));
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_HAT.value(), pitch, .25f * ClientOptions.soundVolume()));
     }
 
     public static void win() {
-        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.2f, .5f));
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.2f, .5f * ClientOptions.soundVolume()));
     }
 
     public static void lose() {
-        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.value(), .5f, .5f));
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.value(), .5f, .5f * ClientOptions.soundVolume()));
     }
 
     /** Ticks each time a new item passes the marker, higher as the reel slows. */

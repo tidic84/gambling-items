@@ -41,6 +41,10 @@ public final class ClientSmoke {
     public static void tick(Minecraft minecraft) {
         if (!ENABLED || minecraft.player == null || minecraft.getSingleplayerServer() == null) return;
         ticks++;
+        if (SmokeGallery.ENABLED) {
+            SmokeGallery.tick(minecraft, ticks);
+            return;
+        }
         var server = minecraft.getSingleplayerServer();
         var id = minecraft.player.getUUID();
         if (ticks == 20) server.execute(() -> {
@@ -77,12 +81,15 @@ public final class ClientSmoke {
             menu.clickMenuButton(player, MachineMenu.PLAY_BUTTON);
         });
         if (phase == SETTLE) {
-            String name = "gamblingitems-smoke-" + mode.id() + (minecraft.screen instanceof CasinoScreen<?> ? "" : "-NOSCREEN") + ".png";
-            //#if MC >= 1.21.6
-            //$ Screenshot.grab(minecraft.gameDirectory, name, minecraft.getMainRenderTarget(), 1, message -> {});
-            //#else
-            Screenshot.grab(minecraft.gameDirectory, name, minecraft.getMainRenderTarget(), message -> {});
-            //#endif
+            shot(minecraft, "gamblingitems-smoke-" + mode.id() + (minecraft.screen instanceof CasinoScreen<?> ? "" : "-NOSCREEN") + ".png");
         }
+    }
+
+    static void shot(Minecraft minecraft, String name) {
+        //#if MC >= 1.21.6
+        //$ Screenshot.grab(minecraft.gameDirectory, name, minecraft.getMainRenderTarget(), 1, message -> {});
+        //#else
+        Screenshot.grab(minecraft.gameDirectory, name, minecraft.getMainRenderTarget(), message -> {});
+        //#endif
     }
 }

@@ -147,7 +147,7 @@ final class MachineCabinet {
     }
 
     /** What the cabinet was told to show: the outcome, its detail and the choice it was played with. */
-    private static int[] outcome(GameStationEntity station) {
+    static int[] outcome(GameStationEntity station) {
         int[] values = {-1, 0, 0};
         if (station.reels.isEmpty()) return values;
         String[] parts = station.reels.split(",");

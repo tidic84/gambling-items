@@ -61,14 +61,19 @@ public final class CashierBlock extends HorizontalDirectionalBlock {
     //$ }
     //#endif
 
+    /** The counter, and the croupier who keeps a float for the players at his tables. */
+    static boolean serves(Block block) { return block instanceof CashierBlock || block == dev.gamblingitems.fabric.ModContent.CROUPIER; }
+
+    public static void open(ServerPlayer player, BlockPos pos) { open(player, pos, Component.translatable("block.gamblingitems.cashier")); }
+
     /** Opens the cashier's window for that player, with their own tray and their last plays. */
-    public static void open(ServerPlayer player, BlockPos pos) {
+    public static void open(ServerPlayer player, BlockPos pos, Component title) {
         if (player.isSpectator()) return;
         var ledger = Arcade.ledger(player);
         CashierSetup setup = new CashierSetup(ModConfig.values(), ModConfig.arcade(),
                 ledger.history(player.getUUID(), player.level().getGameTime()));
         ContainerLevelAccess access = ContainerLevelAccess.create(player.level(), pos);
-        Platform.openMenu(player, Component.translatable("block.gamblingitems.cashier"), new Opening<>(setup, false),
+        Platform.openMenu(player, title, new Opening<>(setup, false),
                 Opening.codec(CashierSetup.CODEC),
                 (id, inventory, ignored) -> new CashierMenu(id, inventory, setup,
                         PlayerVaults.get(player.server).forPlayer(player.getUUID(), VaultSection.CASHIER), access));

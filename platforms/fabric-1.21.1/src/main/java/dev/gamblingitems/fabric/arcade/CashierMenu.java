@@ -180,7 +180,7 @@ public final class CashierMenu extends AbstractContainerMenu {
     @Override public boolean stillValid(Player player) {
         if (player.level().isClientSide) return player == owner;
         return player == owner && player.isAlive() && access.evaluate(
-                (level, pos) -> level.getBlockState(pos).getBlock() instanceof CashierBlock
+                (level, pos) -> CashierBlock.serves(level.getBlockState(pos).getBlock())
                         && player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64,
                 false);
     }

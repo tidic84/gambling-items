@@ -28,7 +28,7 @@ import net.minecraft.network.chat.Component;
  */
 public final class StationTables {
     private static final int FELT = 0xff14472c, FELT_EDGE = 0xff0d2e1d, LINE = 0xff2d6b46;
-    private static final int WOOD = 0xff4a3524, WOOD_LIGHT = 0xff6b4b32, RAIL = 0xff5a3b22;
+    private static final int WOOD = 0xff4a3524, WOOD_LIGHT = 0xff6b4b32;
     private static final int CARD = 0xfff3f6fb, CARD_BACK = 0xff7a2130, CARD_EDGE = 0xff20262f;
     private static final int RED = 0xffc0392b, BLACK = 0xff1b1f27, GREEN = 0xff1e8f52;
     private static final int TEXT = 0xffe8eff6, GOLD = 0xffffce69, SILVER = 0xffb9c4d0;
@@ -70,25 +70,14 @@ public final class StationTables {
         pose.popPose();
     }
 
-    /** The felt itself, with the padded rail a player leans on at the front. */
+    /** The felt itself; the padded armrest round it is part of the table's model. */
     private static void cloth(PoseStack pose, WorldCanvas buffers, boolean detailed) {
         quad(pose, buffers, -HALF_WIDTH, -HALF_DEPTH, HALF_WIDTH, HALF_DEPTH, FELT_EDGE, 1);
         quad(pose, buffers, -HALF_WIDTH + 3, -HALF_DEPTH + 3, HALF_WIDTH - 3, HALF_DEPTH - 14, FELT, 2);
-        if (!detailed) {
-            for (int layer = 0; layer < 3; layer++) {
-                quad(pose, buffers, -HALF_WIDTH + 3 + layer, HALF_DEPTH - 14 + layer,
-                        HALF_WIDTH - 3 - layer, HALF_DEPTH - 3 - layer,
-                        layer % 2 == 0 ? RAIL : WOOD_LIGHT, 2 + layer);
-            }
-            return;
-        }
-        // Fine woven stripes and a stitched leather armrest, clear of all hit areas.
+        if (!detailed) return;
+        // Fine woven stripes, clear of all hit areas.
         for (int y = -120; y < 110; y += 4) {
             quad(pose, buffers, -187, y, 187, y + 0.3f, 0xff174b30, 2.1f);
-        }
-        solidBox(pose, buffers, -189, 113, 189, 124, 2, 5, 0xff252329);
-        for (int x = -182; x < 184; x += 7) {
-            quad(pose, buffers, x, 115, x + 3, 115.5f, 0xff967b50, 5.1f);
         }
     }
 

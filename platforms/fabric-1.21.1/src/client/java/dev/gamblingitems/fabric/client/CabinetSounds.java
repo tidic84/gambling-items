@@ -43,7 +43,7 @@ final class CabinetSounds {
             }
         }
         if (playing && progress < 1) {
-            long step = step(mode, now - station.startedAt, progress);
+            long step = step(station, mode, now - station.startedAt, progress);
             if (step >= 0 && step != station.soundedStep) {
                 station.soundedStep = step;
                 float pitch = mode == GameMode.LUCKY_WHEEL || mode == GameMode.BIG_SIX ? 1 + (float) progress * 0.3f
@@ -60,13 +60,15 @@ final class CabinetSounds {
     }
 
     /** Which tick of the moving part the play is at; a new one sounds once. -1 when nothing ticks. */
-    private static long step(GameMode mode, double age, double progress) {
+    private static long step(GameStationEntity station, GameMode mode, double age, double progress) {
         return switch (mode) {
             case SLOT_MACHINE -> (long) (age / 2);
             // A wheel slows down: the pegs go by further and further apart.
             case LUCKY_WHEEL, BIG_SIX -> (long) (Math.sqrt(Math.max(0, 1 - Math.pow(1 - progress, 2))) * 60);
             case PACHINKO -> (long) (progress * MachineTable.PACHINKO_ROWS);
-            case PLINKO -> (long) (progress * MachineTable.PLINKO_ROWS);
+            // Plinko rings on each peg the ball really strikes, at the moment it strikes it.
+            case PLINKO -> dev.gamblingitems.core.machines.PlinkoFlight.at(MachineCabinet.outcome(station)[1], MachineTable.PLINKO_ROWS,
+                    ArcadeCabinets.PLINKO_REST / ArcadeCabinets.PLINKO_ROW, progress).hitRow();
             case COIN_PUSHER -> (long) (age / 6);
             case PRIZE_CLAW -> (long) (age / 4);
             case CAPSULE_GACHA -> progress < 0.45 ? (long) (age / 3) : -1;

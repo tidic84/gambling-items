@@ -86,9 +86,8 @@ public final class CabinetControls {
                 boxes.add(new Box(Control.NEXT, 10.5, 13, -1, 14, 15, 2.6));
             }
             case PLINKO -> {
-                // The big drop button in the middle of the deck, and the chute the ball is fed into.
+                // The big drop button in the middle of the deck; the marquee above is only its name.
                 boxes.add(new Box(Control.PLAY, 13.5, 13, -1.5, 18.5, 16, 2));
-                boxes.add(new Box(Control.PLAY, 13.5, 35.5, 0, 18.5, 39.5, 5));
             }
             case BIG_SIX -> {
                 // A betting button per symbol along the deck: the stake goes on that symbol.

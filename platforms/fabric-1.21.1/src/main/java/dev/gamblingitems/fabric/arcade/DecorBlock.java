@@ -115,16 +115,47 @@ public final class DecorBlock extends BaseEntityBlock {
 
     //#if MC >= 1.20.5
     @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
-        if (player instanceof ServerPlayer server && kind == Kind.LEADERBOARD) history(server);
+        if (player instanceof ServerPlayer server) use(server, pos);
         return Compat.handled(level);
     }
     //#else
     //$ @Override public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
     //$         net.minecraft.world.InteractionHand hand, BlockHitResult hit) {
-    //$     if (player instanceof ServerPlayer server && kind == Kind.LEADERBOARD) history(server);
+    //$     if (player instanceof ServerPlayer server) use(server, pos);
     //$     return InteractionResult.sidedSuccess(level.isClientSide);
     //$ }
     //#endif
+
+    /**
+     * The board shows the player their last plays. The croupier changes chips and hands out prizes like the
+     * cashier; asked while crouching, he explains the rules of the nearest game instead.
+     */
+    private void use(ServerPlayer player, BlockPos pos) {
+        if (kind == Kind.LEADERBOARD) history(player);
+        else if (player.isShiftKeyDown()) explain(player, pos);
+        else CashierBlock.open(player, pos, Component.translatable("block.gamblingitems.croupier"));
+    }
+
+    /** The rules of the nearest table, station or cabinet within five blocks, as the croupier tells them. */
+    private static void explain(ServerPlayer player, BlockPos croupier) {
+        Level level = player.level();
+        GameMode nearest = null;
+        double best = Double.MAX_VALUE;
+        for (BlockPos pos : BlockPos.betweenClosed(croupier.offset(-5, -2, -5), croupier.offset(5, 2, 5))) {
+            if (level.getBlockState(pos).getBlock() instanceof dev.gamblingitems.fabric.block.GameSurface surface
+                    && pos.distSqr(croupier) < best) {
+                best = pos.distSqr(croupier);
+                nearest = surface.mode();
+            }
+        }
+        if (nearest == null) {
+            Compat.message(player, Component.translatable("gui.gamblingitems.croupier_nothing").withStyle(ChatFormatting.GRAY), false);
+            return;
+        }
+        Component game = Component.translatable("gui.gamblingitems.mode." + nearest.id());
+        Compat.message(player, Component.translatable("gui.gamblingitems.croupier_explains", game).withStyle(ChatFormatting.GOLD), false);
+        Compat.message(player, Component.translatable("gui.gamblingitems.rules." + nearest.id()), false);
+    }
 
     /** The player's last plays, newest first, and their ticket balance. */
     private static void history(ServerPlayer player) {

@@ -38,7 +38,8 @@ Les retours des quatre bornes d'arcade ne sont pas recopiés ici : ils découlen
 - La **caisse** échange les objets cotés contre des **jetons** de 1, 5, 25 et 100 (un jeton de 1 vaut `chipValue`, 1 000 = un lingot de fer), et les jetons contre des objets. L'échange est exact : si la monnaie ne peut pas être rendue en objets, la caisse prend quelques jetons de moins, ou refuse. Les jetons sont des objets cotés : ils se misent comme le reste et s'empilent sur les tables.
 - La caisse tient aussi le **comptoir à lots** : 16 lots par défaut, du lingot de fer (100 tickets) à l'étoile du Nether (50 000).
 - Le **tableau des scores** (bloc mural, 2×2) affiche les 10 meilleurs gains de la semaine ; un clic dessus montre au joueur ses 20 dernières parties.
-- Décor : néons (16 couleurs, lumière 15), moquettes de casino, et un croupier animé purement décoratif qui suit le joueur du regard et distribue quand une table voisine joue.
+- Décor : néons (16 couleurs, lumière 15, dessinés en pleine lumière même la nuit ; un colorant les recolore) et moquettes de casino.
+- Le **croupier** suit le joueur du regard et distribue quand une table voisine joue. Un clic dessus ouvre le guichet de la caisse (jetons et comptoir à lots), pratique à côté des tables. Accroupi, un clic lui fait expliquer les règles du jeu le plus proche (table, écran ou borne à 5 blocs au plus).
 
 ```json
 "arcade": {
@@ -127,6 +128,7 @@ Aucune borne n'ouvre de fenêtre : tout se joue en touchant sa commande avec un 
 - La pile tenue est misée en entier, ou la plus grande partie que la machine accepte (mise maximale, lot qu'elle doit pouvoir payer). Le tirage est fait une seule fois par le serveur.
 - Pendant qu'une partie se joue, la borne refuse une nouvelle mise. Une borne fermée par un administrateur ne prend rien.
 - Le gacha secoue ses capsules avec une petite physique (26 billes, collisions, gravité) calculée sur le client seulement ; elle s'endort dès que le tas est calme.
+- La bille du Plinko tombe de la coupelle, rebondit sur chaque clou en arc de parabole (gravité, hauteur de rebond propre à chaque clou), puis rebondit deux fois dans sa poche avant de s'arrêter. Le clou touché s'allume et sonne au moment du choc. Le trajet reste celui tiré par le serveur, et tous les joueurs voient la même chute (`PlinkoFlight`, testé dans le core).
 
 À partir de dix fois la mise, un gain est fêté : lampes en folie et « GROS GAIN ! » sur l'enseigne, étincelles et son pour les joueurs autour, pluie de pièces dans la fenêtre. L'option `reducedMotion` coupe les particules et la pluie de pièces.
 
@@ -137,7 +139,7 @@ Les modèles des bornes, des écrans et des tables sont générés, pas écrits 
 ```
 python tools/generate_cabinet_models.py   # les 7 bornes (3 blocs de haut) et leurs textures cab_*
 python tools/generate_station_models.py   # le moniteur 3×2 des 8 écrans et leurs icônes d'inventaire
-python tools/generate_table_models.py     # les tables de blackjack, roulette et bingo
+python tools/generate_table_models.py     # les tables de blackjack, roulette et bingo, et leurs textures table_*
 python tools/generate_arcade_assets.py    # jetons, néons, moquettes, caisse, tableau des scores, croupier
 python tools/generate_sounds.py           # les sons propres à chaque borne et la musique (numpy + soundfile)
 ```

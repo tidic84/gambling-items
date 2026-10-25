@@ -123,7 +123,8 @@ public final class ModContent {
     public static final Item CROUPIER_ITEM = blockItem("croupier", CROUPIER);
     public static final NeonBlock NEON_TUBE = Registry.register(BuiltInRegistries.BLOCK, id("neon_tube"),
             new NeonBlock(blockProperties("neon_tube").strength(0.3F).sound(SoundType.GLASS).noOcclusion()
-                    .lightLevel(state -> 15)));
+                    // A lit tube: it lights the room, and is drawn full bright even in the dark.
+                    .lightLevel(state -> 15).emissiveRendering((state, level, pos) -> true)));
     public static final Item NEON_TUBE_ITEM = blockItem("neon_tube", NEON_TUBE);
     public static final Block CASINO_CARPET = carpet("casino_carpet");
     public static final Item CASINO_CARPET_ITEM = blockItem("casino_carpet", CASINO_CARPET);

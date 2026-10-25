@@ -553,15 +553,13 @@ def plinko():
     c.frame(1, 13.5, 31, 35, 1, 4, .7, 'cab_chrome')
     for u in (.3, 31.1):
         c.box((u, 14, .9), (u + .6, 34.6, 1.5), 'cab_lamp_cyan')
-    # The crown with the sign, and the chute the ball is fed into.
-    c.box((1, 35, 5), (31, 39, 11), 'cab_teal')
-    c.box((2, 35.5, 4.8), (30, 38.5, 5), 'cab_sign_cyan')
-    c.frame(1, 35, 31, 39, 4.4, 5, .5, 'cab_chrome')
-    c.box((14, 35, 1.5), (18, 36, 4.4), 'cab_chrome')
-    c.box((13.6, 36, 1), (18.4, 39.6, 1.6), 'cab_chrome')
-    c.box((13.6, 36, 1.6), (14.2, 39.6, 4.4), 'cab_chrome')
-    c.box((17.8, 36, 1.6), (18.4, 39.6, 4.4), 'cab_chrome')
-    c.box((14.2, 36, 1.6), (17.8, 36.4, 4.4), 'cab_interior')
+    # The crown: a lit marquee standing proud of the board, clear of anything in front of its name,
+    # and on top the cup the ball waits in before it is fed down behind the marquee.
+    c.box((1, 35, 4), (31, 39.4, 11), 'cab_teal')
+    c.box((1.2, 35, .6), (30.8, 39.4, 4), 'cab_teal')
+    c.box((1.6, 35.4, .4), (30.4, 39, .6), 'cab_sign_cyan')
+    c.frame(1, 35, 31, 39.4, 0, .6, .5, 'cab_chrome')
+    c.box((14.6, 39.4, 1.4), (17.4, 39.8, 4.2), 'cab_chrome')
     return c
 
 

@@ -5,6 +5,7 @@ import com.mojang.math.Axis;
 import dev.gamblingitems.core.GameMode;
 import dev.gamblingitems.core.machines.CabinetControls;
 import dev.gamblingitems.core.machines.MachineTable;
+import dev.gamblingitems.core.machines.PlinkoFlight;
 import dev.gamblingitems.core.machines.VideoPokerRules;
 import dev.gamblingitems.fabric.block.CabinetPlay;
 import dev.gamblingitems.fabric.block.GameStationEntity;
@@ -56,7 +57,9 @@ final class ArcadeCabinets {
 
     // --- Plinko ---------------------------------------------------------------------------------
 
-    private static final float PLINKO_X = 64, PLINKO_TOP = -200, PLINKO_ROW = 10.8f, PLINKO_SPACING = 16;
+    static final float PLINKO_X = 64, PLINKO_TOP = -200, PLINKO_ROW = 10.8f, PLINKO_SPACING = 16;
+    /** How far the ball rests in its pocket below the last row of pegs, in canvas pixels; its radius. */
+    static final float PLINKO_REST = 17, PLINKO_BALL = 4.8f;
 
     private static void plinko(GameStationEntity station, PoseStack pose, WorldCanvas buffers, Font font, int[][] table,
                                int[] outcome, boolean shown, double progress, boolean rolling, boolean won, double now,
@@ -65,12 +68,20 @@ final class ArcadeCabinets {
         int[] multipliers = table[0];
         float pockets = PLINKO_TOP + rows * PLINKO_ROW + 6;
         int landed = shown && progress >= 1 ? outcome[0] : -1;
+        PlinkoFlight.Point fall = shown && progress > 0
+                ? PlinkoFlight.at(outcome[1], rows, PLINKO_REST / PLINKO_ROW, progress) : null;
+        // Where the ball is on the canvas: on its fall, or waiting in the cup on top of the crown.
+        float ballX = fall == null ? PLINKO_X : PLINKO_X + (float) fall.column() * PLINKO_SPACING / 2;
+        float ballY = fall == null ? -259 - (float) Math.abs(Math.sin(now * 0.05)) * 2
+                : PLINKO_TOP + (float) (fall.row() + 1) * PLINKO_ROW - 5;
         surface(pose, 3.9f);
         // The board: deep teal, lighter towards the top.
         for (int band = 0; band < 10; band++) {
             float y1 = -211 + band * 16.2f;
             quad(pose, buffers, -51, y1, 179, y1 + 16.2f, shade(0xff0f5a66, 1.05f - band * 0.06f), 0);
         }
+        // The ball's shadow on the board, cast by the light above the glass.
+        if (fall != null) sector(pose, buffers, ballX + 2, ballY + 3, 0, PLINKO_BALL * 0.9f, 0, 2 * Math.PI, 0xff08323a, 0.05f);
         for (int pocket = 0; pocket < MachineTable.PLINKO_POCKETS; pocket++) {
             float px = PLINKO_X + (pocket - rows / 2f) * PLINKO_SPACING;
             int multiplier = pocket < multipliers.length ? multipliers[pocket] : 0;
@@ -80,38 +91,41 @@ final class ArcadeCabinets {
             label(pose, buffers, font, times(multiplier), px, pockets + 9, pocket == landed ? DARK : TEXT, 0.5f, 13.5f, 0.2f);
         }
         pose.popPose();
-        // The pegs stand out of the board, real little posts the ball knocks against.
+        // The pegs stand out of the board, real little posts the ball knocks against; the one just struck rings gold.
         for (int row = 0; row < rows; row++) {
             float py = PLINKO_TOP + (row + 1) * PLINKO_ROW;
             for (int pin = 0; pin <= row + 2; pin++) {
                 float px = PLINKO_X + (pin - (row + 2) / 2f) * PLINKO_SPACING;
                 float u = 8 + px / 8, y = 8 - py / 8;
-                cube(pose, buffers, u - 0.18f, y - 0.18f, 2.9f, u + 0.18f, y + 0.18f, 3.9f, CHROME, 1);
+                boolean struck = fall != null && fall.hitRow() == row && fall.sinceHit() < 0.8
+                        && Math.abs(px - PLINKO_X - (float) fall.hitColumn() * PLINKO_SPACING / 2) < 1;
+                cube(pose, buffers, u - 0.18f, y - 0.18f, 2.9f, u + 0.18f, y + 0.18f, 3.9f, struck ? GOLD : CHROME, 1);
             }
         }
-        // The ball: in the chute until a play, then down the board along the drawn path.
-        float bu, by, bz;
-        if (shown && progress > 0) {
-            double[] ball = MachineMotion.ball(outcome[1], progress, rows);
-            float px = PLINKO_X + (float) ball[0] * PLINKO_SPACING / 2;
-            float py = progress >= 1 ? pockets + 6 : PLINKO_TOP + (float) ball[1] * PLINKO_ROW + PLINKO_ROW - 5;
-            bu = 8 + px / 8;
-            by = 8 - py / 8;
-            bz = 2.6f;
-        } else {
-            bu = 16;
-            by = 37 + (float) Math.abs(Math.sin(now * 0.05)) * 0.3f;
-            bz = 3;
-        }
-        cube(pose, buffers, bu - 0.6f, by - 0.6f, bz - 0.4f, bu + 0.6f, by + 0.6f, bz + 0.8f, 0xffeef2f6, 1);
-        cube(pose, buffers, bu - 0.25f, by + 0.15f, bz - 0.45f, bu + 0.05f, by + 0.45f, bz - 0.4f, 0xffffffff, 1);
-        surface(pose, 4.8f);
-        sign(pose, buffers, font, name, -48, -244, 176, -220, rolling, won, now);
+        surface(pose, 2.6f);
+        ball(pose, buffers, ballX, ballY, PLINKO_BALL, fall == null ? 0 : fall.spin());
+        pose.popPose();
+        // The marquee stands in front of everything else on the crown, so its name is never hidden.
+        surface(pose, 0.4f);
+        sign(pose, buffers, font, name, -50, -247, 178, -220, rolling, won, now);
         pose.popPose();
         surface(pose, 1.9f);
         status(pose, buffers, font, station, rolling, rollingKey, 4, -26.4f, 124, -8.8f);
         MachineCabinet.odds(pose, buffers, font, GameMode.PLINKO, table, 0, 4, 0.8f, 124, 36);
         pose.popPose();
+    }
+
+    /** A ball seen from the front: a disc shaded like a sphere lit from the top left, with a mark that turns as it rolls. */
+    private static void ball(PoseStack pose, WorldCanvas buffers, float x, float y, float radius, double spin) {
+        float[] sizes = {1, .84f, .66f, .46f, .26f};
+        float[] tones = {.48f, .7f, .86f, .97f, 1.08f};
+        for (int layer = 0; layer < sizes.length; layer++) {
+            float r = radius * sizes[layer], off = (radius - r) * 0.5f;
+            sector(pose, buffers, x - off, y - off, 0, r, 0, 2 * Math.PI, shade(0xffdde4ec, tones[layer]), 0.5f + layer * 0.05f);
+        }
+        float markX = x + (float) Math.cos(spin) * radius * 0.55f, markY = y + (float) Math.sin(spin) * radius * 0.55f;
+        sector(pose, buffers, markX, markY, 0, radius * 0.2f, 0, 2 * Math.PI, 0xff7d8a9c, 0.8f);
+        sector(pose, buffers, x - radius * 0.4f, y - radius * 0.42f, 0, radius * 0.16f, 0, 2 * Math.PI, 0xffffffff, 0.9f);
     }
 
     // --- Big Six --------------------------------------------------------------------------------

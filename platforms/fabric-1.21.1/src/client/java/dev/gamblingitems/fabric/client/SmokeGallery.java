@@ -75,10 +75,17 @@ final class SmokeGallery {
         if (phase == 0) server.execute(() -> {
             ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player == null) return;
+            // Night shots show what is lit; everything else is photographed at noon.
+            player.serverLevel().setDayTime(shot.name().startsWith("night") ? 18000 : 6000);
             player.connection.teleport(shot.x(), shot.y(), shot.z(), shot.yaw(), shot.pitch());
             if (shot.cabinet() >= ARCADE_SHOT) playArcade(player, shot.cabinet() - ARCADE_SHOT, shot.ahead());
             else if (shot.cabinet() >= 0) play(player.serverLevel(), shot.cabinet(), shot.ahead());
         });
+        // The server's teleport moves the player, but the client keeps its own look; aim it as the shot asks.
+        if (phase > 1 && phase <= SETTLE) {
+            minecraft.player.setYRot(shot.yaw());
+            minecraft.player.setXRot(shot.pitch());
+        }
         if (phase == SETTLE) ClientSmoke.shot(minecraft, "gamblingitems-gallery-" + shot.name() + ".png");
     }
 
@@ -113,7 +120,8 @@ final class SmokeGallery {
         place(level, o.offset(5, 0, -11), ModContent.CASHIER, Direction.SOUTH, player);
         place(level, o.offset(8, 1, -11), ModContent.LEADERBOARD, Direction.SOUTH, player);
         place(level, o.offset(12, 0, -11), ModContent.CROUPIER, Direction.SOUTH, player);
-        place(level, o.offset(12, 0, -9), ModContent.BLACKJACK_TABLE, Direction.NORTH, player);
+        // The croupier stands at the dealer's side, the players' side facing the room.
+        place(level, o.offset(12, 0, -9), ModContent.BLACKJACK_TABLE, Direction.SOUTH, player);
     }
 
     /** Plays an arcade cabinet for real, a diamond in hand, as a player touching its control would. */
@@ -121,8 +129,8 @@ final class SmokeGallery {
         BlockPos pos = origin.offset(-12 + 4 * index, 0, -11);
         player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(net.minecraft.world.item.Items.DIAMOND, 4));
         var mode = ((dev.gamblingitems.fabric.block.SlotMachineBlock) ARCADE[index]).mode();
-        dev.gamblingitems.fabric.block.CabinetPlay.use(player, mode, pos, ARCADE_CONTROLS[index]);
-        if (player.serverLevel().getBlockEntity(pos) instanceof dev.gamblingitems.fabric.block.GameStationEntity station) {
+        boolean played = dev.gamblingitems.fabric.block.CabinetPlay.use(player, mode, pos, ARCADE_CONTROLS[index]);
+        if (played && player.serverLevel().getBlockEntity(pos) instanceof dev.gamblingitems.fabric.block.GameStationEntity station) {
             station.startedAt -= ahead;
             player.serverLevel().sendBlockUpdated(pos, station.getBlockState(), station.getBlockState(), 3);
         }
@@ -186,5 +194,16 @@ final class SmokeGallery {
             SHOTS.add(new Shot("arcade_" + arcade[i] + "_later", centre, y, z - 11 + 4, 180, 2, ARCADE_SHOT + i, 90));
         }
         SHOTS.add(new Shot("arcade_decor", x + 8.5, y + .8, z - 6, 180, 6));
+        SHOTS.add(new Shot("arcade_plinko_sign", x - 11, y + 1.6, z - 11 + 2.2, 180, -22));
+        // Two falls caught early and late; a play takes 100 ticks, so other shots stand between them.
+        SHOTS.add(new Shot("arcade_plinko_fall_early", x - 11, y + .9, z - 11 + 2.4, 180, -12, ARCADE_SHOT, -12));
+        SHOTS.add(new Shot("arcade_cashier", x + 5, y + .9, z - 11 + 1.7, 180, 38));
+        SHOTS.add(new Shot("arcade_croupier", x + 11.6, y + .6, z - 11 + 2.2, 200, 8));
+        SHOTS.add(new Shot("arcade_plinko_fall_late", x - 11, y + .9, z - 11 + 2.4, 180, -12, ARCADE_SHOT, 32));
+        SHOTS.add(new Shot("night_arcade", x + 2, y + 2.5, z - 2, 180, 14));
+        SHOTS.add(new Shot("arcade_dealer", x + 12, y + 1.2, z - 4.6, 180, 24));
+        for (int i = 0; i < tables.length; i++) {
+            SHOTS.add(new Shot("table_close_" + tables[i], x + 13.6, y + 1.2, z - 6 + 5 * i + 1.4, -120, 34));
+        }
     }
 }

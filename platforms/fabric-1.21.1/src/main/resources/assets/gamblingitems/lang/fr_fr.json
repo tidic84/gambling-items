@@ -489,5 +489,7 @@
   "gui.gamblingitems.poker_hand.5": "Full",
   "gui.gamblingitems.poker_hand.6": "Carré",
   "gui.gamblingitems.poker_hand.7": "Quinte flush",
-  "gui.gamblingitems.poker_hand.8": "Quinte flush royale"
+  "gui.gamblingitems.poker_hand.8": "Quinte flush royale",
+  "gui.gamblingitems.croupier_explains": "Le croupier vous explique %s :",
+  "gui.gamblingitems.croupier_nothing": "Il n'y a aucun jeu près du croupier à expliquer."
 }

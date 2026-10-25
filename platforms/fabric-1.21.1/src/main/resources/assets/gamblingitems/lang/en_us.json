@@ -489,5 +489,7 @@
   "gui.gamblingitems.poker_hand.5": "Full house",
   "gui.gamblingitems.poker_hand.6": "Four of a kind",
   "gui.gamblingitems.poker_hand.7": "Straight flush",
-  "gui.gamblingitems.poker_hand.8": "Royal flush"
+  "gui.gamblingitems.poker_hand.8": "Royal flush",
+  "gui.gamblingitems.croupier_explains": "The croupier explains %s:",
+  "gui.gamblingitems.croupier_nothing": "There is no game near the croupier to explain."
 }

@@ -132,4 +132,28 @@ public class ArcadeGameTests implements FabricGameTest {
         helper.assertTrue(!cabinet.closed && cabinet.minimumStake == 0, "Reset gives it back to the configuration");
         helper.succeed();
     }
+
+    @GameTest(template = EMPTY_STRUCTURE, timeoutTicks = 100)
+    public void neonTubesLightTheRoom(GameTestHelper helper) {
+        BlockPos pos = helper.absolutePos(new BlockPos(2, 2, 2));
+        helper.getLevel().setBlockAndUpdate(pos, ModContent.NEON_TUBE.defaultBlockState());
+        helper.succeedWhen(() -> {
+            int light = helper.getLevel().getBrightness(net.minecraft.world.level.LightLayer.BLOCK, pos.east());
+            helper.assertTrue(light >= 14, "A neon tube lights the block beside it, not " + light);
+        });
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void theCroupierKeepsTheCashiersWindowOpen(GameTestHelper helper) {
+        BlockPos pos = helper.absolutePos(new BlockPos(1, 1, 1));
+        helper.getLevel().setBlockAndUpdate(pos, ModContent.CROUPIER.defaultBlockState());
+        ServerPlayer player = player(helper, pos, ItemStack.EMPTY);
+        CashierSetup setup = new CashierSetup(ModConfig.values(), ModConfig.arcade(), java.util.List.of());
+        CashierMenu menu = new CashierMenu(1, player.getInventory(), setup, new SimpleContainer(CashierMenu.TRAY_SLOTS),
+                ContainerLevelAccess.create(helper.getLevel(), pos));
+        helper.assertTrue(menu.stillValid(player), "The croupier serves like the counter");
+        helper.getLevel().setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+        helper.assertFalse(menu.stillValid(player), "Without him the window closes");
+        helper.succeed();
+    }
 }

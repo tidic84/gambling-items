@@ -32,8 +32,9 @@ final class SmokeGallery {
     private static final List<Shot> SHOTS = new ArrayList<>();
     private static BlockPos origin;
 
-    private record Shot(String name, double x, double y, double z, float yaw, float pitch, int cabinet) {
-        Shot(String name, double x, double y, double z, float yaw, float pitch) { this(name, x, y, z, yaw, pitch, -1); }
+    /** A view; for a cabinet, the play it shows, started {@code ahead} ticks before the view moves in. */
+    private record Shot(String name, double x, double y, double z, float yaw, float pitch, int cabinet, int ahead) {
+        Shot(String name, double x, double y, double z, float yaw, float pitch) { this(name, x, y, z, yaw, pitch, -1, 0); }
     }
     /** For each cabinet, a play caught halfway: what it shows ("outcome,detail,choice") and what it pays. */
     private static final String[] OUTCOMES = {"7,7,7", "11,500,0", "6,300,0", "2,1,2", "4,15,0", "4,500,0", "5,7,5"};
@@ -68,7 +69,7 @@ final class SmokeGallery {
             ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player == null) return;
             player.connection.teleport(shot.x(), shot.y(), shot.z(), shot.yaw(), shot.pitch());
-            if (shot.cabinet() >= 0) play(player.serverLevel(), shot.cabinet());
+            if (shot.cabinet() >= 0) play(player.serverLevel(), shot.cabinet(), shot.ahead());
         });
         if (phase == SETTLE) ClientSmoke.shot(minecraft, "gamblingitems-gallery-" + shot.name() + ".png");
     }
@@ -93,7 +94,7 @@ final class SmokeGallery {
     }
 
     /** Starts a play on a cabinet as the server would show it, long enough to be caught midway. */
-    private static void play(ServerLevel level, int index) {
+    private static void play(ServerLevel level, int index, int ahead) {
         BlockPos pos = origin.offset(-6 + 2 * index, 0, -6);
         if (!(level.getBlockEntity(pos) instanceof dev.gamblingitems.fabric.block.GameStationEntity station)) return;
         station.reels = OUTCOMES[index];
@@ -108,6 +109,8 @@ final class SmokeGallery {
             station.multiplier = table.multipliers()[Math.min(at, table.multipliers().length - 1)];
         }
         station.show("Steve", "", "machine_result_won", "", true, 150);
+        station.startedAt -= ahead;
+        level.sendBlockUpdated(pos, station.getBlockState(), station.getBlockState(), 3);
     }
 
     private static void place(ServerLevel level, BlockPos pos, Block block, Direction facing, ServerPlayer player) {
@@ -123,7 +126,10 @@ final class SmokeGallery {
         SHOTS.add(new Shot("cabinets_angle", x + 6, y + 1.5, z - 1, 135, 14));
         String[] cabinets = {"slot_machine", "lucky_wheel", "coin_pusher", "prize_claw", "pachinko", "capsule_gacha", "high_stakes"};
         for (int i = 0; i < cabinets.length; i++) {
-            SHOTS.add(new Shot("cabinet_" + cabinets[i], x - 6 + 2 * i, y, z - 6 + 2.6, 180, 4, i));
+            SHOTS.add(new Shot("cabinet_" + cabinets[i], x - 6 + 2 * i, y, z - 6 + 2.6, 180, 4, i, 0));
+            // Caught later: the gacha capsule opening, then every machine celebrating its win.
+            SHOTS.add(new Shot("cabinet_" + cabinets[i] + "_open", x - 6 + 2 * i, y, z - 6 + 2.6, 180, 4, i, 42));
+            SHOTS.add(new Shot("cabinet_" + cabinets[i] + "_won", x - 6 + 2 * i, y, z - 6 + 2.8, 180, -4, i, 60));
             SHOTS.add(new Shot("cabinet_" + cabinets[i] + "_side", x - 6 + 2 * i + 1.6, y + .2, z - 6 + 1.9, 140, 10));
         }
         SHOTS.add(new Shot("stations", x, y + .5, z, 0, 0));

@@ -65,6 +65,40 @@ public final class GameScreens {
         g.fill(x, y + 15, x + width, y + 16, GOLD);
     }
 
+    /**
+     * A big win over a game: gold coins raining down the area and a pulsing banner with the multiplier,
+     * fading out over {@link MachineMotion#CELEBRATION} ticks from {@code age} 0.
+     */
+    public static void celebrate(GuiGraphics g, Font font, int x, int y, int width, int height, float age, int multiplier) {
+        if (age < 0 || age >= MachineMotion.CELEBRATION) return;
+        float fade = Math.min(1, (MachineMotion.CELEBRATION - age) / 15f);
+        int alpha = (int) (fade * 255) << 24;
+        if (!ClientOptions.reducedMotion()) {
+            for (int coin = 0; coin < 22; coin++) {
+                // Each coin has its own column, speed and start, the same every frame.
+                int seed = coin * 7919;
+                float cx = x + 6 + (seed % 97) / 97f * (width - 12), speed = 1.4f + (seed % 13) / 6f;
+                float cy = y + (age * speed + (seed % 53)) % height;
+                float radius = 2.2f + (seed % 3) * 0.6f;
+                ArenaShapes.disc(g, cx, cy, radius, alpha | (GOLD & 0xffffff));
+                ArenaShapes.disc(g, cx - radius * 0.25f, cy - radius * 0.25f, radius * 0.45f, alpha | 0xfff4d0);
+            }
+        }
+        float pulse = 1.6f + 0.15f * (float) Math.sin(age * 0.5);
+        Component title = Component.translatable("gui.gamblingitems.big_win");
+        int bannerWidth = Math.min(width - 8, Math.round(font.width(title) * pulse) + 24);
+        int top = y + height / 2 - 18;
+        ArenaShapes.rounded(g, x + (width - bannerWidth) / 2f - 1, top - 1, bannerWidth + 2, 38, RADIUS + 1, alpha | (GOLD & 0xffffff));
+        ArenaShapes.rounded(g, x + (width - bannerWidth) / 2f, top, bannerWidth, 36, RADIUS, alpha | 0x1a0d10);
+        GuiPose.push(g);
+        GuiPose.translate(g, x + width / 2f, top + 12);
+        GuiPose.scale(g, pulse);
+        g.drawString(font, title, -font.width(title) / 2, -4, alpha | (GOLD & 0xffffff), true);
+        GuiPose.pop(g);
+        String times = multiplier(multiplier);
+        g.drawString(font, times, x + (width - font.width(times)) / 2, top + 24, alpha | (TEXT & 0xffffff), true);
+    }
+
     /** A vertical gradient, drawn in one-pixel bands so it looks the same on every version. */
     public static void gradient(GuiGraphics g, int x1, int y1, int x2, int y2, int top, int bottom) {
         int height = y2 - y1;

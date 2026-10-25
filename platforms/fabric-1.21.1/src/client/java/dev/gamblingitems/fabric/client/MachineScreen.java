@@ -24,6 +24,8 @@ public final class MachineScreen extends CasinoScreen<MachineMenu> {
     private final CasinoSounds.Reel ticker = new CasinoSounds.Reel();
     private Button play, collect, previous, next;
     private boolean wasPlaying;
+    /** The game time a big win showed, or -1. */
+    private long celebrateFrom = -1;
 
     public MachineScreen(MachineMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, 320, 278);
@@ -72,6 +74,8 @@ public final class MachineScreen extends CasinoScreen<MachineMenu> {
         if (wasPlaying && !playing && menu.state() == MachineMenu.STATE_RESULT) {
             if (menu.lastWin() >= menu.stake() && menu.multiplier() > 0) CasinoSounds.win();
             else CasinoSounds.lose();
+            if (menu.lastWin() >= menu.stake() && menu.multiplier() >= MachineMotion.BIG_WIN && minecraft.level != null)
+                celebrateFrom = minecraft.level.getGameTime();
         }
         if (!wasPlaying && playing) {
             ticker.reset();
@@ -130,6 +134,13 @@ public final class MachineScreen extends CasinoScreen<MachineMenu> {
         }
         GameScreens.slots(g, menu, x, y);
         GameScreens.fitted(g, font, tr("inventory"), x + 12, y + 203, 62, GameScreens.MUTED);
+    }
+
+    @Override protected void renderOverlay(GuiGraphics g, int mouseX, int mouseY, float tick) {
+        if (celebrateFrom < 0 || minecraft.level == null) return;
+        float age = minecraft.level.getGameTime() - celebrateFrom + tick;
+        GameScreens.celebrate(g, font, leftPos + SHOW_X + 4, topPos + SHOW_Y + 6, SHOW_WIDTH - 8, SHOW_HEIGHT - 10, age,
+                menu.multiplier());
     }
 
     /** The lacquer of the cabinet in the world, so the window looks like the machine it was opened from. */

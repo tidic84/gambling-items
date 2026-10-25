@@ -38,6 +38,8 @@ public final class GameStationEntity extends BlockEntity {
     /** Client side only: what the felt last drew, and when, so a new card can be dealt in. */
     public String seenCards = "";
     public long cardsChangedAt;
+    /** Client side only: the play a cabinet last celebrated as a big win, and the tick of its last sparks. */
+    public long celebratedAt = -1, lastSpark;
     /** Server side only: what the seat fields were in the last packet built, see preview. */
     private String sentPreview = "";
 

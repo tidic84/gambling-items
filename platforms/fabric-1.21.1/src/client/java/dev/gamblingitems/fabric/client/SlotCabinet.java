@@ -7,7 +7,10 @@ import dev.gamblingitems.core.slots.SlotRules;
 import dev.gamblingitems.fabric.block.GameStationEntity;
 import dev.gamblingitems.fabric.block.SlotMachineBlock;
 import net.minecraft.client.gui.Font;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 
 /**
  * What a cabinet shows on top of its block model: lit screens, lamps and the parts that move.
@@ -26,6 +29,12 @@ public final class SlotCabinet {
     static final int STEEL = 0xff8795a1, CHROME = 0xffd5dde6, LAMP_OFF = 0xff5a2a2e;
     /** The reels stop one after the other, the last one a third of a pull after the first. */
     private static final double STAGGER = 0.16;
+    private static final int[] JACKPOT_LAMPS = {GOLD, 0xfffff4d0, 0xffd2434f, 0xff4cc3d9};
+    /**
+     * Whether the cabinet being drawn is celebrating a big win, read by its lamps and signs.
+     * shortcut: render-thread state set around one cabinet's drawing; pass it down if cabinets are ever drawn off-thread.
+     */
+    private static boolean jackpot;
     private static final float REEL_WIDTH = 27, REEL_GAP = 4, REEL_LEFT = -44.5f, REEL_TOP = -164, REEL_BOTTOM = -97;
 
     private SlotCabinet() {}
@@ -44,10 +53,47 @@ public final class SlotCabinet {
         // Props inside a glass case follow the light around the cabinet; screens and lamps glow.
         int raw = station.getLevel().getMaxLocalRawBrightness(station.getBlockPos().above());
         float light = 0.3f + 0.7f * raw / 15f;
+        jackpot = celebrating(station, now);
         model(pose, station);
-        if (station.mode() == GameMode.SLOT_MACHINE) slots(station, pose, buffers, font, now, progress, playing);
-        else MachineCabinet.render(station, pose, buffers, font, now, progress, playing, light);
-        pose.popPose();
+        try {
+            if (station.mode() == GameMode.SLOT_MACHINE) slots(station, pose, buffers, font, now, progress, playing);
+            else MachineCabinet.render(station, pose, buffers, font, now, progress, playing, light);
+        } finally {
+            pose.popPose();
+            jackpot = false;
+        }
+        if (celebrating(station, now)) celebrate(station);
+    }
+
+    /** True from the moment a big win shows on the cabinet, for the length of the celebration. */
+    static boolean celebrating(GameStationEntity station, double now) {
+        double reveal = station.startedAt + station.animationTicks;
+        return !station.idle() && station.highlight && station.multiplier >= MachineMotion.BIG_WIN
+                && now >= reveal && now < reveal + MachineMotion.CELEBRATION;
+    }
+
+    /** A big win, for everyone around the cabinet: a fanfare once, then sparks and gold rising from its roof. */
+    private static void celebrate(GameStationEntity station) {
+        var level = station.getLevel();
+        var pos = station.getBlockPos();
+        double x = pos.getX() + 0.5, y = pos.getY() + 2.6, z = pos.getZ() + 0.5;
+        if (station.celebratedAt != station.startedAt) {
+            station.celebratedAt = station.startedAt;
+            float volume = ClientOptions.soundVolume();
+            if (volume > 0) {
+                level.playLocalSound(x, y, z, SoundEvents.PLAYER_LEVELUP, SoundSource.BLOCKS, 0.8f * volume, 1f, false);
+                level.playLocalSound(x, y, z, SoundEvents.FIREWORK_ROCKET_TWINKLE, SoundSource.BLOCKS, 0.7f * volume, 1f, false);
+            }
+        }
+        long tick = level.getGameTime();
+        if (ClientOptions.reducedMotion() || tick == station.lastSpark) return;
+        station.lastSpark = tick;
+        var random = level.random;
+        for (int spark = 0; spark < 3; spark++) {
+            level.addParticle(spark == 0 ? ParticleTypes.FIREWORK : ParticleTypes.TOTEM_OF_UNDYING,
+                    x + (random.nextDouble() - 0.5) * 0.8, y, z + (random.nextDouble() - 0.5) * 0.8,
+                    (random.nextDouble() - 0.5) * 0.12, 0.12 + random.nextDouble() * 0.15, (random.nextDouble() - 0.5) * 0.12);
+        }
     }
 
     /** Pushes the pose into model space: one unit per pixel of the block model, origin at its corner. */
@@ -98,6 +144,7 @@ public final class SlotCabinet {
 
     /** A lamp of a chase: steady red at rest, running while the game plays, all green on a win. */
     static int lamp(int index, double now, boolean rolling, boolean won) {
+        if (jackpot) return JACKPOT_LAMPS[(int) ((long) (now / 1.5) + index) % JACKPOT_LAMPS.length];
         if (won) return ((long) (now / 4) + index) % 2 == 0 ? GREEN : 0xff2f8a6c;
         if (rolling) return ((long) (now / 2) + index) % 3 == 0 ? TEXT : LAMP_OFF;
         return index % 2 == 0 ? 0xffe0a24a : LAMP_OFF;
@@ -107,6 +154,7 @@ public final class SlotCabinet {
     static void sign(PoseStack pose, WorldCanvas buffers, Font font, String name, float x1, float y1, float x2, float y2,
                      boolean rolling, boolean won, double now) {
         float height = y2 - y1;
+        if (jackpot && (long) (now / 8) % 2 == 0) name = Component.translatable("gui.gamblingitems.big_win").getString();
         quad(pose, buffers, x1, y1, x2, y2, 0xff1a0d10, 0);
         for (int band = 0; band < 6; band++) {
             float t = band / 6f;

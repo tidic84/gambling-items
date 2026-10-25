@@ -22,6 +22,8 @@ public final class SlotScreen extends CasinoScreen<SlotMenu> {
     private final CasinoSounds.Reel ticker = new CasinoSounds.Reel();
     private Button spin, collect;
     private boolean wasSpinning;
+    /** The game time a big win showed, or -1. */
+    private long celebrateFrom = -1;
 
     public SlotScreen(SlotMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, 320, 278);
@@ -61,6 +63,7 @@ public final class SlotScreen extends CasinoScreen<SlotMenu> {
         if (wasSpinning && !spinning && menu.state() == SlotMenu.STATE_RESULT) {
             if (menu.multiplier() > 0) CasinoSounds.win();
             else CasinoSounds.lose();
+            if (menu.multiplier() >= MachineMotion.BIG_WIN && minecraft.level != null) celebrateFrom = minecraft.level.getGameTime();
         }
         wasSpinning = spinning;
     }
@@ -180,4 +183,10 @@ public final class SlotScreen extends CasinoScreen<SlotMenu> {
     }
 
     @Override protected void renderLabels(GuiGraphics g, int x, int y) {}
+
+    @Override protected void renderOverlay(GuiGraphics g, int mouseX, int mouseY, float tick) {
+        if (celebrateFrom < 0 || minecraft.level == null) return;
+        float age = minecraft.level.getGameTime() - celebrateFrom + tick;
+        GameScreens.celebrate(g, font, leftPos + 16, topPos + 40, 168, 91, age, menu.multiplier());
+    }
 }

@@ -24,7 +24,7 @@ import static dev.gamblingitems.fabric.client.SlotCabinet.*;
  * table of prizes, so every player around the machine sees the same play.
  */
 final class MachineCabinet {
-    private static final int GLASS = 0x2ac8e6ff, GLASS_EDGE = 0x55e6f4ff, COIN = 0xffd9b25a, COIN_DARK = 0xffa98734;
+    private static final int GLASS = 0xffa9d4e2, COIN = 0xffd9b25a, COIN_DARK = 0xffa98734;
 
     private MachineCabinet() {}
 
@@ -43,7 +43,7 @@ final class MachineCabinet {
             case LUCKY_WHEEL -> {
                 // In front of the printed sectors the block model carries for the inventory.
                 surface(pose, 1.1f);
-                wheel(pose, buffers, table, outcome, shown, shownProgress);
+                wheel(pose, buffers, font, table, outcome, shown, shownProgress);
                 pose.popPose();
                 surface(pose, 1.6f);
                 bulbs(pose, buffers, now, rolling, won);
@@ -93,7 +93,7 @@ final class MachineCabinet {
                 pose.popPose();
             }
             case CAPSULE_GACHA -> {
-                gacha(pose, buffers, station, table, shown, shownProgress, rolling, playing, now, light);
+                gacha(pose, buffers, font, station, table, shown, shownProgress, rolling, playing, now, light);
                 surface(pose, 5.8f);
                 twoLineSign(pose, buffers, font, station, name, rolling, won, rollingKey, -32, -216, 32, -187.2f, now);
                 pose.popPose();
@@ -222,23 +222,55 @@ final class MachineCabinet {
 
     private static final float WHEEL_Y = -140, WHEEL_RADIUS = 64;
 
-    private static void wheel(PoseStack pose, WorldCanvas buffers, int[][] table, int[] outcome, boolean shown, double progress) {
+    private static void wheel(PoseStack pose, WorldCanvas buffers, Font font, int[][] table, int[] outcome, boolean shown,
+                              double progress) {
         int[] multipliers = table[0], weights = table[1];
         double turn = shown ? MachineMotion.wheelTurn(weights, Math.min(outcome[0], weights.length - 1), outcome[1] % 1000, progress) : 0;
+        boolean landed = shown && progress >= 1;
         sector(pose, buffers, 0, WHEEL_Y, 0, WHEEL_RADIUS + 3, 0, 2 * Math.PI, DARK, 0);
+        // How close the nearest peg is to the flapper at the top, in radians.
+        double nearestPeg = Math.PI;
         for (int sector = 0; sector < weights.length; sector++) {
             if (weights[sector] == 0) continue;
             double from = (MachineMotion.sectorStart(weights, sector) + turn) * 2 * Math.PI - Math.PI / 2;
-            double to = from + MachineMotion.sectorWidth(weights, sector) * 2 * Math.PI;
-            int colour = MachineMotion.tier(multipliers[sector]);
-            sector(pose, buffers, 0, WHEEL_Y, 14, WHEEL_RADIUS, from, to, colour, 0.1f);
-            // A lighter band near the rim gives each sector some depth.
-            sector(pose, buffers, 0, WHEEL_Y, WHEEL_RADIUS - 8, WHEEL_RADIUS, from, to, shade(colour | 0xff000000, 1.25f) | 0xff000000, 0.15f);
-            sector(pose, buffers, 0, WHEEL_Y, 14, WHEEL_RADIUS, from, from + 0.02, GOLD, 0.2f);
+            double width = MachineMotion.sectorWidth(weights, sector) * 2 * Math.PI, to = from + width;
+            int colour = MachineMotion.tier(multipliers[sector]) | 0xff000000;
+            boolean winner = landed && sector == outcome[0];
+            sector(pose, buffers, 0, WHEEL_Y, 14, WHEEL_RADIUS, from, to, winner ? shade(colour, 1.35f) : colour, 0.1f);
+            // A lighter band near the rim and a darker one near the hub give each sector some depth.
+            sector(pose, buffers, 0, WHEEL_Y, WHEEL_RADIUS - 8, WHEEL_RADIUS, from, to, shade(colour, 1.25f), 0.15f);
+            sector(pose, buffers, 0, WHEEL_Y, 14, 20, from, to, shade(colour, 0.75f), 0.15f);
+            sector(pose, buffers, 0, WHEEL_Y, 14, WHEEL_RADIUS, from, from + 0.025, GOLD, 0.2f);
+            // The peg between two sectors, which the flapper knocks against.
+            float pegX = (float) Math.cos(from) * (WHEEL_RADIUS - 2.5f), pegY = WHEEL_Y + (float) Math.sin(from) * (WHEEL_RADIUS - 2.5f);
+            quad(pose, buffers, pegX - 1.6f, pegY - 1.6f, pegX + 1.6f, pegY + 1.6f, CHROME, 0.3f);
+            nearestPeg = Math.min(nearestPeg, Math.abs(Math.IEEEremainder(from + Math.PI / 2, 2 * Math.PI)));
+            // What the sector pays, written along its radius so it reads as the wheel turns.
+            if (width > 0.22) {
+                pose.pushPose();
+                pose.translate(0, WHEEL_Y, 0);
+                pose.mulPose(Axis.ZP.rotation((float) (from + width / 2)));
+                label(pose, buffers, font, multipliers[sector] == 0 ? "-" : GameScreens.multiplier(multipliers[sector]),
+                        WHEEL_RADIUS * 0.6f, 0, winner ? DARK : TEXT, 1.15f, WHEEL_RADIUS * 0.62f, 0.3f);
+                pose.popPose();
+            }
         }
         sector(pose, buffers, 0, WHEEL_Y, 0, 15, 0, 2 * Math.PI, BRASS, 0.3f);
         sector(pose, buffers, 0, WHEEL_Y, 0, 10, 0, 2 * Math.PI, GOLD, 0.35f);
+        for (int spoke = 0; spoke < 8; spoke++) {
+            double angle = spoke * Math.PI / 4 + turn * 2 * Math.PI;
+            sector(pose, buffers, 0, WHEEL_Y, 5, 13.5f, angle - 0.08, angle + 0.08, BRASS_DARK, 0.38f);
+        }
         sector(pose, buffers, 0, WHEEL_Y, 0, 4, 0, 2 * Math.PI, BRASS_DARK, 0.4f);
+        // The flapper: a red tongue over the rim, kicked aside by each peg going by and falling back.
+        float kick = shown && progress < 1 ? (float) Math.max(0, 1 - nearestPeg / 0.12) * 0.5f : 0;
+        pose.pushPose();
+        pose.translate(0, WHEEL_Y - WHEEL_RADIUS - 6, 0);
+        pose.mulPose(Axis.ZP.rotation(kick));
+        quad(pose, buffers, -2.4f, -3, 2.4f, 6, 0xffd2434f, 0.6f);
+        quad(pose, buffers, -1.2f, 6, 1.2f, 10, 0xffd2434f, 0.6f);
+        quad(pose, buffers, -1.2f, -2, 1.2f, 1, 0xffef8a92, 0.65f);
+        pose.popPose();
     }
 
     /** The bulbs set in the brass rim, round the wheel. */
@@ -259,12 +291,14 @@ final class MachineCabinet {
         // The plate sweeps the lower shelf under the upper one.
         cube(pose, buffers, 1.2f, 17.6f, front, 14.8f, 20.8f, 14.6f, CHROME, light);
         cube(pose, buffers, 1.2f, 20.3f, front - 0.1f, 14.8f, 20.8f, front + 0.3f, GOLD, light);
-        for (int row = 0; front - 1.5f - row * 1.6f > 1.2f; row++) {
-            float z = front - 1.5f - row * 1.6f;
-            for (int column = 0; column < 8; column++) {
-                if ((column * 7 + row * 3) % 5 == 0) continue;
-                float u = 1.8f + column * 1.65f + (row % 2) * 0.8f;
-                coin(pose, buffers, u, 17.6f, z, light);
+        int falling = shown ? MachineMotion.coins(station.multiplier) : 0;
+        // The bed of coins on the lower shelf lies still, between the edge and the furthest the plate reaches;
+        // only the coins a win tips over leave it, the first ones of the front row.
+        for (int row = 0; row < 3; row++) {
+            for (int column = 0; column < 7; column++) {
+                if (row == 0 && column < falling && MachineMotion.coinFall(column, progress) > 0) continue;
+                if (row > 0 && (column * 5 + row * 3) % 7 == 0) continue;
+                coin(pose, buffers, 3 + column * 1.9f + (row % 2) * 0.95f, 17.6f, 1.4f + row * 1.45f, light);
             }
         }
         for (int row = 0; row < 4; row++) {
@@ -273,12 +307,11 @@ final class MachineCabinet {
                 coin(pose, buffers, 1.8f + column * 1.65f + (row % 2) * 0.8f, 21.6f, 6 + row * 1.6f, light);
             }
         }
-        int falling = shown ? MachineMotion.coins(station.multiplier) : 0;
         for (int coin = 0; coin < falling; coin++) {
             double fall = MachineMotion.coinFall(coin, progress);
             float u = 3 + coin * 1.9f;
             if (fall <= 0) {
-                coin(pose, buffers, u, 17.6f, 1.4f, light);
+                continue;
             } else if (fall < 1) {
                 float y = 17.6f - (float) (fall * fall) * 2.6f;
                 coin(pose, buffers, u, y, 0.9f, light);
@@ -287,7 +320,7 @@ final class MachineCabinet {
                 coin(pose, buffers, 3.4f + coin * 1.6f, 2.9f, 0.2f + (coin % 2) * 0.6f, light);
             }
         }
-        glassCase(pose, buffers, 14.6f, 29.4f);
+        glassCase(pose, buffers, 14.6f, 29.4f, light);
     }
 
     private static void coin(PoseStack pose, WorldCanvas buffers, float u, float y, float z, float light) {
@@ -295,14 +328,15 @@ final class MachineCabinet {
         cube(pose, buffers, u - 0.35f, y + 0.35f, z - 0.35f, u + 0.35f, y + 0.38f, z + 0.35f, COIN_DARK, light);
     }
 
-    /** The glass of a case: the front and both flanks, a little reflection running across the front. */
-    private static void glassCase(PoseStack pose, WorldCanvas buffers, float bottom, float top) {
-        pane(pose, buffers, 1, bottom, 0.5f, 15, top, 0.5f, GLASS);
-        pane(pose, buffers, 0.5f, bottom, 1, 0.5f, top, 15, GLASS);
-        pane(pose, buffers, 15.5f, bottom, 1, 15.5f, top, 15, GLASS);
-        float height = top - bottom;
-        pane(pose, buffers, 2, bottom + height * 0.55f, 0.45f, 4.5f, bottom + height * 0.95f, 0.45f, GLASS_EDGE);
-        pane(pose, buffers, 5, bottom + height * 0.65f, 0.45f, 5.8f, bottom + height * 0.95f, 0.45f, GLASS_EDGE);
+    /**
+     * The glass of a case: the front and both flanks, faintly tinted and as lit as the room. Panes are
+     * drawn on both sides and seen through one another, so the tint stays light or the overlaps whiten.
+     */
+    private static void glassCase(PoseStack pose, WorldCanvas buffers, float bottom, float top, float light) {
+        int glass = shade(GLASS, light) & 0x00ffffff | 0x12000000;
+        pane(pose, buffers, 1, bottom, 0.5f, 15, top, 0.5f, glass);
+        pane(pose, buffers, 0.5f, bottom, 1, 0.5f, top, 15, glass);
+        pane(pose, buffers, 15.5f, bottom, 1, 15.5f, top, 15, glass);
     }
 
     // --- Prize claw -----------------------------------------------------------------------------
@@ -352,7 +386,7 @@ final class MachineCabinet {
             float fy = (float) (from + (CLAW_FLOOR - from) * claw.prizeFall());
             prize(pose, buffers, fu, fy, fz, multipliers[chosen], light);
         }
-        glassCase(pose, buffers, 14, 32.4f);
+        glassCase(pose, buffers, 14, 32.4f, light);
     }
 
     private static float prizeU(int index, int count) { return 5.6f + (index + 0.5f) * 9f / count; }
@@ -435,50 +469,105 @@ final class MachineCabinet {
 
     private static final float GLOBE_U = 8, GLOBE_Y = 21.2f, GLOBE_Z = 8, GLOBE_RADIUS = 7.2f;
 
-    private static void gacha(PoseStack pose, WorldCanvas buffers, GameStationEntity station, int[][] table, boolean shown,
-                              double progress, boolean rolling, boolean playing, double now, float light) {
+    private static void gacha(PoseStack pose, WorldCanvas buffers, Font font, GameStationEntity station, int[][] table,
+                              boolean shown, double progress, boolean rolling, boolean playing, double now, float light) {
         int[] multipliers = table[0];
-        // Capsules heaped in the lower half of the globe; they shake while the crank turns.
-        float shake = rolling && progress < 0.45 ? (float) Math.sin(now * 2.2) * 0.3f : 0;
+        double turns = playing ? MachineMotion.crank(progress) : 0;
+        // While the crank turns the heap is stirred: each layer swirls round the globe, the upper ones further, and bobs.
+        boolean stirring = rolling && progress < 0.5;
         for (int capsule = 0; capsule < 26; capsule++) {
-            double angle = capsule * 2.399;
-            double ring = Math.sqrt((capsule % 9 + 0.5) / 9.0) * (GLOBE_RADIUS - 1.6);
             int layer = capsule / 9;
-            float u = GLOBE_U + (float) (Math.cos(angle) * ring) + shake;
+            double angle = capsule * 2.399 + turns * (0.9 + layer * 0.35);
+            double ring = Math.sqrt((capsule % 9 + 0.5) / 9.0) * (GLOBE_RADIUS - 1.6);
+            float bob = stirring ? (float) Math.abs(Math.sin(now * 0.8 + capsule * 1.7)) * 0.6f * (layer + 1) : 0;
+            float u = GLOBE_U + (float) (Math.cos(angle) * ring);
             float z = GLOBE_Z + (float) (Math.sin(angle) * ring);
-            float y = GLOBE_Y - GLOBE_RADIUS + 1.2f + layer * 1.5f + (float) (ring * ring * 0.08);
+            float y = GLOBE_Y - GLOBE_RADIUS + 1.2f + layer * 1.5f + (float) (ring * ring * 0.08) + bob;
             int colour = MachineMotion.tier(multipliers.length == 0 ? 0 : multipliers[capsule % multipliers.length]);
-            capsule(pose, buffers, u, y, z, 0.75f, colour | 0xff000000, 0, light);
+            capsule(pose, buffers, u, y, z, 0.75f, colour | 0xff000000, 0, stirring ? (float) (angle * 2) : 0, light);
         }
         globe(pose, buffers, light);
-        crank(pose, buffers, playing ? MachineMotion.crank(progress) : 0);
-        if (shown) {
-            double drop = MachineMotion.capsuleDrop(progress), open = MachineMotion.capsuleOpen(progress);
-            if (drop > 0) {
-                float z = 2.6f - (float) drop * 1.8f;
-                capsule(pose, buffers, 8, 3.2f, z, 1.1f, MachineMotion.tier(station.multiplier) | 0xff000000, (float) open, 1);
-            }
+        crank(pose, buffers, turns);
+        double drop = shown ? MachineMotion.capsuleDrop(progress) : 0, open = shown ? MachineMotion.capsuleOpen(progress) : 0;
+        int colour = MachineMotion.tier(station.multiplier) | 0xff000000;
+        if (drop > 0 && drop < 0.35) {
+            // The capsule won sinks out of the heap, down through the collar into the machine.
+            float y = GLOBE_Y - GLOBE_RADIUS + 1.2f - (float) (drop / 0.35) * 3.5f;
+            capsule(pose, buffers, GLOBE_U, y, GLOBE_Z, 0.8f, colour, 0, 0, light);
+        } else if (shown && drop >= 0.6) {
+            // Then rolls out of the door, bouncing to a stop on the lip, and pops open.
+            double out = (drop - 0.6) / 0.4;
+            float z = 3.2f - (float) out * 2.8f;
+            float bounce = (float) (Math.abs(Math.sin(out * Math.PI * 2.5)) * (1 - out) * 1.4);
+            float spin = (float) (-out * 3 * Math.PI);
+            capsule(pose, buffers, 8, 2.6f + bounce, z, 1.1f, colour, (float) open, spin, light);
+            if (open > 0) prizeBurst(pose, buffers, font, station.multiplier, colour, open);
         }
+        // The door flap swings up as the capsule pushes through it.
+        float flap = drop > 0.55 && drop < 0.95 ? (float) Math.sin((drop - 0.55) / 0.4 * Math.PI) * 1.2f : 0;
+        pose.pushPose();
+        pose.translate(16 - 8, 5.5, 2.75);
+        pose.mulPose(Axis.XP.rotation(-flap));
+        cube(pose, buffers, 14, -3, -0.1f, 18, 0, 0.1f, 0x99c8d0d8, light);
+        pose.popPose();
     }
 
-    /** A capsule: a coloured half under a cream one, which lifts off as it opens. */
+    /** Once open, the capsule shows what it pays: the multiplier rising over it, and a ring of sparks. */
+    private static void prizeBurst(PoseStack pose, WorldCanvas buffers, Font font, int multiplier, int colour, double open) {
+        surface(pose, -0.8f);
+        float rise = (float) open * 14;
+        float y = (8 - 6.5f) * 8 - rise;
+        for (int spark = 0; spark < 8; spark++) {
+            double angle = spark * Math.PI / 4;
+            float distance = 4 + (float) open * 16, size = 1.6f * (float) (1 - open * 0.6);
+            float x = (float) Math.cos(angle) * distance, sy = y + 10 + (float) Math.sin(angle) * distance * 0.7f;
+            quad(pose, buffers, x - size, sy - size, x + size, sy + size, spark % 2 == 0 ? colour : GOLD, 0.2f);
+        }
+        quad(pose, buffers, -22, y - 9, 22, y + 9, 0xe0101820, 0.3f);
+        quad(pose, buffers, -22, y + 8, 22, y + 9, GOLD, 0.35f);
+        label(pose, buffers, font, multiplier <= 0 ? "-" : GameScreens.multiplier(multiplier), 0, y,
+                multiplier >= 100 ? GOLD : TEXT, 1.5f, 40, 0.4f);
+        pose.popPose();
+    }
+
+    /**
+     * A capsule standing on its base at (u, y, z): a coloured half under a cream lid, both eight-sided.
+     * It turns about its axis by spin, and its lid lifts and tips back as it opens.
+     */
     private static void capsule(PoseStack pose, WorldCanvas buffers, float u, float y, float z, float half, int colour,
-                                float open, float light) {
-        cube(pose, buffers, u - half, y, z - half, u + half, y + half, z + half, colour, light);
-        float lid = y + half + open * 1.2f;
-        cube(pose, buffers, u - half, lid, z - half, u + half, lid + half, z + half, 0xfff3eee2, light);
+                                float open, float spin, float light) {
+        pose.pushPose();
+        pose.translate(16 - u, y + half, z);
+        if (spin != 0) pose.mulPose(Axis.XP.rotation(spin));
+        shell(pose, buffers, -half, 0, half, colour, light);
+        cube(pose, buffers, 16 - half * 1.02f, -0.12f * half, -half * 0.72f, 16 + half * 1.02f, 0.12f * half,
+                half * 0.72f, 0xff2a3038, light);
+        pose.pushPose();
+        pose.translate(0, open * half * 1.4f, -open * half * 0.6f);
+        pose.mulPose(Axis.XP.rotation(-open * 1.1f));
+        // The lid is clear plastic of the same colour, lighter.
+        shell(pose, buffers, 0, half, half, GameScreens.mix(colour, 0xfff3eee2, 0.55f), light);
+        pose.popPose();
+        pose.popPose();
+    }
+
+    /** One half of a capsule, about the axis: two crossed boxes read as an eight-sided shell. */
+    private static void shell(PoseStack pose, WorldCanvas buffers, float y1, float y2, float half, int colour, float light) {
+        cube(pose, buffers, 16 - half, y1, -half * 0.7f, 16 + half, y2, half * 0.7f, colour, light);
+        cube(pose, buffers, 16 - half * 0.7f, y1, -half, 16 + half * 0.7f, y2, half, colour, light);
     }
 
     /** The glass globe: a sphere of faint quads, its upper half catching the light. */
     private static void globe(PoseStack pose, WorldCanvas buffers, float light) {
         int rings = 9, segments = 16;
-        int tint = shade(0x30c8e6ff, light) & 0x00ffffff | 0x30000000;
+        // Faint: the sphere is seen through itself, front and back, and its overlaps add up.
+        int tint = shade(0xffa9d4e2, light) & 0x00ffffff | 0x16000000;
         buffers.quads(pose, (matrix, vertices) -> {
             for (int ring = 0; ring < rings; ring++) {
                 double a = Math.PI * ring / rings - Math.PI / 2, b = Math.PI * (ring + 1) / rings - Math.PI / 2;
                 for (int segment = 0; segment < segments; segment++) {
                     double c = 2 * Math.PI * segment / segments, d = 2 * Math.PI * (segment + 1) / segments;
-                    int colour = ring >= 6 && segment % 8 == 2 ? 0x60ffffff : tint;
+                    int colour = tint;
                     sphere(vertices, matrix, a, c, colour);
                     sphere(vertices, matrix, b, c, colour);
                     sphere(vertices, matrix, b, d, colour);

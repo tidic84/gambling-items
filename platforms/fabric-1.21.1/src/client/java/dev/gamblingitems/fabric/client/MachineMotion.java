@@ -8,6 +8,10 @@ import dev.gamblingitems.core.machines.MachineTable;
  * player who walks up halfway sees the same thing as the one who pulled.
  */
 public final class MachineMotion {
+    /** From ten times the stake, a win is celebrated: by the cabinet for everyone around it, and in the window. */
+    public static final int BIG_WIN = 1000;
+    /** How long the celebration lasts once the result shows, in ticks. */
+    public static final int CELEBRATION = 70;
     /** Full turns a wheel or a needle makes before it settles. */
     private static final int TURNS = 4;
 

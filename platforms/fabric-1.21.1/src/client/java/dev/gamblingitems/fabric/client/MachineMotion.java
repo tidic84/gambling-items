@@ -9,9 +9,9 @@ import dev.gamblingitems.core.machines.MachineTable;
  */
 public final class MachineMotion {
     /** From ten times the stake, a win is celebrated: by the cabinet for everyone around it, and in the window. */
-    public static final int BIG_WIN = 1000;
+    public static final int BIG_WIN = dev.gamblingitems.fabric.block.SlotMachineBlock.BIG_WIN;
     /** How long the celebration lasts once the result shows, in ticks. */
-    public static final int CELEBRATION = 70;
+    public static final int CELEBRATION = dev.gamblingitems.fabric.block.SlotMachineBlock.CELEBRATION;
     /** Full turns a wheel or a needle makes before it settles. */
     private static final int TURNS = 4;
 

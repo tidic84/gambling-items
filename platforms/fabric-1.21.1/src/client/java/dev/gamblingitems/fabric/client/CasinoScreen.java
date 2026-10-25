@@ -84,6 +84,10 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
             case BIG_SIX -> Items.COMPASS;
             case VIDEO_POKER -> Items.MAP;
             case HORSE_RACE -> Items.SADDLE;
+            case CRAPS -> Items.BONE_BLOCK;
+            case BACCARAT -> Items.FILLED_MAP;
+            case KENO -> Items.WRITABLE_BOOK;
+            case SCRATCH_CARD -> Items.NAME_TAG;
         });
     }
 

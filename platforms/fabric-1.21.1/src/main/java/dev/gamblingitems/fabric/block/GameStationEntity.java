@@ -33,6 +33,9 @@ public final class GameStationEntity extends BlockEntity {
      */
     public boolean closed;
     public long minimumStake, maximumStake;
+    /** Reserved for players carrying a VIP card; and the look a dye gave the cabinet, see CabinetTheme. */
+    public boolean vip;
+    public int theme;
     /** Video poker: the stake of the hand being played, and who plays it. */
     public long handStake;
     public String handOwner = "";
@@ -54,6 +57,9 @@ public final class GameStationEntity extends BlockEntity {
     /** Client only, never saved: what the cabinet already sounded, and what its renderer keeps between frames. */
     public long soundedStart = -1, soundedStep = -1, busyCheckedAt;
     public boolean soundedReveal, busyNearby;
+    /** Client only: the neon tubes around a cabinet, glowing on the music's beat, and when they were last looked for. */
+    public java.util.List<net.minecraft.core.BlockPos> neons = java.util.List.of();
+    public long neonsScannedAt;
     public Object clientState;
     /** Server side only: what the seat fields were in the last packet built, see preview. */
     private String sentPreview = "";
@@ -94,6 +100,17 @@ public final class GameStationEntity extends BlockEntity {
         this.startedAt = level.getGameTime();
         setChanged();
         level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+        // A big win lights up the cabinet when it shows; the block puts the light out again.
+        if (highlight && multiplier >= SlotMachineBlock.BIG_WIN && getBlockState().getBlock() instanceof SlotMachineBlock cabinet) {
+            level.scheduleTick(worldPosition, cabinet, Math.max(1, animationTicks));
+        }
+    }
+
+    /** True from the moment a big win shows on a cabinet, for the length of its celebration. */
+    public boolean celebrating(double now) {
+        double reveal = startedAt + animationTicks;
+        return !idle() && highlight && multiplier >= SlotMachineBlock.BIG_WIN && now >= reveal
+                && now < reveal + SlotMachineBlock.CELEBRATION;
     }
 
     /** Back to the resting screen, keeping what a round shows meanwhile: its bets and its countdown. */
@@ -165,6 +182,8 @@ public final class GameStationEntity extends BlockEntity {
         tag.putBoolean("closed", closed);
         tag.putLong("minimumStake", minimumStake);
         tag.putLong("maximumStake", maximumStake);
+        tag.putBoolean("vip", vip);
+        tag.putInt("theme", theme);
         tag.putLong("handStake", handStake);
         tag.putString("handOwner", handOwner);
     }
@@ -204,6 +223,8 @@ public final class GameStationEntity extends BlockEntity {
         closed = Nbt.bool(tag, "closed");
         minimumStake = Nbt.longValue(tag, "minimumStake");
         maximumStake = Nbt.longValue(tag, "maximumStake");
+        vip = Nbt.bool(tag, "vip");
+        theme = Nbt.integer(tag, "theme", 0);
         handStake = Nbt.longValue(tag, "handStake");
         handOwner = Nbt.string(tag, "handOwner");
     }

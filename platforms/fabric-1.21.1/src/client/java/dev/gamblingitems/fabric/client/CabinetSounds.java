@@ -75,6 +75,15 @@ final class CabinetSounds {
             case HIGH_STAKES -> (long) (age / Math.max(2, 8 - progress * 6));
             case VIDEO_POKER -> age < 4 ? -1 : Math.min(4, (long) ((age - 4) / 3));
             case HORSE_RACE -> (long) (age / 3);
+            // A die lands on each roll; a card is turned, a number drawn, a cell scratched.
+            case CRAPS -> {
+                int[] outcome = MachineCabinet.outcome(station);
+                int rolls = dev.gamblingitems.core.machines.CrapsRules.rolls(Math.max(0, Math.min(2, outcome[0])), outcome[1]).size();
+                yield (long) (progress * rolls + 0.4);
+            }
+            case BACCARAT -> (long) (progress * 7);
+            case KENO -> (long) (progress * dev.gamblingitems.core.machines.KenoBoard.DRAWN);
+            case SCRATCH_CARD -> (long) (progress * dev.gamblingitems.core.machines.ScratchCard.CELLS);
             default -> -1;
         };
     }

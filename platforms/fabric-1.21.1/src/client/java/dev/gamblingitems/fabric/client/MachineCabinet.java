@@ -98,7 +98,7 @@ final class MachineCabinet {
                 twoLineSign(pose, buffers, font, station, name, rolling, won, rollingKey, -32, -216, 32, -187.2f, now);
                 pose.popPose();
             }
-            case PLINKO, BIG_SIX, VIDEO_POKER, HORSE_RACE -> ArcadeCabinets.render(station, pose, buffers, font, table, outcome,
+            case PLINKO, BIG_SIX, VIDEO_POKER, HORSE_RACE, CRAPS, BACCARAT, KENO, SCRATCH_CARD -> ArcadeCabinets.render(station, pose, buffers, font, table, outcome,
                     shown, shownProgress, rolling, won, now, light);
             default -> {
                 // The screen leans back with its block model, about the same hinge.
@@ -134,7 +134,9 @@ final class MachineCabinet {
             case PACHINKO -> MachineTable.PACHINKO_POCKETS;
             case PLINKO -> MachineTable.PLINKO_POCKETS;
             case BIG_SIX -> 7;
-            case HORSE_RACE -> 6;
+            case HORSE_RACE, KENO -> 6;
+            case CRAPS -> 2;
+            case BACCARAT -> 3;
             case VIDEO_POKER -> dev.gamblingitems.core.machines.VideoPokerRules.PAYTABLE.length;
             default -> 8;
         };

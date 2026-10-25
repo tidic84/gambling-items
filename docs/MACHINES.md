@@ -29,6 +29,12 @@ Les multiplicateurs incluent la mise : 1,5x rend une fois et demie ce qui a ét�
 | Big Six | roue de 54 cases ; on mise sur un symbole, payé 2x à 41x | affiché par la borne |
 | Vidéo poker | Jacks or Better 9/6 : donne, on garde des cartes, on tire une fois | `returnBasisPoints` 9 600 par défaut |
 | Course de chevaux | 6 chevaux pondérés, multijoueur : les paris de tous se jouent sur la même course | affiché par la borne |
+| Craps | lignes pass et don't pass, vraies règles (7/11, 2/3/12, point) ; un 12 au premier lancer est barré pour don't pass (mise rendue) | 98,59 % (pass), 98,64 % (don't pass) |
+| Baccara | punto banco, sabot de 8 jeux, tableau de tirage imprimé ; joueur 1:1, banque 0,95:1, égalité 8:1 (mises joueur/banque rendues sur égalité) | 98,76 % (joueur), 98,94 % (banque), 85,64 % (égalité) |
+| Keno | 5 numéros sur 80, 20 tirés (loi hypergéométrique exacte) ; paie à 2, 3, 4 ou 5 numéros sortis | 95,13 % |
+| Ticket à gratter | 9 cases ; 3 cases identiques gagnent ce lot, de 1x à 100x | 95 % |
+
+Craps et baccara gardent l'avantage de la maison du vrai jeu : les chances de chaque issue sont calculées exactement (`CrapsRules`, `BaccaratRules`, testés dans le core), pas configurées ; seuls les paiements le sont (`payouts`). Les dés, les cartes, la grille du keno et le ticket montrés sont reconstruits depuis l'issue tirée et sa graine : tous les joueurs voient la même partie.
 
 Les retours des quatre bornes d'arcade ne sont pas recopiés ici : ils découlent des tables par défaut et la borne affiche la probabilité exacte de chaque gain.
 
@@ -39,6 +45,11 @@ Les retours des quatre bornes d'arcade ne sont pas recopiés ici : ils découlen
 - La caisse tient aussi le **comptoir à lots** : 16 lots par défaut, du lingot de fer (100 tickets) à l'étoile du Nether (50 000).
 - Le **tableau des scores** (bloc mural, 2×2) affiche les 10 meilleurs gains de la semaine ; un clic dessus montre au joueur ses 20 dernières parties.
 - Décor : néons (16 couleurs, lumière 15, dessinés en pleine lumière même la nuit ; un colorant les recolore) et moquettes de casino.
+- **Tabourets de casino** : un clic assoit le joueur (un seul par tabouret), s'accroupir le relève. Le siège est invisible, jamais sauvegardé, et disparaît dès qu'il est quitté ou que le tabouret est cassé.
+- **Carte VIP** : un lot du comptoir (25 000 tickets par défaut). Une borne réservée (`/gamblingitems cabinet <x y z> vip on`) refuse les joueurs sans carte dans l'inventaire et porte un badge doré VIP au-dessus d'elle.
+- **Thèmes** : accroupi, un colorant sur une borne lui donne un style : rouge, orange, jaune = Vegas (ampoules qui chassent, enseigne rouge et or) ; blanc, gris, noir, marron = rétro (chrome, crème et turquoise) ; les autres = néon de leur couleur (enseigne, lampes et lueur au sol). Le même colorant une seconde fois rend le style d'origine ; le colorant n'est consommé que s'il peint.
+- **Gros gain** (10x ou plus) : la borne éclaire réellement la pièce (lumière 15) pendant la célébration, un gyrophare tourne sur son toit et des confettis tombent devant elle.
+- **Néons au rythme** : près d'une borne qui joue la musique d'arcade, chaque néon (à 8 blocs au plus) s'entoure d'un halo qui gonfle à chaque temps (120 bpm).
 - Le **croupier** suit le joueur du regard et distribue quand une table voisine joue. Un clic dessus ouvre le guichet de la caisse (jetons et comptoir à lots), pratique à côté des tables. Accroupi, un clic lui fait expliquer les règles du jeu le plus proche (table, écran ou borne à 5 blocs au plus).
 
 ```json
@@ -55,7 +66,7 @@ Les retours des quatre bornes d'arcade ne sont pas recopiés ici : ils découlen
 
 ## Réglages par borne (administrateur)
 
-`/gamblingitems cabinet <x y z> info|open|close|reset|minimum <valeur>|maximum <valeur>` (permission 2) règle une borne posée sans toucher à la configuration : la fermer, lui donner sa propre mise minimale ou maximale, ou revenir aux réglages du fichier avec `reset`.
+`/gamblingitems cabinet <x y z> info|open|close|reset|vip on|vip off|minimum <valeur>|maximum <valeur>` (permission 2) règle une borne posée sans toucher à la configuration : la fermer, la réserver aux VIP, lui donner sa propre mise minimale ou maximale, ou revenir aux réglages du fichier avec `reset`.
 
 ## Configuration
 
@@ -137,10 +148,10 @@ Aucune borne n'ouvre de fenêtre : tout se joue en touchant sa commande avec un 
 Les modèles des bornes, des écrans et des tables sont générés, pas écrits à la main. Après une modification, relancer depuis la racine du dépôt :
 
 ```
-python tools/generate_cabinet_models.py   # les 7 bornes (3 blocs de haut) et leurs textures cab_*
+python tools/generate_cabinet_models.py   # les 15 bornes (3 blocs de haut) et leurs textures cab_*
 python tools/generate_station_models.py   # le moniteur 3×2 des 8 écrans et leurs icônes d'inventaire
 python tools/generate_table_models.py     # les tables de blackjack, roulette et bingo, et leurs textures table_*
-python tools/generate_arcade_assets.py    # jetons, néons, moquettes, caisse, tableau des scores, croupier
+python tools/generate_arcade_assets.py    # jetons, néons, moquettes, caisse, tableau des scores, croupier, tabouret, carte VIP
 python tools/generate_sounds.py           # les sons propres à chaque borne et la musique (numpy + soundfile)
 ```
 
@@ -150,10 +161,15 @@ Seul le décor fixe est dans les modèles. Ce qui bouge (rouleaux, roue, pièces
 JAVA_TOOL_OPTIONS="-Dgamblingitems.clientsmoke=true -Dgamblingitems.clientsmoke.gallery=true" ./gradlew -p platforms/fabric-1.21.1 runClient --args="--quickPlaySingleplayer smoke"
 ```
 
-Les captures arrivent dans `run/screenshots/gamblingitems-gallery-*.png`.
+Les captures arrivent dans `run/screenshots/gamblingitems-gallery-*.png`. `-Dgamblingitems.clientsmoke.gallery.only=floor` ne garde que les vues dont le nom commence ainsi (ici : jeux de table, tabourets, thèmes, VIP, gros gain).
+
+`generate_sounds.py` réécrit aussi les anciens sons : l'encodeur OGG n'est pas reproductible octet pour octet, donc ne garder que les fichiers des bornes ajoutées (`git checkout` des autres).
 
 ## Limites connues
 
 - Chaque borne a ses quatre sons (`machine.<borne>.start|tick|win|lose`), synthétisés par `tools/generate_sounds.py` ; les sons d'interface (`ui.*`) réutilisent toujours des sons vanilla.
-- Le coût de la physique des capsules n'a pas été mesuré en jeu.
+- Le coût de la physique des capsules n'a pas été mesuré en jeu, ni celui des confettis et des halos de néons.
+- Les halos des néons sont dessinés par la borne voisine qui joue la musique : un néon loin de toute borne ne pulse pas.
+- Un néon cassé redonne un néon rose (sa couleur n'est pas gardée dans l'objet) ; un colorant le recolore.
+- La hauteur du joueur assis sur un tabouret est réglée pour 1.20.5 et plus ; avant, elle est corrigée par le calcul mais n'a pas été vérifiée en jeu.
 - Depuis Minecraft 1.21.6, le décor de la machine dans la fenêtre n'est pas découpé au bord de son cadre.

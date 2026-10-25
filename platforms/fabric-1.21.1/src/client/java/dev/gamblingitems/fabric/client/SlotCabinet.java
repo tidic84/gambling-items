@@ -3,6 +3,7 @@ package dev.gamblingitems.fabric.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.gamblingitems.core.GameMode;
+import dev.gamblingitems.core.machines.CabinetTheme;
 import dev.gamblingitems.core.slots.SlotRules;
 import dev.gamblingitems.fabric.block.GameStationEntity;
 import dev.gamblingitems.fabric.block.SlotMachineBlock;
@@ -35,6 +36,8 @@ public final class SlotCabinet {
      * shortcut: render-thread state set around one cabinet's drawing; pass it down if cabinets are ever drawn off-thread.
      */
     private static boolean jackpot;
+    /** The dyed theme of the cabinet being drawn, as it stores it; same shortcut as jackpot. */
+    private static int theme;
     private static final float REEL_WIDTH = 27, REEL_GAP = 4, REEL_LEFT = -44.5f, REEL_TOP = -164, REEL_BOTTOM = -97;
 
     private SlotCabinet() {}
@@ -54,25 +57,27 @@ public final class SlotCabinet {
         int raw = station.getLevel().getMaxLocalRawBrightness(station.getBlockPos().above());
         float light = 0.3f + 0.7f * raw / 15f;
         jackpot = celebrating(station, now);
+        theme = station.theme;
         CabinetSounds.follow(station, now, progress, playing);
         AmbientMusic.heard(station);
+        CabinetAmbience.neons(station, pose, buffers, now);
         model(pose, station);
         try {
             ArcadeCabinets.hover(station, pose, buffers, now);
             if (station.mode() == GameMode.SLOT_MACHINE) slots(station, pose, buffers, font, now, progress, playing);
             else MachineCabinet.render(station, pose, buffers, font, now, progress, playing, light);
+            CabinetAmbience.render(station, pose, buffers, font, now);
         } finally {
             pose.popPose();
             jackpot = false;
+            theme = 0;
         }
         if (celebrating(station, now)) celebrate(station);
     }
 
     /** True from the moment a big win shows on the cabinet, for the length of the celebration. */
     static boolean celebrating(GameStationEntity station, double now) {
-        double reveal = station.startedAt + station.animationTicks;
-        return !station.idle() && station.highlight && station.multiplier >= MachineMotion.BIG_WIN
-                && now >= reveal && now < reveal + MachineMotion.CELEBRATION;
+        return station.celebrating(now);
     }
 
     /** A big win, for everyone around the cabinet: a fanfare once, then sparks and gold rising from its roof. */
@@ -150,6 +155,8 @@ public final class SlotCabinet {
         if (jackpot) return JACKPOT_LAMPS[(int) ((long) (now / 1.5) + index) % JACKPOT_LAMPS.length];
         if (won) return ((long) (now / 4) + index) % 2 == 0 ? GREEN : 0xff2f8a6c;
         if (rolling) return ((long) (now / 2) + index) % 3 == 0 ? TEXT : LAMP_OFF;
+        int[] palette = CabinetAmbience.palette(theme, now, index);
+        if (palette != null) return index % 2 == 0 || CabinetTheme.of(theme) == CabinetTheme.VEGAS ? palette[0] : palette[1];
         return index % 2 == 0 ? 0xffe0a24a : LAMP_OFF;
     }
 
@@ -158,14 +165,15 @@ public final class SlotCabinet {
                      boolean rolling, boolean won, double now) {
         float height = y2 - y1;
         if (jackpot && (long) (now / 8) % 2 == 0) name = Component.translatable("gui.gamblingitems.big_win").getString();
-        quad(pose, buffers, x1, y1, x2, y2, 0xff1a0d10, 0);
+        int[] palette = CabinetAmbience.palette(theme, now, 0);
+        quad(pose, buffers, x1, y1, x2, y2, palette == null ? 0xff1a0d10 : palette[2], 0);
         for (int band = 0; band < 6; band++) {
             float t = band / 6f;
-            int glow = band < 3 ? 0xff3a1418 : 0xff2a1014;
+            int glow = palette == null ? (band < 3 ? 0xff3a1418 : 0xff2a1014) : band < 3 ? palette[3] : shade(palette[3], .8f);
             quad(pose, buffers, x1, y1 + height * t, x2, y1 + height * (t + 1 / 6f), glow, 0.05f);
         }
-        quad(pose, buffers, x1 + 3, y1 + height * 0.25f, x2 - 3, y2 - height * 0.25f, 0xff4a1a1e, 0.1f);
-        label(pose, buffers, font, name, (x1 + x2) / 2, (y1 + y2) / 2, GOLD, height / 14f, x2 - x1 - 16, 0.3f);
+        quad(pose, buffers, x1 + 3, y1 + height * 0.25f, x2 - 3, y2 - height * 0.25f, palette == null ? 0xff4a1a1e : palette[4], 0.1f);
+        label(pose, buffers, font, name, (x1 + x2) / 2, (y1 + y2) / 2, palette == null ? GOLD : palette[5], height / 14f, x2 - x1 - 16, 0.3f);
         int bulbs = Math.max(4, (int) ((x2 - x1) / 9));
         for (int index = 0; index < bulbs; index++) {
             float x = x1 + 4 + index * (x2 - x1 - 8) / (bulbs - 1);

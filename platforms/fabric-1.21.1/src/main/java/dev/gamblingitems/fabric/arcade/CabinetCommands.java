@@ -37,9 +37,13 @@ public final class CabinetCommands {
                         .then(Commands.literal("close").executes(context -> change(context, cabinet -> cabinet.closed = true)))
                         .then(Commands.literal("reset").executes(context -> change(context, cabinet -> {
                             cabinet.closed = false;
+                            cabinet.vip = false;
                             cabinet.minimumStake = 0;
                             cabinet.maximumStake = 0;
                         })))
+                        .then(Commands.literal("vip")
+                                .then(Commands.literal("on").executes(context -> change(context, cabinet -> cabinet.vip = true)))
+                                .then(Commands.literal("off").executes(context -> change(context, cabinet -> cabinet.vip = false))))
                         .then(Commands.literal("minimum").then(Commands.argument("value", LongArgumentType.longArg(0))
                                 .executes(context -> change(context, cabinet ->
                                         cabinet.minimumStake = LongArgumentType.getLong(context, "value")))))
@@ -74,7 +78,8 @@ public final class CabinetCommands {
         context.getSource().sendSuccess(() -> Component.translatable("commands.gamblingitems.cabinet.info",
                 Component.translatable("gui.gamblingitems.mode." + cabinet.mode().id()),
                 Component.translatable(cabinet.closed ? "commands.gamblingitems.cabinet.closed" : "commands.gamblingitems.cabinet.open"),
-                cabinet.minimumStake, cabinet.maximumStake), false);
+                cabinet.minimumStake, cabinet.maximumStake,
+                Component.translatable(cabinet.vip ? "commands.gamblingitems.cabinet.vip" : "commands.gamblingitems.cabinet.public")), false);
         return 1;
     }
 }

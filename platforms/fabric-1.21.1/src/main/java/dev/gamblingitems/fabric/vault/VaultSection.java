@@ -24,6 +24,10 @@ public enum VaultSection {
     BIG_SIX("big_six", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
     VIDEO_POKER("video_poker", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
     HORSE_RACE("horse_race", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    CRAPS("craps", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    BACCARAT("baccarat", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    KENO("keno", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    SCRATCH_CARD("scratch_card", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
     /** The cashier's exchange tray, where items wait to be changed. */
     CASHIER("cashier", dev.gamblingitems.fabric.arcade.CashierMenu.TRAY_SLOTS);
 

@@ -50,6 +50,20 @@ class CabinetControlsTest {
     }
 
     @Test
+    void theTableGamesHaveTheirBetsAlongTheDeck() {
+        assertEquals(Control.PICK_1, CabinetControls.at(GameMode.CRAPS, 3, 14, 0));
+        assertEquals(Control.PICK_2, CabinetControls.at(GameMode.CRAPS, 13, 14, 0));
+        assertEquals(Control.NONE, CabinetControls.at(GameMode.CRAPS, 8, 14, 0), "The dice tray is no bet");
+        // Player, tie, banker from left to right; the tie is the third choice.
+        assertEquals(Control.PICK_1, CabinetControls.at(GameMode.BACCARAT, 3, 14, 0));
+        assertEquals(Control.PICK_3, CabinetControls.at(GameMode.BACCARAT, 8, 14, 0));
+        assertEquals(Control.PICK_2, CabinetControls.at(GameMode.BACCARAT, 13, 14, 0));
+        assertEquals(Control.PLAY, CabinetControls.at(GameMode.KENO, 12.5, 14, 0));
+        assertEquals(Control.PLAY, CabinetControls.at(GameMode.SCRATCH_CARD, 12.5, 14, 0));
+        assertEquals(1, CabinetControls.width(GameMode.BACCARAT));
+    }
+
+    @Test
     void stationsHaveNoCabinetControls() {
         assertEquals(Control.NONE, CabinetControls.at(GameMode.ROULETTE, 8, 8, 0));
     }

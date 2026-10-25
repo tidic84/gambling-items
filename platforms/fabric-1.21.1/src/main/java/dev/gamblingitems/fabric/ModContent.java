@@ -83,6 +83,7 @@ public final class ModContent {
     public static final SlotMachineBlock SLOT_MACHINE = Registry.register(BuiltInRegistries.BLOCK,
             id("slot_machine"), new SlotMachineBlock(GameMode.SLOT_MACHINE,
                     blockProperties("slot_machine").strength(3.5F).sound(SoundType.METAL).noOcclusion()
+                            .lightLevel(state -> state.getValue(SlotMachineBlock.LIT) ? 15 : 0)
                             .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK)));
     public static final Item SLOT_MACHINE_ITEM = Registry.register(BuiltInRegistries.ITEM,
             id("slot_machine"), new BlockItem(SLOT_MACHINE, blockItemProperties("slot_machine")));
@@ -108,6 +109,18 @@ public final class ModContent {
     public static final Item VIDEO_POKER_ITEM = machineItem("video_poker", VIDEO_POKER);
     public static final SlotMachineBlock HORSE_RACE = machine("horse_race", GameMode.HORSE_RACE);
     public static final Item HORSE_RACE_ITEM = machineItem("horse_race", HORSE_RACE);
+    /** The table games on a cabinet: craps, baccarat, keno and scratch cards. */
+    public static final SlotMachineBlock CRAPS = machine("craps", GameMode.CRAPS);
+    public static final Item CRAPS_ITEM = machineItem("craps", CRAPS);
+    public static final SlotMachineBlock BACCARAT = machine("baccarat", GameMode.BACCARAT);
+    public static final Item BACCARAT_ITEM = machineItem("baccarat", BACCARAT);
+    public static final SlotMachineBlock KENO = machine("keno", GameMode.KENO);
+    public static final Item KENO_ITEM = machineItem("keno", KENO);
+    public static final SlotMachineBlock SCRATCH_CARD = machine("scratch_card", GameMode.SCRATCH_CARD);
+    public static final Item SCRATCH_CARD_ITEM = machineItem("scratch_card", SCRATCH_CARD);
+    /** Won at the prize counter; it opens the cabinets an administrator reserved for VIPs. */
+    public static final Item VIP_CARD = Registry.register(BuiltInRegistries.ITEM, id("vip_card"),
+            new Item(itemProperties("vip_card").stacksTo(1).rarity(net.minecraft.world.item.Rarity.EPIC)));
     /** Casino chips: items of value like any other, worth the configured chip value times their face. */
     private static final java.util.Map<Integer, Item> CHIPS = chips();
     public static final CashierBlock CASHIER = Registry.register(BuiltInRegistries.BLOCK, id("cashier"),
@@ -126,6 +139,10 @@ public final class ModContent {
                     // A lit tube: it lights the room, and is drawn full bright even in the dark.
                     .lightLevel(state -> 15).emissiveRendering((state, level, pos) -> true)));
     public static final Item NEON_TUBE_ITEM = blockItem("neon_tube", NEON_TUBE);
+    public static final dev.gamblingitems.fabric.arcade.StoolBlock CASINO_STOOL = Registry.register(BuiltInRegistries.BLOCK,
+            id("casino_stool"), new dev.gamblingitems.fabric.arcade.StoolBlock(blockProperties("casino_stool").strength(1.5F)
+                    .sound(SoundType.METAL).noOcclusion()));
+    public static final Item CASINO_STOOL_ITEM = blockItem("casino_stool", CASINO_STOOL);
     public static final Block CASINO_CARPET = carpet("casino_carpet");
     public static final Item CASINO_CARPET_ITEM = blockItem("casino_carpet", CASINO_CARPET);
     public static final Block CASINO_CARPET_BLUE = carpet("casino_carpet_blue");
@@ -144,7 +161,8 @@ public final class ModContent {
                     CASE_STATION, CRASH_STATION, ROULETTE_STATION, BLACKJACK_STATION,
                     BATTLE_STATION, BINGO_STATION, BLACKJACK_TABLE, ROULETTE_TABLE,
                     BINGO_TABLE, SLOT_MACHINE, LUCKY_WHEEL, COIN_PUSHER, PRIZE_CLAW, PACHINKO,
-                    CAPSULE_GACHA, HIGH_STAKES, PLINKO, BIG_SIX, VIDEO_POKER, HORSE_RACE, LEADERBOARD, CROUPIER)
+                    CAPSULE_GACHA, HIGH_STAKES, PLINKO, BIG_SIX, VIDEO_POKER, HORSE_RACE, CRAPS, BACCARAT, KENO,
+                    SCRATCH_CARD, LEADERBOARD, CROUPIER)
             //#if MC >= 1.21.2 && LOADER == fabric
             //$ .build());
             //#elif MC >= 1.21.2
@@ -254,6 +272,7 @@ public final class ModContent {
     private static SlotMachineBlock machine(String path, GameMode mode) {
         return Registry.register(BuiltInRegistries.BLOCK, id(path), new SlotMachineBlock(mode,
                 blockProperties(path).strength(3.5F).sound(SoundType.METAL).noOcclusion()
+                        .lightLevel(state -> state.getValue(SlotMachineBlock.LIT) ? 15 : 0)
                         .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK)));
     }
 
@@ -314,8 +333,9 @@ public final class ModContent {
                 CRASH_STATION_ITEM, ROULETTE_STATION_ITEM, BLACKJACK_STATION_ITEM, BATTLE_STATION_ITEM,
                 BLACKJACK_TABLE_ITEM, ROULETTE_TABLE_ITEM, BINGO_STATION_ITEM, BINGO_TABLE_ITEM, SLOT_MACHINE_ITEM,
                 LUCKY_WHEEL_ITEM, COIN_PUSHER_ITEM, PRIZE_CLAW_ITEM, PACHINKO_ITEM, CAPSULE_GACHA_ITEM, HIGH_STAKES_ITEM,
-                VIDEO_POKER_ITEM, PLINKO_ITEM, BIG_SIX_ITEM, HORSE_RACE_ITEM, CASHIER_ITEM, LEADERBOARD_ITEM,
-                CROUPIER_ITEM, NEON_TUBE_ITEM, CASINO_CARPET_ITEM, CASINO_CARPET_BLUE_ITEM));
+                VIDEO_POKER_ITEM, PLINKO_ITEM, BIG_SIX_ITEM, HORSE_RACE_ITEM, CRAPS_ITEM, BACCARAT_ITEM, KENO_ITEM,
+                SCRATCH_CARD_ITEM, CASHIER_ITEM, LEADERBOARD_ITEM, CROUPIER_ITEM, CASINO_STOOL_ITEM, VIP_CARD, NEON_TUBE_ITEM,
+                CASINO_CARPET_ITEM, CASINO_CARPET_BLUE_ITEM));
         return entries;
     }
 }

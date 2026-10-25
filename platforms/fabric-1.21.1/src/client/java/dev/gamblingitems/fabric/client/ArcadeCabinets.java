@@ -47,6 +47,8 @@ final class ArcadeCabinets {
             case BIG_SIX -> bigSix(station, pose, buffers, font, table, outcome, shown, progress, rolling, won, now, name, rollingKey);
             case VIDEO_POKER -> videoPoker(station, pose, buffers, font, table, rolling, won, now, name, light);
             case HORSE_RACE -> horseRace(station, pose, buffers, font, table, outcome, shown, progress, rolling, won, now, name, light);
+            case CRAPS, BACCARAT, KENO, SCRATCH_CARD -> TableCabinets.render(station, pose, buffers, font, table, outcome, shown,
+                    progress, rolling, won, now, name, rollingKey);
             default -> {}
         }
     }

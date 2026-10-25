@@ -24,7 +24,7 @@ ASSETS = ROOT / 'platforms/fabric-1.21.1/src/main/resources/assets/gamblingitems
 TEXTURES = ASSETS / 'textures/block'
 SIDES = ('down', 'up', 'north', 'south', 'west', 'east')
 MACHINES = ('slot_machine', 'lucky_wheel', 'coin_pusher', 'prize_claw', 'pachinko', 'capsule_gacha', 'high_stakes',
-            'plinko', 'big_six', 'video_poker', 'horse_race')
+            'plinko', 'big_six', 'video_poker', 'horse_race', 'craps', 'baccarat', 'keno', 'scratch_card')
 
 # ---------------------------------------------------------------------------------------------
 # Textures
@@ -242,6 +242,9 @@ TEXTURE_SET = {
     'cab_lamp_violet': lambda: lamp((180, 90, 240)),
     'cab_lamp_pink': lambda: lamp((240, 80, 170)),
     'cab_lamp_blue': lambda: lamp((60, 110, 240)),
+    'cab_felt_blue': lambda: flat((20, 52, 110), 45, 4),
+    'cab_walnut': lambda: lacquer((70, 38, 20), 46, sheen=18, grain=5),
+    'cab_walnut_side': lambda: panel((62, 34, 18), (217, 178, 90), 47),
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -661,10 +664,83 @@ def horse_race():
     return c
 
 
+def table_game(body, side, sign, trim, felt, bets, play=False):
+    """A bar-top table game: a belly with the paytable, a deck with the betting keys (three or two, or the
+    play key on the right), an upright screen in a bezel, and the marquee. Craps keeps a dice tray in the
+    middle of its deck, under a glass hood."""
+    c = Cabinet(body)
+    plinth(c)
+    shell = side_faces(body, side)
+    c.box((0, 1.5, 1.5), (16, 12.4, 16), shell)
+    c.box((0, 1.5, 1.2), (16, 2.2, 1.5), trim)
+    screen_panel(c, 1.5, 2.8, 14.5, 11.8, 1.4, frame=trim)            # paytable
+    # The deck, lined with felt, and its rail.
+    c.box((0, 12.4, -1.8), (16, 13, 3), body)
+    c.box((.4, 13, -1.4), (15.6, 13.05, 2.6), felt)
+    c.box((0, 12.2, -2), (16, 12.6, -1.8), trim)
+    for u, lens in bets:
+        c.box((u, 13, -1.2), (u + 4, 13.3, 1.2), trim)
+        c.box((u + .3, 13.3, -1), (u + 3.7, 14.1, 1), lens)
+    if play:
+        c.box((10.5, 13, -1.2), (15, 13.3, 1.2), trim)
+        c.box((10.9, 13.3, -1), (14.6, 14.3, 1), 'cab_lamp_red')
+    # The screen, upright, in its bezel.
+    c.box((.5, 13, 3), (15.5, 32, 16), shell)
+    screen_panel(c, .8, 15.6, 15.2, 31.4, 2, frame=trim, thick=.6, depth=.8)
+    # The marquee, with a lamp at each corner.
+    c.box((0, 32, 1), (16, 37, 15), body)
+    c.box((.6, 32.6, .8), (15.4, 36.4, 1), sign)
+    c.frame(0, 32, 16, 37, .5, 1, .5, trim)
+    c.box((2, 37, 3), (14, 37.6, 12), trim)
+    for u in (.2, 14.6):
+        c.box((u, 37, .6), (u + 1.2, 38.2, 1.8), 'cab_lamp_amber')
+    c.box((3, 4, 16), (13, 11, 16.2), 'cab_grille')
+    return c
+
+
+def craps():
+    """Craps: pass on the left in green, don't pass on the right in red, the dice tray between them."""
+    c = table_game('cab_green', 'cab_green_side', 'cab_sign_green', 'cab_brass', 'cab_felt',
+                   ((1, 'cab_lamp_green'), (11, 'cab_lamp_red')))
+    # The tray: a felt floor walled in brass, a rubber backboard the dice bounce off.
+    c.box((5.4, 13, -1.6), (10.6, 13.2, 2.8), 'cab_felt')
+    c.box((5.2, 13, -1.8), (10.8, 14.2, -1.5), 'cab_brass')
+    c.box((5.2, 13, -1.5), (5.5, 14.2, 2.8), 'cab_brass')
+    c.box((10.5, 13, -1.5), (10.8, 14.2, 2.8), 'cab_brass')
+    c.box((5.5, 13.2, 2.5), (10.5, 15, 2.8), 'cab_rubber')
+    return c
+
+
+def baccarat():
+    """Baccarat in walnut and blue felt: player in blue, tie in green, banker in red."""
+    return table_game('cab_walnut', 'cab_walnut_side', 'cab_sign_cyan', 'cab_gold', 'cab_felt_blue',
+                      ((1, 'cab_lamp_blue'), (6, 'cab_lamp_green'), (11, 'cab_lamp_red')))
+
+
+def keno():
+    """Keno: a lottery screen of eighty numbers, the red key on the right of the deck."""
+    c = table_game('cab_teal', 'cab_teal_side', 'cab_sign_violet', 'cab_chrome', 'cab_rubber', (), play=True)
+    # A cup of crayons and a stack of blank tickets on the left of the deck, as at any keno lounge.
+    c.box((1.4, 13, -.6), (4.2, 13.4, 1.4), 'cab_cream')
+    c.box((5, 13, -.2), (6.2, 15, 1), 'cab_chrome')
+    return c
+
+
+def scratch_card():
+    """The scratch card machine: a dispenser slot under the screen, the red key to buy a card."""
+    c = table_game('cab_pearl', 'cab_pearl_side', 'cab_sign_warm', 'cab_gold', 'cab_rubber', (), play=True)
+    # The slot the card comes out of, and a coin to scratch it with on the deck.
+    c.box((1.5, 13, -1), (8.5, 14.6, .2), 'cab_gold')
+    c.box((2, 13.6, -1.05), (8, 14, -1), 'cab_interior')
+    c.box((6.6, 13.05, .6), (7.8, 13.25, 1.8), 'cab_gold')
+    return c
+
+
 BUILDERS = {'slot_machine': slot_machine, 'lucky_wheel': lucky_wheel, 'coin_pusher': coin_pusher,
             'prize_claw': prize_claw, 'pachinko': pachinko, 'capsule_gacha': capsule_gacha,
             'high_stakes': high_stakes, 'plinko': plinko, 'big_six': big_six, 'video_poker': video_poker,
-            'horse_race': horse_race}
+            'horse_race': horse_race, 'craps': craps, 'baccarat': baccarat, 'keno': keno,
+            'scratch_card': scratch_card}
 
 # ---------------------------------------------------------------------------------------------
 # Models

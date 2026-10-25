@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "III",
+    "ITI",
+    "IXI"
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "T": {
+      "item": "gamblingitems:terminal"
+    },
+    "X": {
+      "item": "minecraft:item_frame"
+    }
+  },
+  "result": {
+    "id": "gamblingitems:video_poker",
+    "count": 1
+  }
+}

@@ -290,5 +290,101 @@
         "stream": true
       }
     ]
+  },
+  "machine.craps.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/craps/start"
+    ]
+  },
+  "machine.craps.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/craps/tick"
+    ]
+  },
+  "machine.craps.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/craps/win"
+    ]
+  },
+  "machine.craps.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/craps/lose"
+    ]
+  },
+  "machine.baccarat.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/baccarat/start"
+    ]
+  },
+  "machine.baccarat.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/baccarat/tick"
+    ]
+  },
+  "machine.baccarat.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/baccarat/win"
+    ]
+  },
+  "machine.baccarat.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/baccarat/lose"
+    ]
+  },
+  "machine.keno.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/keno/start"
+    ]
+  },
+  "machine.keno.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/keno/tick"
+    ]
+  },
+  "machine.keno.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/keno/win"
+    ]
+  },
+  "machine.keno.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/keno/lose"
+    ]
+  },
+  "machine.scratch_card.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/scratch_card/start"
+    ]
+  },
+  "machine.scratch_card.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/scratch_card/tick"
+    ]
+  },
+  "machine.scratch_card.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/scratch_card/win"
+    ]
+  },
+  "machine.scratch_card.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/scratch_card/lose"
+    ]
   }
 }

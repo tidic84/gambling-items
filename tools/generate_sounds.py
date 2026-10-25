@@ -172,6 +172,34 @@ MACHINES = {
         'win': lambda: mix(noise(1.4, 0.7, 300, 3000, 0.2) * 0.7, arp([note('C5'), note('E5'), note('G5'), note('C6')], 0.1, 'triangle', 0.4)),
         'lose': lambda: noise(0.9, 0.4, 200, 1200, 0.1) * 0.6,
     },
+    # Dice shaken in a cup, then thrown against the backboard.
+    'craps': {
+        'start': lambda: seq(*[x for _ in range(6) for x in (noise(0.03, 0.01, 600, 4000), 0.025)]),
+        'tick': lambda: mix(noise(0.03, 0.01, 900, 5000), tone(1400, 0.04, 'sine', 0.01) * 0.3),
+        'win': lambda: seq(chord(['D4', 'F#4', 'A4'], 0.12, 'saw', 0.1), chord(['D4', 'F#4', 'A4', 'D5'], 0.7, 'saw', 0.4)) * 0.5,
+        'lose': lambda: mix(noise(0.2, 0.06, 100, 900), tone(note('A2'), 0.4, 'triangle', 0.25)),
+    },
+    # Cards slid out of the shoe and turned on the felt.
+    'baccarat': {
+        'start': lambda: seq(*[x for _ in range(4) for x in (noise(0.06, 0.03, 1500, 6000, 0.01), 0.04)]),
+        'tick': lambda: noise(0.05, 0.02, 1200, 6000, 0.01),
+        'win': lambda: arp([note('F5'), note('A5'), note('C6'), note('F6')], 0.08, 'sine', 0.4),
+        'lose': lambda: tone(note('F3'), 0.35, 'triangle', 0.2) * 0.6,
+    },
+    # The air-blown balls, then each number drawn.
+    'keno': {
+        'start': lambda: noise(0.7, 0.35, 300, 2500, 0.2) * 0.8,
+        'tick': lambda: mix(tone(1760, 0.08, 'sine', 0.03), at(0.03, tone(2640, 0.08, 'sine', 0.02)) * 0.4),
+        'win': lambda: arp([note(n) for n in ('C5', 'E5', 'G5', 'C6', 'E6')], 0.06, 'square', 0.15) * 0.6,
+        'lose': lambda: seq(tone(note('G4'), 0.12, 'square', 0.08), tone(note('D4'), 0.25, 'square', 0.12)) * 0.4,
+    },
+    # A card printed and pushed out, then scratched with a coin.
+    'scratch_card': {
+        'start': lambda: mix(sweep(120, 260, 0.4, 'saw', 1.0) * 0.3, noise(0.4, 0.3, 1500, 5000, 0.05) * 0.4),
+        'tick': lambda: noise(0.09, 0.05, 2500, 9000, 0.01) * 0.8,
+        'win': lambda: mix(arp([note('G5'), note('B5'), note('D6'), note('G6')], 0.07, 'sine', 0.35), at(0.3, tone(note('G6'), 0.8, 'sine', 0.5))),
+        'lose': lambda: tone(note('C4'), 0.3, 'triangle', 0.2) * 0.5,
+    },
 }
 
 

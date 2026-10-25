@@ -196,6 +196,37 @@ def box(f, t, texture, faces=None, rotation=None):
     return element
 
 
+def vip_card():
+    """A black card edged in gold, with a gold chip and a gold band across it: the VIP card."""
+    image = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    for y in range(3, 13):
+        for x in range(1, 15):
+            edge = x in (1, 14) or y in (3, 12)
+            c = (232, 190, 80) if edge else mix((24, 22, 28), (60, 54, 66), (x + y) / 26)
+            if 9 <= y <= 10 and not edge:
+                c = (200, 160, 60)
+            if 3 <= x <= 5 and 5 <= y <= 7:
+                c = (250, 214, 120) if (x + y) % 2 else (210, 170, 70)
+            image.putpixel((x, y), clamp(c) + (255,))
+    for x, y in ((9, 5), (11, 5), (10, 6), (12, 6), (13, 5)):
+        image.putpixel((x, y), (255, 230, 150, 255))
+    return image
+
+
+def octagon(f, t, texture):
+    """A round slab of sixteen sides: eight bands through its centre, each as long as the slab is wide and as
+    thick as one side, turned by sixteenths of a turn."""
+    cx, cz, radius = (f[0] + t[0]) / 2, (f[2] + t[2]) / 2, (t[0] - f[0]) / 2
+    half = radius * math.tan(math.pi / 16)
+    origin = [cx, (f[1] + t[1]) / 2, cz]
+    parts = []
+    for angle in (0, 22.5, 45, -22.5):
+        rotation = {'angle': angle, 'axis': 'y', 'origin': origin}
+        parts.append(box((cx - radius, f[1], cz - half), (cx + radius, t[1], cz + half), texture, rotation=rotation))
+        parts.append(box((cx - half, f[1], cz - radius), (cx + half, t[1], cz + radius), texture, rotation=rotation))
+    return parts
+
+
 def horizontal_variants(model):
     return {'variants': {f'facing={facing}': {'model': model, 'y': rotation}
                          for facing, rotation in (('north', 0), ('east', 90), ('south', 180), ('west', 270))}}
@@ -315,6 +346,23 @@ def main():
                      box((11.4, 6.4, 7), (12.6, 11, 9), 'shirt'), box((5.5, 11, 5.5), (10.5, 15, 10.5), 'skin'),
                      box((5.3, 14, 5.3), (10.7, 15.4, 10.7), 'dark')],
         'display': {'gui': {'rotation': [30, 225, 0], 'scale': [0.9, 0.9, 0.9]}}})
+    # The casino stool: a chrome base and column, a foot ring, and a round seat of red leather.
+    save_png('item/vip_card.png', vip_card())
+    save('models/item/vip_card.json', {'parent': 'minecraft:item/generated', 'textures': {'layer0': 'gamblingitems:item/vip_card'}})
+    stool = [*octagon((4.5, 0, 4.5), (11.5, .8, 11.5), 'chrome'),
+             box((7.2, .8, 7.2), (8.8, 8.4, 8.8), 'chrome'),
+             box((5, 4, 5), (11, 4.5, 5.5), 'chrome'), box((5, 4, 10.5), (11, 4.5, 11), 'chrome'),
+             box((5, 4, 5.5), (5.5, 4.5, 10.5), 'chrome'), box((10.5, 4, 5.5), (11, 4.5, 10.5), 'chrome'),
+             box((7.5, 4, 5.5), (8.5, 4.5, 7.2), 'chrome'), box((7.5, 4, 8.8), (8.5, 4.5, 10.5), 'chrome'),
+             *octagon((5.5, 8.2, 5.5), (10.5, 8.6, 10.5), 'chrome'),
+             *octagon((3.5, 8.6, 3.5), (12.5, 10, 12.5), 'leather')]
+    save('models/block/casino_stool.json', {
+        'parent': 'minecraft:block/block',
+        'textures': {'chrome': 'gamblingitems:block/cab_chrome', 'leather': 'gamblingitems:block/cab_leather',
+                     'particle': 'gamblingitems:block/cab_leather'},
+        'elements': stool})
+    save('blockstates/casino_stool.json', {'variants': {'': {'model': 'gamblingitems:block/casino_stool'}}})
+    save('models/item/casino_stool.json', {'parent': 'gamblingitems:block/casino_stool'})
     print('arcade assets written')
 
 

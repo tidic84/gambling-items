@@ -53,6 +53,10 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
     public static final IntegerProperty PART = IntegerProperty.create("part", 0, 2);
     /** True for the right column of a cabinet two blocks wide, seen from its front. */
     public static final BooleanProperty RIGHT = BooleanProperty.create("right");
+    /** Lit while a big win is celebrated: the cabinet lights the room around it. */
+    public static final BooleanProperty LIT = BlockStateProperties.LIT;
+    /** A win of ten times the stake or more is celebrated for this many ticks once shown. */
+    public static final int BIG_WIN = 1000, CELEBRATION = 70;
     /** How many blocks a cabinet occupies; the last of them is only half full. */
     public static final int PARTS = 3;
     /** The game is played on the block a player stands at. */
@@ -75,7 +79,7 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
         super(properties);
         this.mode = mode;
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(PART, ANCHOR_PART)
-                .setValue(RIGHT, false));
+                .setValue(RIGHT, false).setValue(LIT, false));
     }
 
     /** How many blocks wide this cabinet stands. */
@@ -88,7 +92,7 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
     //#endif
 
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, PART, RIGHT);
+        builder.add(FACING, PART, RIGHT, LIT);
     }
 
     @Override public BlockState getStateForPlacement(BlockPlaceContext context) {
@@ -144,6 +148,8 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
         super.onRemove(state, level, pos, next, moving);
         if (state.is(next.getBlock()) || level.isClientSide) return;
     //#endif
+        // A cabinet lit or put out by a big win is still the same cabinet.
+        if (level.getBlockState(pos).is(this)) return;
         BlockPos root = anchor(pos, state);
         for (int column = 0; column < width(); column++) {
             for (int part = 0; part < PARTS; part++) {
@@ -205,10 +211,27 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
     //$ }
     //#endif
 
+    /** Lights the cabinet for a big win shown now, and puts its light out when the celebration ends. */
+    @Override public void tick(BlockState state, net.minecraft.server.level.ServerLevel level, BlockPos pos,
+                               net.minecraft.util.RandomSource random) {
+        long now = level.getGameTime();
+        boolean wanted = level.getBlockEntity(pos) instanceof GameStationEntity cabinet && cabinet.celebrating(now);
+        if (wanted != state.getValue(LIT)) level.setBlock(pos, state.setValue(LIT, wanted), 3);
+        if (wanted && level.getBlockEntity(pos) instanceof GameStationEntity cabinet) {
+            level.scheduleTick(pos, this, (int) Math.max(1, cabinet.startedAt + cabinet.animationTicks + CELEBRATION - now));
+        }
+    }
+
     /** A click on the lever, crank or buttons plays the machine; anywhere else it tells how, or its rules. */
     private void play(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!(player instanceof ServerPlayer serverPlayer)) return;
         BlockPos root = anchor(pos, state);
+        ItemStack held = player.getMainHandItem();
+        if (player.isShiftKeyDown() && held.getItem() instanceof net.minecraft.world.item.DyeItem dye
+                && level.getBlockEntity(root) instanceof GameStationEntity cabinet) {
+            CabinetPlay.paint(serverPlayer, cabinet, held, dye.getDyeColor().getId());
+            return;
+        }
         if (CabinetPlay.use(serverPlayer, mode, root, CabinetPlay.control(mode, state, root, hit.getLocation()))) return;
         CabinetPlay.explain(serverPlayer, mode, root, player.isShiftKeyDown());
     }

@@ -33,7 +33,9 @@ public final class ClientSmoke {
             Map.entry(GameMode.PACHINKO, ModContent.PACHINKO), Map.entry(GameMode.CAPSULE_GACHA, ModContent.CAPSULE_GACHA),
             Map.entry(GameMode.HIGH_STAKES, ModContent.HIGH_STAKES), Map.entry(GameMode.PLINKO, ModContent.PLINKO),
             Map.entry(GameMode.BIG_SIX, ModContent.BIG_SIX), Map.entry(GameMode.VIDEO_POKER, ModContent.VIDEO_POKER),
-            Map.entry(GameMode.HORSE_RACE, ModContent.HORSE_RACE));
+            Map.entry(GameMode.HORSE_RACE, ModContent.HORSE_RACE), Map.entry(GameMode.CRAPS, ModContent.CRAPS),
+            Map.entry(GameMode.BACCARAT, ModContent.BACCARAT), Map.entry(GameMode.KENO, ModContent.KENO),
+            Map.entry(GameMode.SCRATCH_CARD, ModContent.SCRATCH_CARD));
 
     static {
         MODES.addAll(GameMenus.TERMINAL);
@@ -79,7 +81,8 @@ public final class ClientSmoke {
             player.level().setBlockAndUpdate(pos, machine.defaultBlockState()
                     .setValue(SlotMachineBlock.FACING, player.getDirection().getOpposite()));
             player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND, 2));
-            boolean picks = mode == GameMode.BIG_SIX || mode == GameMode.HORSE_RACE;
+            boolean picks = mode == GameMode.BIG_SIX || mode == GameMode.HORSE_RACE || mode == GameMode.CRAPS
+                    || mode == GameMode.BACCARAT;
             CabinetPlay.use(player, mode, pos, picks ? Control.PICK_1 : Control.PLAY);
         });
         if (phase == SETTLE) {

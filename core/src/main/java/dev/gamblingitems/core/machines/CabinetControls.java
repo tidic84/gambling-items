@@ -39,8 +39,15 @@ public final class CabinetControls {
     public static final double SYMBOL_U = 3, SYMBOL_STEP = 3.8, SYMBOL_WIDTH = 3;
     /** Horse race: one betting button in front of each lane. */
     public static final double LANE_U = 3, LANE_STEP = 4.4, LANE_WIDTH = 3.4;
+    /** Craps and baccarat: the betting buttons along the deck, from the player's left; baccarat's tie is in the middle. */
+    public static final double BET_U = 1, BET_STEP = 5, BET_WIDTH = 4;
 
     private CabinetControls() {}
+
+    private static Box bet(Control control, int place) {
+        double u = BET_U + place * BET_STEP;
+        return new Box(control, u, 13, -1.5, u + BET_WIDTH, 14.8, 1.5);
+    }
 
     /** How many blocks wide a cabinet stands: the giant machines take two. */
     public static int width(GameMode mode) {
@@ -113,6 +120,19 @@ public final class CabinetControls {
                     boxes.add(new Box(Control.pick(horse), u, 12, -2, u + LANE_WIDTH, 14.5, 1.5));
                 }
             }
+            case CRAPS -> {
+                // Pass on the left, don't pass on the right, the dice tray between them.
+                boxes.add(bet(Control.PICK_1, 0));
+                boxes.add(bet(Control.PICK_2, 2));
+            }
+            case BACCARAT -> {
+                // Player, tie, banker, as on the felt: the tie is the third bet but sits in the middle.
+                boxes.add(bet(Control.PICK_1, 0));
+                boxes.add(bet(Control.PICK_3, 1));
+                boxes.add(bet(Control.PICK_2, 2));
+            }
+            // The big play key on the right of the deck.
+            case KENO, SCRATCH_CARD -> boxes.add(new Box(Control.PLAY, 10.5, 13, -1.5, 15, 15, 1.5));
             default -> {}
         }
         return boxes;

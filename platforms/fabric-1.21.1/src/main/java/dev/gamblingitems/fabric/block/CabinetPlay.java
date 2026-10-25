@@ -79,6 +79,9 @@ public final class CabinetPlay {
         CabinetMenu menu = menu(player, mode, anchor);
         // A closed machine says so.
         if (menu == null) return false;
+        if (cabinet.vip && !player.getInventory().contains(new ItemStack(dev.gamblingitems.fabric.ModContent.VIP_CARD))) {
+            return refuse(player, "vip_only");
+        }
         ItemStack hand = player.getMainHandItem();
         if (mode == GameMode.VIDEO_POKER) {
             MachineSetup setup = setup(mode, cabinet);
@@ -123,6 +126,20 @@ public final class CabinetPlay {
         Compat.message(player, Component.translatable("gui.gamblingitems.world_play_started",
                 Component.literal((before - hand.getCount()) + " × ").append(played.getHoverName())), true);
         return true;
+    }
+
+    /**
+     * A dye on a cabinet, sneaking, gives it the look of that dye; the same dye again brings back its own
+     * look. The dye is used only when it paints.
+     */
+    public static void paint(ServerPlayer player, GameStationEntity cabinet, ItemStack dye, int colourId) {
+        int wanted = 1 + colourId;
+        cabinet.theme = cabinet.theme == wanted ? 0 : wanted;
+        if (cabinet.theme != 0 && !player.getAbilities().instabuild) dye.shrink(1);
+        cabinet.setChanged();
+        cabinet.getLevel().sendBlockUpdated(cabinet.getBlockPos(), cabinet.getBlockState(), cabinet.getBlockState(), 3);
+        Compat.message(player, Component.translatable("gui.gamblingitems.theme_set", Component.translatable(
+                "gui.gamblingitems.theme." + dev.gamblingitems.core.machines.CabinetTheme.of(cabinet.theme).id())), true);
     }
 
     /** The most items of this stack a cabinet's own largest stake allows; the whole stack without one. */

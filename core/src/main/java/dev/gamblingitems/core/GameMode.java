@@ -22,7 +22,12 @@ public enum GameMode {
     PLINKO("plinko"),
     BIG_SIX("big_six"),
     VIDEO_POKER("video_poker"),
-    HORSE_RACE("horse_race");
+    HORSE_RACE("horse_race"),
+    // The table games played on a cabinet: craps with real dice, punto banco, keno and scratch cards.
+    CRAPS("craps"),
+    BACCARAT("baccarat"),
+    KENO("keno"),
+    SCRATCH_CARD("scratch_card");
 
     private final String id;
 

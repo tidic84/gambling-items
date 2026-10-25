@@ -43,4 +43,25 @@ public class MigrationGameTests implements FabricGameTest {
                 "The games the currency was given are kept as they were");
         helper.succeed();
     }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void schema21GainsTheTableGamesAndTheVipCardOnly(GameTestHelper helper) {
+        JsonObject json = JsonParser.parseString("{\"schemaVersion\": 21,"
+                + " \"machines\": {\"plinko\": {\"minimumStake\": 777}},"
+                + " \"arcade\": {\"prizes\": [{\"item\": \"minecraft:cake\", \"count\": 1, \"tickets\": 5}]},"
+                + " \"currency\": {\"enabled\": true, \"games\": [\"slotMachine\"]}}").getAsJsonObject();
+        helper.assertTrue(ModConfig.migrate(json), "A schema 21 file is migrated");
+        JsonObject machines = json.getAsJsonObject("machines");
+        for (String key : new String[] {"craps", "baccarat", "keno", "scratchCard"}) {
+            helper.assertTrue(machines.has(key), "The table game is added: " + key);
+            helper.assertTrue(json.getAsJsonObject("currency").getAsJsonArray("games").contains(new JsonPrimitive(key)),
+                    "And paid in the currency that pays the slot machine: " + key);
+        }
+        helper.assertTrue(machines.getAsJsonObject("plinko").get("minimumStake").getAsInt() == 777, "A tuned machine is untouched");
+        JsonArray prizes = json.getAsJsonObject("arcade").getAsJsonArray("prizes");
+        helper.assertTrue(prizes.size() == 2 && prizes.get(0).getAsJsonObject().get("item").getAsString().equals("minecraft:cake")
+                        && prizes.get(1).getAsJsonObject().get("item").getAsString().equals("gamblingitems:vip_card"),
+                "The owner's shelf is kept, the VIP card added at its end");
+        helper.succeed();
+    }
 }

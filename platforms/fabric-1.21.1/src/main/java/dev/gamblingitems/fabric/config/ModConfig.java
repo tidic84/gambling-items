@@ -48,13 +48,13 @@ import net.minecraft.world.item.Items;
 
 /** Server-side settings. Item values are shared by every game; each game keeps its own tuning. */
 public final class ModConfig {
-    public static final int SCHEMA_VERSION = 21;
+    public static final int SCHEMA_VERSION = 22;
     /** One displayed unit of currency, so every screen counts in the currency's own units. */
     public static final long CURRENCY_UNIT = 1_000;
     /** The casino games that can be switched to a currency. Upgrader, trade up, cases and battles never are. */
     public static final List<String> CURRENCY_GAMES = List.of("crash", "roulette", "blackjack", "bingo", "slotMachine",
             "luckyWheel", "coinPusher", "prizeClaw", "pachinko", "capsuleGacha", "highStakes",
-            "plinko", "bigSix", "videoPoker", "horseRace");
+            "plinko", "bigSix", "videoPoker", "horseRace", "craps", "baccarat", "keno", "scratchCard");
     /** The key of each prize machine under "machines", which is also its name among the currency games. */
     public static final Map<GameMode, String> MACHINE_KEYS = machineKeys();
     private static ValueCatalog values;
@@ -97,6 +97,10 @@ public final class ModConfig {
         keys.put(GameMode.BIG_SIX, "bigSix");
         keys.put(GameMode.VIDEO_POKER, "videoPoker");
         keys.put(GameMode.HORSE_RACE, "horseRace");
+        keys.put(GameMode.CRAPS, "craps");
+        keys.put(GameMode.BACCARAT, "baccarat");
+        keys.put(GameMode.KENO, "keno");
+        keys.put(GameMode.SCRATCH_CARD, "scratchCard");
         return java.util.Collections.unmodifiableMap(keys);
     }
 
@@ -218,6 +222,25 @@ public final class ModConfig {
                     if (!games.contains(new JsonPrimitive(key))) games.add(key);
                 }
             }
+        }
+        // Schema 22 adds the table games and the VIP card on the prize shelf; nothing configured is changed.
+        if (schema < 22) {
+            JsonObject machines = json.getAsJsonObject("machines");
+            JsonObject added = defaultMachines();
+            List<String> tableGames = List.of("craps", "baccarat", "keno", "scratchCard");
+            for (String key : tableGames) {
+                if (!machines.has(key)) machines.add(key, added.get(key));
+            }
+            JsonArray games = json.getAsJsonObject("currency").getAsJsonArray("games");
+            if (games != null && games.contains(new JsonPrimitive("slotMachine"))) {
+                for (String key : tableGames) {
+                    if (!games.contains(new JsonPrimitive(key))) games.add(key);
+                }
+            }
+            JsonArray prizes = json.getAsJsonObject("arcade").getAsJsonArray("prizes");
+            boolean hasCard = false;
+            for (JsonElement prize : prizes) hasCard |= VIP_CARD.equals(prize.getAsJsonObject().get("item").getAsString());
+            if (!hasCard) prizes.add(shelfPrize(VIP_CARD, 1, VIP_CARD_TICKETS));
         }
         json.addProperty("schemaVersion", SCHEMA_VERSION);
         return true;
@@ -404,6 +427,17 @@ public final class ModConfig {
      * A ticket is worth a hundredth of an iron ingot, so a win counts in hundreds of tickets, and a
      * chip of 1 an iron ingot. The prize counter asks for each prize the tickets of its value.
      */
+    private static final String VIP_CARD = "gamblingitems:vip_card";
+    private static final int VIP_CARD_TICKETS = 25_000;
+
+    private static JsonObject shelfPrize(String item, int count, int tickets) {
+        JsonObject prize = new JsonObject();
+        prize.addProperty("item", item);
+        prize.addProperty("count", count);
+        prize.addProperty("tickets", tickets);
+        return prize;
+    }
+
     private static JsonObject defaultArcade() {
         JsonObject json = new JsonObject();
         json.addProperty("tickets", true);
@@ -416,14 +450,8 @@ public final class ModConfig {
                 {"minecraft:name_tag", 1, 800}, {"minecraft:diamond", 1, 1_000}, {"minecraft:saddle", 1, 1_200},
                 {"minecraft:jukebox", 1, 1_200}, {"minecraft:music_disc_cat", 1, 1_500}, {"minecraft:golden_apple", 1, 1_700},
                 {"minecraft:totem_of_undying", 1, 6_000}, {"minecraft:enchanted_golden_apple", 1, 20_000},
-                {"minecraft:netherite_ingot", 1, 24_800}, {"minecraft:nether_star", 1, 50_000}};
-        for (Object[] entry : shelf) {
-            JsonObject prize = new JsonObject();
-            prize.addProperty("item", (String) entry[0]);
-            prize.addProperty("count", (Integer) entry[1]);
-            prize.addProperty("tickets", (Integer) entry[2]);
-            prizes.add(prize);
-        }
+                {"minecraft:netherite_ingot", 1, 24_800}, {VIP_CARD, 1, VIP_CARD_TICKETS}, {"minecraft:nether_star", 1, 50_000}};
+        for (Object[] entry : shelf) prizes.add(shelfPrize((String) entry[0], (Integer) entry[1], (Integer) entry[2]));
         json.add("prizes", prizes);
         return json;
     }
@@ -544,8 +572,12 @@ public final class ModConfig {
                     multipliers = hundredths(json.getAsJsonArray("pockets"), where + ".pockets");
                     weights = new int[0];
                 }
-                case VIDEO_POKER -> {
+                case VIDEO_POKER, KENO -> {
                     multipliers = hundredths(json.getAsJsonArray("paytable"), where + ".paytable");
+                    weights = new int[0];
+                }
+                case CRAPS, BACCARAT -> {
+                    multipliers = hundredths(json.getAsJsonArray("payouts"), where + ".payouts");
                     weights = new int[0];
                 }
                 case HIGH_STAKES -> {
@@ -681,6 +713,23 @@ public final class ModConfig {
         race.add("prizes", prizes("weight", new String[][] {{"2.7", "35"}, {"3.8", "25"}, {"5.2", "18"}, {"7.9", "12"},
                 {"13.5", "7"}, {"31", "3"}}));
         machines.add("horseRace", race);
+        // The table games keep their own house edge, as printed in a casino: pass and don't pass pay even money.
+        JsonObject craps = machine(1_000, 10_000, 110);
+        craps.add("payouts", decimals("2", "2"));
+        machines.add("craps", craps);
+        // Player, banker (5% commission) and tie at 8 to 1.
+        JsonObject baccarat = machine(1_000, 10_000, 120);
+        baccarat.add("payouts", decimals("2", "1.95", "9"));
+        machines.add("baccarat", baccarat);
+        // Five spots, paid by hits from none to five: about 95.1%.
+        JsonObject keno = machine(1_000, 10_000, 100);
+        keno.add("paytable", decimals("0", "0", "0.5", "3", "20", "500"));
+        machines.add("keno", keno);
+        // Three of a prize on the card win it; the blank stars never do. About 95%.
+        JsonObject scratch = machine(1_000, 10_000, 80);
+        scratch.add("prizes", prizes("weight", new String[][] {{"0", "4640"}, {"1", "2000"}, {"2", "1000"}, {"5", "400"},
+                {"20", "60"}, {"100", "5"}}));
+        machines.add("scratchCard", scratch);
         return machines;
     }
 

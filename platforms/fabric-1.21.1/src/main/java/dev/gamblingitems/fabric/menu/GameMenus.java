@@ -26,11 +26,13 @@ public final class GameMenus {
             GameMode.ROULETTE, GameMode.BLACKJACK, GameMode.CASE_BATTLE,
             GameMode.BINGO, GameMode.SLOT_MACHINE, GameMode.LUCKY_WHEEL, GameMode.COIN_PUSHER,
             GameMode.PRIZE_CLAW, GameMode.PACHINKO, GameMode.CAPSULE_GACHA, GameMode.HIGH_STAKES,
-            GameMode.PLINKO, GameMode.BIG_SIX, GameMode.VIDEO_POKER, GameMode.HORSE_RACE);
+            GameMode.PLINKO, GameMode.BIG_SIX, GameMode.VIDEO_POKER, GameMode.HORSE_RACE,
+            GameMode.CRAPS, GameMode.BACCARAT, GameMode.KENO, GameMode.SCRATCH_CARD);
     /** The prize machines: each is played on the model of its own cabinet, with no window. */
     public static final List<GameMode> MACHINES = List.of(GameMode.LUCKY_WHEEL, GameMode.COIN_PUSHER,
             GameMode.PRIZE_CLAW, GameMode.PACHINKO, GameMode.CAPSULE_GACHA, GameMode.HIGH_STAKES,
-            GameMode.PLINKO, GameMode.BIG_SIX, GameMode.VIDEO_POKER, GameMode.HORSE_RACE);
+            GameMode.PLINKO, GameMode.BIG_SIX, GameMode.VIDEO_POKER, GameMode.HORSE_RACE,
+            GameMode.CRAPS, GameMode.BACCARAT, GameMode.KENO, GameMode.SCRATCH_CARD);
     /** The item games of the exchange terminal, in the order of its tabs. */
     public static final List<GameMode> TERMINAL = List.of(GameMode.TRADE_UP, GameMode.UPGRADER,
             GameMode.CASE_OPENING, GameMode.CASE_BATTLE);

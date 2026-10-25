@@ -17,7 +17,7 @@
       "dev.gamblingitems.fabric.bingo.BingoGameTests",
       "dev.gamblingitems.fabric.slots.SlotGameTests",
       "dev.gamblingitems.fabric.block.CabinetPlayGameTests",
-      "dev.gamblingitems.fabric.arcade.ArcadeGameTests",
+      "dev.gamblingitems.fabric.arcade.ArcadeGameTests", "dev.gamblingitems.fabric.arcade.CasinoFloorGameTests",
       "dev.gamblingitems.fabric.vault.ArcadeLedgerGameTests",
       "dev.gamblingitems.fabric.machines.MachineGameTests",
       "dev.gamblingitems.fabric.config.MigrationGameTests",

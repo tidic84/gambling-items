@@ -29,6 +29,12 @@ import java.util.function.IntUnaryOperator;
  *   chosen one pays.</li>
  *   <li>Video poker: the multipliers are the paytable of {@link VideoPokerRules}, from jacks or better
  *   up to the royal flush. The cards are dealt by those rules, not drawn from this table.</li>
+ *   <li>Craps and baccarat: the multipliers are what each bet pays (pass and don't pass; player,
+ *   banker and tie). The weights are the exact chances of the events of the game, from
+ *   {@link CrapsRules} and {@link BaccaratRules}, not configured. A push gives the stake back.</li>
+ *   <li>Keno: the multipliers are the paytable of five spots, by hits from 0 to 5; the weights are the
+ *   exact ones of {@link KenoBoard}.</li>
+ *   <li>Scratch card: one prize per entry, drawn by its weight, as the gacha.</li>
  * </ul>
  */
 public record MachineTable(GameMode mode, int[] multipliers, int[] weights) {
@@ -38,6 +44,8 @@ public record MachineTable(GameMode mode, int[] multipliers, int[] weights) {
     public static final int GRIP_SCALE = 10_000;
     public static final int MAX_ENTRIES = 24, MAX_MULTIPLIER = 1_000_000;
     private static final long MAX_TOTAL_WEIGHT = 1_000_000_000L;
+    /** The seeds a table game draws to show its dice, cards or board. */
+    private static final int SEEDS = 1 << 30;
 
     /** A prize of the table, in hundredths of the stake, and its weight among the others. */
     public record Prize(int multiplier, int weight) {}
@@ -58,7 +66,7 @@ public record MachineTable(GameMode mode, int[] multipliers, int[] weights) {
             }
         }
         switch (mode) {
-            case LUCKY_WHEEL, COIN_PUSHER, CAPSULE_GACHA, BIG_SIX, HORSE_RACE -> {
+            case LUCKY_WHEEL, COIN_PUSHER, CAPSULE_GACHA, BIG_SIX, HORSE_RACE, SCRATCH_CARD -> {
                 requireSameLength(multipliers, weights);
                 if (mode == GameMode.HORSE_RACE && (multipliers.length < 2 || multipliers.length > 8)) {
                     throw new IllegalArgumentException("A race has between 2 and 8 horses, not " + multipliers.length);
@@ -105,6 +113,19 @@ public record MachineTable(GameMode mode, int[] multipliers, int[] weights) {
                 }
                 weights = new int[0];
             }
+            case CRAPS, BACCARAT -> {
+                int bets = mode == GameMode.CRAPS ? 2 : 3;
+                if (multipliers.length != bets) {
+                    throw new IllegalArgumentException("A " + mode.id() + " table has " + bets + " bets, not " + multipliers.length);
+                }
+                weights = events(mode);
+            }
+            case KENO -> {
+                if (multipliers.length != KenoBoard.SPOTS + 1) {
+                    throw new IllegalArgumentException("A keno paytable has " + (KenoBoard.SPOTS + 1) + " lines, not " + multipliers.length);
+                }
+                weights = KenoBoard.WEIGHTS.clone();
+            }
             case HIGH_STAKES -> {
                 for (int target : multipliers) {
                     if (target <= 100) throw new IllegalArgumentException("A target must be above 1x (100), not " + target);
@@ -132,6 +153,21 @@ public record MachineTable(GameMode mode, int[] multipliers, int[] weights) {
         return weights;
     }
 
+    private static int[] events(GameMode mode) {
+        return (mode == GameMode.CRAPS ? CrapsRules.EVENTS : BaccaratRules.EVENTS).clone();
+    }
+
+    /** What a bet pays on an event of craps or baccarat: its multiplier, the stake on a push, or nothing. */
+    private int settle(int choice, int event) {
+        if (mode == GameMode.CRAPS) {
+            if (choice == 0) return event == CrapsRules.PASS_WINS ? multipliers[0] : 0;
+            return event == CrapsRules.PASS_LOSES ? multipliers[1] : event == CrapsRules.BAR_TWELVE ? 100 : 0;
+        }
+        if (event == choice) return multipliers[choice];
+        // A tie gives the player and banker bets back.
+        return event == BaccaratRules.TIE ? 100 : 0;
+    }
+
     /** True for the machines where the player bets on one of the entries, and only that one pays. */
     public boolean picks() { return mode == GameMode.BIG_SIX || mode == GameMode.HORSE_RACE; }
 
@@ -140,7 +176,8 @@ public record MachineTable(GameMode mode, int[] multipliers, int[] weights) {
 
     /** The choices a player makes before playing: claw positions or targets; one for the others. */
     public int choices() {
-        return mode == GameMode.PRIZE_CLAW || mode == GameMode.HIGH_STAKES || picks() ? multipliers.length : 1;
+        return mode == GameMode.PRIZE_CLAW || mode == GameMode.HIGH_STAKES || picks()
+                || mode == GameMode.CRAPS || mode == GameMode.BACCARAT ? multipliers.length : 1;
     }
 
     /** What one play with this choice can pay, each prize with its weight. */
@@ -165,6 +202,10 @@ public record MachineTable(GameMode mode, int[] multipliers, int[] weights) {
             case VIDEO_POKER -> {
                 for (int line = 0; line < multipliers.length; line++) odds.add(new Prize(multipliers[line], 0));
             }
+            case CRAPS, BACCARAT -> {
+                // One line per event, so the chances shown are the game's own.
+                for (int event = 0; event < weights.length; event++) odds.add(new Prize(settle(choice, event), weights[event]));
+            }
             default -> {
                 for (int index = 0; index < multipliers.length; index++) odds.add(new Prize(multipliers[index], weights[index]));
             }
@@ -183,7 +224,9 @@ public record MachineTable(GameMode mode, int[] multipliers, int[] weights) {
      *   below 100 is the winning arc;</li>
      *   <li>plinko: as pachinko, over its twelve rows;</li>
      *   <li>big six: the symbol drawn, then which of its segments the wheel stops on;</li>
-     *   <li>horse race: the winning horse, then a number in thousandths that shapes the race.</li>
+         *   <li>horse race: the winning horse, then a number in thousandths that shapes the race.</li>
+     *   <li>craps, baccarat: the event, then the seed of the dice or cards that show it;</li>
+     *   <li>keno: the hits, then the seed of the board; scratch card: the prize, then the seed of the card.</li>
      * </ul>
      * Video poker is dealt by {@link VideoPokerRules}, never played here.
      */
@@ -209,12 +252,15 @@ public record MachineTable(GameMode mode, int[] multipliers, int[] weights) {
                 return new Outcome(needle < 100 ? multipliers[choice] : 0, new int[] {choice, needle});
             }
             case VIDEO_POKER -> throw new IllegalStateException("Video poker is dealt, not drawn from its paytable");
+            case CRAPS, BACCARAT -> {
+                int event = weighted(draw);
+                return new Outcome(settle(choice, event), new int[] {event, draw(draw, SEEDS)});
+            }
             default -> {
-                long total = 0;
-                for (int weight : weights) total += weight;
-                int ticket = draw(draw, (int) total);
-                int index = 0;
-                for (long seen = weights[0]; ticket >= seen; seen += weights[++index]) {}
+                int index = weighted(draw);
+                if (mode == GameMode.KENO || mode == GameMode.SCRATCH_CARD) {
+                    return new Outcome(multipliers[index], new int[] {index, draw(draw, SEEDS)});
+                }
                 if (mode == GameMode.BIG_SIX) return new Outcome(index == choice ? multipliers[choice] : 0,
                         new int[] {index, draw(draw, weights[index])});
                 if (mode == GameMode.HORSE_RACE) return new Outcome(index == choice ? multipliers[choice] : 0,
@@ -222,6 +268,16 @@ public record MachineTable(GameMode mode, int[] multipliers, int[] weights) {
                 return new Outcome(multipliers[index], new int[] {index, draw(draw, 1000)});
             }
         }
+    }
+
+    /** An entry of the weights, each as likely as its weight. */
+    private int weighted(IntUnaryOperator draw) {
+        long total = 0;
+        for (int weight : weights) total += weight;
+        int ticket = draw(draw, (int) total);
+        int index = 0;
+        for (long seen = weights[0]; ticket >= seen; seen += weights[++index]) {}
+        return index;
     }
 
     private static int draw(IntUnaryOperator draw, int bound) {
@@ -261,7 +317,8 @@ public record MachineTable(GameMode mode, int[] multipliers, int[] weights) {
         int best = 0;
         for (int index = 0; index < multipliers.length; index++) {
             boolean reachable = mode == GameMode.PACHINKO || mode == GameMode.PLINKO || mode == GameMode.HIGH_STAKES
-                    || mode == GameMode.VIDEO_POKER || weights[index] > 0;
+                    || mode == GameMode.VIDEO_POKER || mode == GameMode.CRAPS || mode == GameMode.BACCARAT
+                    || weights[index] > 0;
             if (reachable) best = Math.max(best, multipliers[index]);
         }
         return best;

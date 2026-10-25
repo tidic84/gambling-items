@@ -36,6 +36,16 @@ final class SmokeGallery {
             dev.gamblingitems.core.machines.CabinetControls.Control.PLAY, dev.gamblingitems.core.machines.CabinetControls.Control.PICK_1};
     /** Arcade shots carry their cabinet as ARCADE_SHOT + index. */
     private static final int ARCADE_SHOT = 100;
+    /** The table games in their own row, stools in front, played for real; their shots carry TABLE_SHOT + index. */
+    private static final Block[] TABLE_GAMES = {ModContent.CRAPS, ModContent.BACCARAT, ModContent.KENO, ModContent.SCRATCH_CARD};
+    private static final dev.gamblingitems.core.machines.CabinetControls.Control[] TABLE_CONTROLS = {
+            dev.gamblingitems.core.machines.CabinetControls.Control.PICK_1, dev.gamblingitems.core.machines.CabinetControls.Control.PICK_2,
+            dev.gamblingitems.core.machines.CabinetControls.Control.PLAY, dev.gamblingitems.core.machines.CabinetControls.Control.PLAY};
+    private static final int TABLE_SHOT = 200, TABLE_Z = 2;
+    /** Four slot machines dyed Vegas, neon, retro, and one reserved for VIPs; THEME_SHOT + index wins big on one. */
+    private static final net.minecraft.world.item.DyeColor[] THEMES = {net.minecraft.world.item.DyeColor.RED,
+            net.minecraft.world.item.DyeColor.CYAN, net.minecraft.world.item.DyeColor.WHITE, null};
+    private static final int THEME_SHOT = 300, THEME_Z = 5;
     private static final List<Shot> SHOTS = new ArrayList<>();
     private static BlockPos origin;
 
@@ -78,7 +88,11 @@ final class SmokeGallery {
             // Night shots show what is lit; everything else is photographed at noon.
             player.serverLevel().setDayTime(shot.name().startsWith("night") ? 18000 : 6000);
             player.connection.teleport(shot.x(), shot.y(), shot.z(), shot.yaw(), shot.pitch());
-            if (shot.cabinet() >= ARCADE_SHOT) playArcade(player, shot.cabinet() - ARCADE_SHOT, shot.ahead());
+            if (shot.cabinet() >= THEME_SHOT) bigWin(player.serverLevel(), shot.cabinet() - THEME_SHOT);
+            else if (shot.cabinet() >= TABLE_SHOT) {
+                int index = shot.cabinet() - TABLE_SHOT;
+                playAt(player, origin.offset(-14 + 2 * index, 0, TABLE_Z), TABLE_GAMES[index], TABLE_CONTROLS[index], shot.ahead());
+            } else if (shot.cabinet() >= ARCADE_SHOT) playArcade(player, shot.cabinet() - ARCADE_SHOT, shot.ahead());
             else if (shot.cabinet() >= 0) play(player.serverLevel(), shot.cabinet(), shot.ahead());
         });
         // The server's teleport moves the player, but the client keeps its own look; aim it as the shot asks.
@@ -122,6 +136,45 @@ final class SmokeGallery {
         place(level, o.offset(12, 0, -11), ModContent.CROUPIER, Direction.SOUTH, player);
         // The croupier stands at the dealer's side, the players' side facing the room.
         place(level, o.offset(12, 0, -9), ModContent.BLACKJACK_TABLE, Direction.SOUTH, player);
+        // The table games with a stool in front of each, and the dyed slot machines behind them.
+        for (int i = 0; i < TABLE_GAMES.length; i++) {
+            place(level, o.offset(-14 + 2 * i, 0, TABLE_Z), TABLE_GAMES[i], Direction.SOUTH, player);
+            level.setBlock(o.offset(-14 + 2 * i, 0, TABLE_Z + 1), ModContent.CASINO_STOOL.defaultBlockState(), 3);
+        }
+        for (int i = 0; i < THEMES.length; i++) {
+            BlockPos pos = o.offset(-14 + 2 * i, 0, THEME_Z);
+            place(level, pos, ModContent.SLOT_MACHINE, Direction.SOUTH, player);
+            if (level.getBlockEntity(pos) instanceof dev.gamblingitems.fabric.block.GameStationEntity station) {
+                if (THEMES[i] != null) station.theme = 1 + THEMES[i].getId();
+                else station.vip = true;
+                station.setChanged();
+                level.sendBlockUpdated(pos, station.getBlockState(), station.getBlockState(), 3);
+            }
+            level.setBlock(o.offset(-13 + 2 * i, 0, THEME_Z), ModContent.NEON_TUBE.defaultBlockState()
+                    .setValue(dev.gamblingitems.fabric.arcade.NeonBlock.COLOR, net.minecraft.world.item.DyeColor.values()[(i * 5) % 16]), 2);
+        }
+    }
+
+    /** Plays a cabinet for real at a place, as playArcade does. */
+    private static void playAt(ServerPlayer player, BlockPos pos, Block block, dev.gamblingitems.core.machines.CabinetControls.Control control,
+                               int ahead) {
+        player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(net.minecraft.world.item.Items.DIAMOND, 4));
+        var mode = ((dev.gamblingitems.fabric.block.SlotMachineBlock) block).mode();
+        boolean played = dev.gamblingitems.fabric.block.CabinetPlay.use(player, mode, pos, control);
+        if (played && player.serverLevel().getBlockEntity(pos) instanceof dev.gamblingitems.fabric.block.GameStationEntity station) {
+            station.startedAt -= ahead;
+            player.serverLevel().sendBlockUpdated(pos, station.getBlockState(), station.getBlockState(), 3);
+        }
+    }
+
+    /** A jackpot shown on a dyed slot machine, caught while it is celebrated: lit, beacon turning, confetti falling. */
+    private static void bigWin(ServerLevel level, int index) {
+        BlockPos pos = origin.offset(-14 + 2 * index, 0, THEME_Z);
+        if (!(level.getBlockEntity(pos) instanceof dev.gamblingitems.fabric.block.GameStationEntity station)) return;
+        station.reels = "6,6,6";
+        station.animationTicks = 20;
+        station.multiplier = 2500;
+        station.show("Steve", "", "slot_won", "", true, 200);
     }
 
     /** Plays an arcade cabinet for real, a diamond in hand, as a player touching its control would. */
@@ -205,5 +258,21 @@ final class SmokeGallery {
         for (int i = 0; i < tables.length; i++) {
             SHOTS.add(new Shot("table_close_" + tables[i], x + 13.6, y + 1.2, z - 6 + 5 * i + 1.4, -120, 34));
         }
+        SHOTS.add(new Shot("floor_tables", x - 10.5, y + 2.2, z + TABLE_Z + 6, 180, 18));
+        String[] games = {"craps", "baccarat", "keno", "scratch_card"};
+        for (int i = 0; i < games.length; i++) {
+            double centre = x - 14 + 2 * i;
+            SHOTS.add(new Shot("floor_" + games[i] + "_mid", centre, y, z + TABLE_Z + 2.6, 180, 6, TABLE_SHOT + i, 20));
+            SHOTS.add(new Shot("floor_" + games[i] + "_done", centre, y, z + TABLE_Z + 2.6, 180, 6, TABLE_SHOT + i, 100));
+        }
+        SHOTS.add(new Shot("floor_dice_close", x - 14, y + .3, z + TABLE_Z + 1.6, 180, 42, TABLE_SHOT, 30));
+        SHOTS.add(new Shot("floor_stools", x - 11, y + 1.4, z + TABLE_Z + 3.4, 210, 30));
+        SHOTS.add(new Shot("floor_themes", x - 10.5, y + 1.4, z + THEME_Z + 3.8, 180, 8));
+        SHOTS.add(new Shot("floor_theme_bigwin", x - 14, y + 1.2, z + THEME_Z + 2.6, 180, -24, THEME_SHOT, 0));
+        SHOTS.add(new Shot("floor_vip", x - 8, y + 1.5, z + THEME_Z + 3, 180, -18));
+        SHOTS.add(new Shot("night_floor_themes", x - 10.5, y + 1.4, z + THEME_Z + 3.8, 180, 8));
+        // -Dgamblingitems.clientsmoke.gallery.only=floor keeps only the shots whose names start with it.
+        String only = System.getProperty("gamblingitems.clientsmoke.gallery.only", "");
+        if (!only.isEmpty()) SHOTS.removeIf(shot -> !shot.name().startsWith(only) && !shot.name().startsWith("night_" + only));
     }
 }

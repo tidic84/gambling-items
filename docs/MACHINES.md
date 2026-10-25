@@ -71,6 +71,27 @@ Chaque joueur peut régler `config/gamblingitems/client.json` sur son propre cli
 
 Les clés manquantes sont ajoutées au fichier, les valeurs déjà présentes sont conservées.
 
+## Jouer directement sur la borne
+
+Chaque borne se joue aussi sans ouvrir sa fenêtre, en touchant sa commande avec un objet de valeur en main :
+
+| Borne | Jouer | Changer de choix |
+|---|---|---|
+| Machine à sous | le levier, ou le gros bouton rouge | — |
+| Roue de la chance | la roue, ou le bouton rouge | — |
+| Pousse-pièces | le plateau avec la fente | — |
+| Pince | le bouton de descente | le joystick (lot suivant) |
+| Pachinko | la poignée de lancement | — |
+| Gacha | la manivelle | — |
+| High stakes | le bouton vert | le bouton rouge (cible suivante) |
+
+- La pile tenue est misée en entier, ou la plus grande partie que la machine accepte (mise maximale, lot qu'elle doit pouvoir payer). Ce sont les mêmes vérifications et le même tirage serveur que la fenêtre.
+- Les gains attendent dans la machine, comme derrière la fenêtre. La même commande touchée à main vide les envoie dans l'inventaire, avec le crédit laissé devant la machine.
+- Pendant qu'une partie se joue, la borne refuse une nouvelle mise.
+- Ailleurs sur la borne, ou à main vide sans rien à récupérer, le clic ouvre la fenêtre comme avant.
+
+À partir de dix fois la mise, un gain est fêté : lampes en folie et « GROS GAIN ! » sur l'enseigne, étincelles et son pour les joueurs autour, pluie de pièces dans la fenêtre. L'option `reducedMotion` coupe les particules et la pluie de pièces.
+
 ## Modèles et textures
 
 Les modèles des bornes, des écrans et des tables sont générés, pas écrits à la main. Après une modification, relancer depuis la racine du dépôt :

@@ -1,0 +1,169 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "cab_chrome": "gamblingitems:block/cab_chrome",
+    "cab_gold": "gamblingitems:block/cab_gold",
+    "cab_lamp_green": "gamblingitems:block/cab_lamp_green",
+    "cab_lamp_red": "gamblingitems:block/cab_lamp_red",
+    "cab_obsidian": "gamblingitems:block/cab_obsidian",
+    "cab_obsidian_side": "gamblingitems:block/cab_obsidian_side",
+    "cab_screen": "gamblingitems:block/cab_screen",
+    "particle": "gamblingitems:block/cab_obsidian"
+  },
+  "elements": [
+    {
+      "from": [
+        0.5,
+        0.9,
+        4.5
+      ],
+      "to": [
+        15.5,
+        1.5,
+        5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#cab_gold",
+          "uv": [
+            0.5,
+            11,
+            15.5,
+            11.5
+          ]
+        },
+        "up": {
+          "texture": "#cab_gold",
+          "uv": [
+            0.5,
+            4.5,
+            15.5,
+            5
+          ]
+        },
+        "north": {
+          "texture": "#cab_gold",
+          "uv": [
+            0.5,
+            14.5,
+            15.5,
+            15.1
+          ]
+        },
+        "south": {
+          "texture": "#cab_gold",
+          "uv": [
+            0.5,
+            14.5,
+            15.5,
+            15.1
+          ]
+        },
+        "west": {
+          "texture": "#cab_gold",
+          "uv": [
+            4.5,
+            14.5,
+            5,
+            15.1
+          ]
+        },
+        "east": {
+          "texture": "#cab_gold",
+          "uv": [
+            11,
+            14.5,
+            11.5,
+            15.1
+          ]
+        }
+      },
+      "rotation": {
+        "angle": 22.5,
+        "axis": "x",
+        "origin": [
+          8,
+          -18.5,
+          6.5
+        ]
+      }
+    },
+    {
+      "from": [
+        0.5,
+        1.5,
+        5
+      ],
+      "to": [
+        15.5,
+        2.2,
+        8
+      ],
+      "faces": {
+        "down": {
+          "texture": "#cab_lamp_red",
+          "uv": [
+            0.5,
+            8,
+            15.5,
+            11
+          ]
+        },
+        "up": {
+          "texture": "#cab_lamp_red",
+          "uv": [
+            0.5,
+            5,
+            15.5,
+            8
+          ]
+        },
+        "north": {
+          "texture": "#cab_lamp_red",
+          "uv": [
+            0.5,
+            13.8,
+            15.5,
+            14.5
+          ]
+        },
+        "south": {
+          "texture": "#cab_lamp_red",
+          "uv": [
+            0.5,
+            13.8,
+            15.5,
+            14.5
+          ]
+        },
+        "west": {
+          "texture": "#cab_lamp_red",
+          "uv": [
+            5,
+            13.8,
+            8,
+            14.5
+          ]
+        },
+        "east": {
+          "texture": "#cab_lamp_red",
+          "uv": [
+            8,
+            13.8,
+            11,
+            14.5
+          ]
+        }
+      },
+      "rotation": {
+        "angle": 22.5,
+        "axis": "x",
+        "origin": [
+          8,
+          -18.5,
+          6.5
+        ]
+      }
+    }
+  ]
+}

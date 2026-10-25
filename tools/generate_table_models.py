@@ -67,10 +67,15 @@ def element(a, b, material):
             'faces': {side: {'texture': '#' + material, 'uv': [0, 0, 16, 16]} for side in SIDES}}
 
 
-def model(elements):
-    return {'parent': 'minecraft:block/block', 'textures': {
-        **{key: 'minecraft:block/' + value for key, value in TEXTURES.items()},
-        'particle': 'minecraft:block/dark_oak_planks'}, 'elements': elements}
+# The bingo table takes a blue cloth, so it reads apart from the green card tables.
+FELT = {'roulette': 'green_wool', 'blackjack': 'green_wool', 'bingo': 'blue_wool'}
+
+
+def model(elements, game):
+    textures = {key: 'minecraft:block/' + value for key, value in TEXTURES.items()}
+    textures['felt'] = 'minecraft:block/' + FELT[game]
+    textures['particle'] = 'minecraft:block/dark_oak_planks'
+    return {'parent': 'minecraft:block/block', 'textures': textures, 'elements': elements}
 
 
 def save(relative, value):
@@ -78,7 +83,7 @@ def save(relative, value):
 
 
 def generate():
-    for game in ('roulette', 'blackjack'):
+    for game in ('roulette', 'blackjack', 'bingo'):
         boxes = furniture(game)
         for part in range(6):
             ox, oz = (2 - part % 3) * 16, (part // 3) * 16
@@ -90,7 +95,7 @@ def generate():
                     continue
                 elements.append(element([lo[0]-ox, lo[1], lo[2]-oz],
                                         [hi[0]-ox, hi[1], hi[2]-oz], material))
-            save(f'models/block/{game}_table_part{part}.json', model(elements))
+            save(f'models/block/{game}_table_part{part}.json', model(elements, game))
         variants = {f'facing={direction},part={part}': {
             'model': f'gamblingitems:block/{game}_table_part{part}', 'y': rotation}
             for direction, rotation in [('north', 0), ('east', 90), ('south', 180), ('west', 270)]
@@ -108,10 +113,13 @@ def generate():
             for x in range(3, 9):
                 for z in range(7, 10):
                     miniature.append(element([x, 8.5, z], [x+.8, 8.54, z+.8], 'red' if (x+z)%2 else 'leather'))
+        elif game == 'bingo':
+            for x, z, mat in ((5, 6, 'red'), (8, 8, 'ivory'), (11, 6, 'brass'), (6.5, 10, 'ivory'), (9.5, 10, 'red')):
+                miniature.append(element([x, 8.5, z], [x+1, 9.1, z+1], mat))
         else:
             for x in (4, 7, 10):
                 miniature.append(element([x, 8.5, 7], [x+1.4, 8.6, 9], 'ivory'))
-        save(f'models/block/{game}_table.json', model(miniature))
+        save(f'models/block/{game}_table.json', model(miniature, game))
         print(f'{game}: six joined parts, {sum(len(json.loads((ASSETS / f"models/block/{game}_table_part{p}.json").read_text())["elements"]) for p in range(6))} elements')
 
 

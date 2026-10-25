@@ -1,51 +1,51 @@
 {
   "variants": {
     "facing=north,part=0": {
-      "model": "gamblingitems:block/slot_machine",
+      "model": "gamblingitems:block/slot_machine_part0",
+      "y": 0
+    },
+    "facing=north,part=1": {
+      "model": "gamblingitems:block/slot_machine_part1",
+      "y": 0
+    },
+    "facing=north,part=2": {
+      "model": "gamblingitems:block/slot_machine_part2",
       "y": 0
     },
     "facing=east,part=0": {
-      "model": "gamblingitems:block/slot_machine",
+      "model": "gamblingitems:block/slot_machine_part0",
+      "y": 90
+    },
+    "facing=east,part=1": {
+      "model": "gamblingitems:block/slot_machine_part1",
+      "y": 90
+    },
+    "facing=east,part=2": {
+      "model": "gamblingitems:block/slot_machine_part2",
       "y": 90
     },
     "facing=south,part=0": {
-      "model": "gamblingitems:block/slot_machine",
+      "model": "gamblingitems:block/slot_machine_part0",
+      "y": 180
+    },
+    "facing=south,part=1": {
+      "model": "gamblingitems:block/slot_machine_part1",
+      "y": 180
+    },
+    "facing=south,part=2": {
+      "model": "gamblingitems:block/slot_machine_part2",
       "y": 180
     },
     "facing=west,part=0": {
-      "model": "gamblingitems:block/slot_machine",
+      "model": "gamblingitems:block/slot_machine_part0",
       "y": 270
-    },
-    "facing=north,part=1": {
-      "model": "gamblingitems:block/slot_machine_reels",
-      "y": 0
-    },
-    "facing=east,part=1": {
-      "model": "gamblingitems:block/slot_machine_reels",
-      "y": 90
-    },
-    "facing=south,part=1": {
-      "model": "gamblingitems:block/slot_machine_reels",
-      "y": 180
     },
     "facing=west,part=1": {
-      "model": "gamblingitems:block/slot_machine_reels",
+      "model": "gamblingitems:block/slot_machine_part1",
       "y": 270
     },
-    "facing=north,part=2": {
-      "model": "gamblingitems:block/slot_machine_top",
-      "y": 0
-    },
-    "facing=east,part=2": {
-      "model": "gamblingitems:block/slot_machine_top",
-      "y": 90
-    },
-    "facing=south,part=2": {
-      "model": "gamblingitems:block/slot_machine_top",
-      "y": 180
-    },
     "facing=west,part=2": {
-      "model": "gamblingitems:block/slot_machine_top",
+      "model": "gamblingitems:block/slot_machine_part2",
       "y": 270
     }
   }

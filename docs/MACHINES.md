@@ -1,6 +1,8 @@
 # Machines à lots
 
-Six machines s'ajoutent aux bornes existantes : la roue de la fortune, le pousse-pièces, la pince à lots, le pachinko, le gacha à capsules et le terminal haute mise. Chacune est un bloc à poser, fabriqué à l'établi avec sept lingots de fer, un terminal d'échange et un objet propre à la machine (horloge, pépite d'or, crochet, barreaux, verre ou diamant). Elles ne s'ouvrent qu'à leur bloc, jamais depuis le terminal ou le casino de poche.
+Dix machines s'ajoutent aux bornes existantes : la roue de la fortune, le pousse-pièces, la pince à lots, le pachinko, le gacha à capsules, le terminal haute mise, et quatre bornes d'arcade (Plinko géant, Big Six, vidéo poker, course de chevaux). Chacune est un bloc à poser. Le Plinko, le Big Six et la course font deux blocs de large. Toutes se jouent **sur le modèle 3D**, sans fenêtre ni HUD : on touche la commande de la borne, celle sous le curseur est surlignée en or.
+
+Tout le contenu du mod est rangé dans son propre onglet créatif « Gambling Items », et non plus dans « Blocs fonctionnels ».
 
 ## Déroulement d'une partie
 
@@ -23,10 +25,40 @@ Les multiplicateurs incluent la mise : 1,5x rend une fois et demie ce qui a ét�
 | Pachinko | 8 rangées de clous à 50/50, 9 poches (loi binomiale, 70 billes sur 256 au centre) | 96,25 % |
 | Gacha à capsules | 5 raretés, de 0,3x à 25x | 95 % |
 | Terminal haute mise | cible choisie de 1,25x à 100x, atteinte avec une chance d'exactement 1 sur la cible | 96 % (part de la maison de 4 %) |
+| Plinko géant | 12 rangées de clous à 50/50, 13 poches de 0,4x à 41x | affiché par la borne |
+| Big Six | roue de 54 cases ; on mise sur un symbole, payé 2x à 41x | affiché par la borne |
+| Vidéo poker | Jacks or Better 9/6 : donne, on garde des cartes, on tire une fois | `returnBasisPoints` 9 600 par défaut |
+| Course de chevaux | 6 chevaux pondérés, multijoueur : les paris de tous se jouent sur la même course | affiché par la borne |
+
+Les retours des quatre bornes d'arcade ne sont pas recopiés ici : ils découlent des tables par défaut et la borne affiche la probabilité exacte de chaque gain.
+
+## Arcade : tickets, caisse, jetons
+
+- Par défaut (`arcade.tickets` à `true`), un gain des bornes ne paie plus en objets mais en **tickets d'arcade**, comptés une fois le résultat montré. Un ticket vaut `ticketValue` (10 = un centième de lingot de fer).
+- La **caisse** échange les objets cotés contre des **jetons** de 1, 5, 25 et 100 (un jeton de 1 vaut `chipValue`, 1 000 = un lingot de fer), et les jetons contre des objets. L'échange est exact : si la monnaie ne peut pas être rendue en objets, la caisse prend quelques jetons de moins, ou refuse. Les jetons sont des objets cotés : ils se misent comme le reste et s'empilent sur les tables.
+- La caisse tient aussi le **comptoir à lots** : 16 lots par défaut, du lingot de fer (100 tickets) à l'étoile du Nether (50 000).
+- Le **tableau des scores** (bloc mural, 2×2) affiche les 10 meilleurs gains de la semaine ; un clic dessus montre au joueur ses 20 dernières parties.
+- Décor : néons (16 couleurs, lumière 15), moquettes de casino, et un croupier animé purement décoratif qui suit le joueur du regard et distribue quand une table voisine joue.
+
+```json
+"arcade": {
+  "tickets": true,
+  "ticketValue": 10,
+  "chipValue": 1000,
+  "raceBettingTicks": 200,
+  "prizes": [{"item": "minecraft:diamond", "count": 1, "tickets": 1000}]
+}
+```
+
+`raceBettingTicks` est le temps pendant lequel une course prend les paris après le premier.
+
+## Réglages par borne (administrateur)
+
+`/gamblingitems cabinet <x y z> info|open|close|reset|minimum <valeur>|maximum <valeur>` (permission 2) règle une borne posée sans toucher à la configuration : la fermer, lui donner sa propre mise minimale ou maximale, ou revenir aux réglages du fichier avec `reset`.
 
 ## Configuration
 
-Les machines sont réglées dans la section `machines` de `config/gamblingitems/games.json`. Un fichier existant (schéma 19) reçoit cette section à son premier chargement, sans toucher aux autres réglages. Si la monnaie du casino payait déjà `slotMachine`, elle paie aussi les six machines.
+Les machines sont réglées dans la section `machines` de `config/gamblingitems/games.json`. Un fichier existant (schéma 19 ou 20) reçoit les sections manquantes (`machines`, les quatre bornes d'arcade, `arcade`) à son premier chargement, sans toucher aux autres réglages. Si la monnaie du casino payait déjà `slotMachine`, elle paie aussi les six machines.
 
 ```json
 "machines": {
@@ -42,7 +74,7 @@ Les machines sont réglées dans la section `machines` de `config/gamblingitems/
 }
 ```
 
-- Clés : `luckyWheel`, `coinPusher`, `prizeClaw`, `pachinko`, `capsuleGacha`, `highStakes`. Ce sont aussi leurs noms dans `currency.games`.
+- Clés : `luckyWheel`, `coinPusher`, `prizeClaw`, `pachinko`, `capsuleGacha`, `highStakes`, `plinko`, `bigSix`, `videoPoker`, `horseRace`. Ce sont aussi leurs noms dans `currency.games`.
 - `enabled` : `false` ferme la machine, et le joueur reçoit un message à l'ouverture.
 - `minimumStake` et `maximumStake` sont des valeurs internes (1 000 = 1 à l'écran). `maximumStake` à 0 signifie sans maximum.
 - `returnBasisPoints` multiplie chaque gain (10 000 = 100 %). Le terminal haute mise est réglé à 9 600 par défaut.
@@ -51,6 +83,7 @@ Les machines sont réglées dans la section `machines` de `config/gamblingitems/
 - Pince : `prizes` avec `multiplier` et `gripPercent` (0 à 100), 9 positions au plus.
 - Pachinko : `pockets`, exactement 9 multiplicateurs ; les chances sont celles des clous, pas un réglage.
 - Haute mise : `targets`, chaque cible strictement au-dessus de 1.
+- Plinko : `pockets`, exactement 13 multiplicateurs. Big Six et course : `prizes` avec `multiplier` et `weight`. Vidéo poker : `paytable`, 9 multiplicateurs de la paire de valets à la quinte flush royale.
 - Les multiplicateurs acceptent deux décimales au plus.
 
 Le chargement refuse une table dont le retour moyen effectif dépasserait 100 % à une position, avec un message qui nomme la machine fautive.
@@ -62,18 +95,20 @@ Chaque joueur peut régler `config/gamblingitems/client.json` sur son propre cli
 ```json
 {
   "soundVolume": 1.0,
-  "reducedMotion": false
+  "reducedMotion": false,
+  "ambientMusic": true
 }
 ```
 
 - `soundVolume` (0 à 1) multiplie les sons du casino.
+- `ambientMusic` : une musique chiptune en boucle près des bornes, qui s'éteint quand on s'en éloigne. `false` la coupe.
 - `reducedMotion` montre le résultat des machines et des machines à sous sans faire tourner la roue, les rouleaux ou la bille.
 
 Les clés manquantes sont ajoutées au fichier, les valeurs déjà présentes sont conservées.
 
 ## Jouer directement sur la borne
 
-Chaque borne se joue aussi sans ouvrir sa fenêtre, en touchant sa commande avec un objet de valeur en main :
+Aucune borne n'ouvre de fenêtre : tout se joue en touchant sa commande avec un objet de valeur en main.
 
 | Borne | Jouer | Changer de choix |
 |---|---|---|
@@ -84,11 +119,14 @@ Chaque borne se joue aussi sans ouvrir sa fenêtre, en touchant sa commande avec
 | Pachinko | la poignée de lancement | — |
 | Gacha | la manivelle | — |
 | High stakes | le bouton vert | le bouton rouge (cible suivante) |
+| Plinko | le bouton de lâcher | — |
+| Big Six | — | la touche du symbole misé (elle joue aussitôt) |
+| Vidéo poker | la touche rouge : donne, puis tire | une carte, ou sa touche HOLD : la garder |
+| Course de chevaux | — | la touche du cheval (pari ; la course part après `raceBettingTicks`) |
 
-- La pile tenue est misée en entier, ou la plus grande partie que la machine accepte (mise maximale, lot qu'elle doit pouvoir payer). Ce sont les mêmes vérifications et le même tirage serveur que la fenêtre.
-- Les gains attendent dans la machine, comme derrière la fenêtre. La même commande touchée à main vide les envoie dans l'inventaire, avec le crédit laissé devant la machine.
-- Pendant qu'une partie se joue, la borne refuse une nouvelle mise.
-- Ailleurs sur la borne, ou à main vide sans rien à récupérer, le clic ouvre la fenêtre comme avant.
+- La pile tenue est misée en entier, ou la plus grande partie que la machine accepte (mise maximale, lot qu'elle doit pouvoir payer). Le tirage est fait une seule fois par le serveur.
+- Pendant qu'une partie se joue, la borne refuse une nouvelle mise. Une borne fermée par un administrateur ne prend rien.
+- Le gacha secoue ses capsules avec une petite physique (26 billes, collisions, gravité) calculée sur le client seulement ; elle s'endort dès que le tas est calme.
 
 À partir de dix fois la mise, un gain est fêté : lampes en folie et « GROS GAIN ! » sur l'enseigne, étincelles et son pour les joueurs autour, pluie de pièces dans la fenêtre. L'option `reducedMotion` coupe les particules et la pluie de pièces.
 
@@ -100,6 +138,8 @@ Les modèles des bornes, des écrans et des tables sont générés, pas écrits 
 python tools/generate_cabinet_models.py   # les 7 bornes (3 blocs de haut) et leurs textures cab_*
 python tools/generate_station_models.py   # le moniteur 3×2 des 8 écrans et leurs icônes d'inventaire
 python tools/generate_table_models.py     # les tables de blackjack, roulette et bingo
+python tools/generate_arcade_assets.py    # jetons, néons, moquettes, caisse, tableau des scores, croupier
+python tools/generate_sounds.py           # les sons propres à chaque borne et la musique (numpy + soundfile)
 ```
 
 Seul le décor fixe est dans les modèles. Ce qui bouge (rouleaux, roue, pièces, pince, bille, capsules, cadran, levier) est dessiné par `SlotCabinet` et `MachineCabinet`. Pour photographier toutes les bornes, tous les écrans et toutes les tables en jeu :
@@ -112,5 +152,6 @@ Les captures arrivent dans `run/screenshots/gamblingitems-gallery-*.png`.
 
 ## Limites connues
 
-- Les sons propres au mod (`ui.tick`, `ui.start`, `ui.win`, `ui.lose`) réutilisent des sons vanilla : un pack de ressources peut les remplacer.
+- Chaque borne a ses quatre sons (`machine.<borne>.start|tick|win|lose`), synthétisés par `tools/generate_sounds.py` ; les sons d'interface (`ui.*`) réutilisent toujours des sons vanilla.
+- Le coût de la physique des capsules n'a pas été mesuré en jeu.
 - Depuis Minecraft 1.21.6, le décor de la machine dans la fenêtre n'est pas découpé au bord de son cadre.

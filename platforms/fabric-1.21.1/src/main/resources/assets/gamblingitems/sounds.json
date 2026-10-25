@@ -1,14 +1,294 @@
 {
   "ui.tick": {
-    "sounds": ["minecraft:note/hat"]
+    "sounds": [
+      "minecraft:note/hat"
+    ]
   },
   "ui.start": {
-    "sounds": ["minecraft:random/click"]
+    "sounds": [
+      "minecraft:random/click"
+    ]
   },
   "ui.win": {
-    "sounds": ["minecraft:random/levelup"]
+    "sounds": [
+      "minecraft:random/levelup"
+    ]
   },
   "ui.lose": {
-    "sounds": ["minecraft:note/bass"]
+    "sounds": [
+      "minecraft:note/bass"
+    ]
+  },
+  "machine.slot_machine.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/slot_machine/start"
+    ]
+  },
+  "machine.slot_machine.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/slot_machine/tick"
+    ]
+  },
+  "machine.slot_machine.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/slot_machine/win"
+    ]
+  },
+  "machine.slot_machine.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/slot_machine/lose"
+    ]
+  },
+  "machine.lucky_wheel.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/lucky_wheel/start"
+    ]
+  },
+  "machine.lucky_wheel.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/lucky_wheel/tick"
+    ]
+  },
+  "machine.lucky_wheel.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/lucky_wheel/win"
+    ]
+  },
+  "machine.lucky_wheel.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/lucky_wheel/lose"
+    ]
+  },
+  "machine.coin_pusher.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/coin_pusher/start"
+    ]
+  },
+  "machine.coin_pusher.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/coin_pusher/tick"
+    ]
+  },
+  "machine.coin_pusher.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/coin_pusher/win"
+    ]
+  },
+  "machine.coin_pusher.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/coin_pusher/lose"
+    ]
+  },
+  "machine.prize_claw.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/prize_claw/start"
+    ]
+  },
+  "machine.prize_claw.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/prize_claw/tick"
+    ]
+  },
+  "machine.prize_claw.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/prize_claw/win"
+    ]
+  },
+  "machine.prize_claw.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/prize_claw/lose"
+    ]
+  },
+  "machine.pachinko.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/pachinko/start"
+    ]
+  },
+  "machine.pachinko.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/pachinko/tick"
+    ]
+  },
+  "machine.pachinko.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/pachinko/win"
+    ]
+  },
+  "machine.pachinko.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/pachinko/lose"
+    ]
+  },
+  "machine.capsule_gacha.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/capsule_gacha/start"
+    ]
+  },
+  "machine.capsule_gacha.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/capsule_gacha/tick"
+    ]
+  },
+  "machine.capsule_gacha.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/capsule_gacha/win"
+    ]
+  },
+  "machine.capsule_gacha.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/capsule_gacha/lose"
+    ]
+  },
+  "machine.high_stakes.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/high_stakes/start"
+    ]
+  },
+  "machine.high_stakes.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/high_stakes/tick"
+    ]
+  },
+  "machine.high_stakes.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/high_stakes/win"
+    ]
+  },
+  "machine.high_stakes.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/high_stakes/lose"
+    ]
+  },
+  "machine.plinko.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/plinko/start"
+    ]
+  },
+  "machine.plinko.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/plinko/tick"
+    ]
+  },
+  "machine.plinko.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/plinko/win"
+    ]
+  },
+  "machine.plinko.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/plinko/lose"
+    ]
+  },
+  "machine.big_six.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/big_six/start"
+    ]
+  },
+  "machine.big_six.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/big_six/tick"
+    ]
+  },
+  "machine.big_six.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/big_six/win"
+    ]
+  },
+  "machine.big_six.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/big_six/lose"
+    ]
+  },
+  "machine.video_poker.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/video_poker/start"
+    ]
+  },
+  "machine.video_poker.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/video_poker/tick"
+    ]
+  },
+  "machine.video_poker.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/video_poker/win"
+    ]
+  },
+  "machine.video_poker.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/video_poker/lose"
+    ]
+  },
+  "machine.horse_race.start": {
+    "subtitle": "subtitles.gamblingitems.machine.start",
+    "sounds": [
+      "gamblingitems:machine/horse_race/start"
+    ]
+  },
+  "machine.horse_race.tick": {
+    "subtitle": "subtitles.gamblingitems.machine.tick",
+    "sounds": [
+      "gamblingitems:machine/horse_race/tick"
+    ]
+  },
+  "machine.horse_race.win": {
+    "subtitle": "subtitles.gamblingitems.machine.win",
+    "sounds": [
+      "gamblingitems:machine/horse_race/win"
+    ]
+  },
+  "machine.horse_race.lose": {
+    "subtitle": "subtitles.gamblingitems.machine.lose",
+    "sounds": [
+      "gamblingitems:machine/horse_race/lose"
+    ]
+  },
+  "music.arcade": {
+    "sounds": [
+      {
+        "name": "gamblingitems:music/arcade",
+        "stream": true
+      }
+    ]
   }
 }

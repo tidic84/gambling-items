@@ -64,6 +64,10 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
     //#endif
 
     private void draw(GameStationEntity station, float partialTick, PoseStack pose, WorldCanvas buffers) {
+        if (station.getBlockState().getBlock() instanceof dev.gamblingitems.fabric.arcade.DecorBlock decor) {
+            ArcadeDecor.render(station, decor, partialTick, pose, buffers, font);
+            return;
+        }
         if (SlotCabinet.isCabinet(station)) {
             // A cabinet has no monitor: its reels are drawn on its own front.
             SlotCabinet.render(station, partialTick, pose, buffers, font);

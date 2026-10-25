@@ -101,7 +101,8 @@ public final class CabinetControls {
                 // Each card, on the screen or by its hold button, is kept or let go; the red key deals and draws.
                 for (int card = 0; card < 5; card++) {
                     double screen = CARD_U + card * CARD_STEP, hold = HOLD_U + card * HOLD_STEP;
-                    boxes.add(new Box(Control.pick(card), screen, 19.5, 1, screen + CARD_WIDTH, 27.5, 3));
+                    // The glass sits back from the front face of the block, which is where a click lands.
+                    boxes.add(new Box(Control.pick(card), screen, 19.5, 0, screen + CARD_WIDTH, 27.5, 3));
                     boxes.add(new Box(Control.pick(card), hold, 13, -1.5, hold + HOLD_WIDTH, 14.8, 1.5));
                 }
                 boxes.add(new Box(Control.PLAY, 12, 13, -1.5, 15.2, 15.2, 1.5));

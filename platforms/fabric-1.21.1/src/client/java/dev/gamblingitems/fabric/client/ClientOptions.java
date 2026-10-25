@@ -18,6 +18,8 @@ public final class ClientOptions {
     private static float soundVolume = 1;
     /** Plays settle at once: the result is shown without the wheel, reels or ball moving. */
     private static boolean reducedMotion;
+    /** The arcade's chiptune near the cabinets; on unless the player turns it off. */
+    private static boolean ambientMusic = true;
     private static boolean loaded;
 
     private ClientOptions() {}
@@ -32,6 +34,11 @@ public final class ClientOptions {
         return reducedMotion;
     }
 
+    public static boolean ambientMusic() {
+        load();
+        return ambientMusic;
+    }
+
     private static synchronized void load() {
         if (loaded) return;
         loaded = true;
@@ -40,10 +47,12 @@ public final class ClientOptions {
             JsonObject json = Files.exists(path) ? JsonParser.parseString(Files.readString(path)).getAsJsonObject() : new JsonObject();
             if (json.has("soundVolume")) soundVolume = Math.max(0, Math.min(1, json.get("soundVolume").getAsFloat()));
             if (json.has("reducedMotion")) reducedMotion = json.get("reducedMotion").getAsBoolean();
+            if (json.has("ambientMusic")) ambientMusic = json.get("ambientMusic").getAsBoolean();
             // A missing option is added with its default; the ones already set are written back unchanged.
-            if (!json.has("soundVolume") || !json.has("reducedMotion")) {
+            if (!json.has("soundVolume") || !json.has("reducedMotion") || !json.has("ambientMusic")) {
                 json.addProperty("soundVolume", soundVolume);
                 json.addProperty("reducedMotion", reducedMotion);
+                json.addProperty("ambientMusic", ambientMusic);
                 Files.createDirectories(path.getParent());
                 Files.writeString(path, new GsonBuilder().setPrettyPrinting().create().toJson(json), StandardCharsets.UTF_8);
             }

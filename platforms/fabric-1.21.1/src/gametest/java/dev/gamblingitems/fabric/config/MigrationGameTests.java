@@ -23,8 +23,11 @@ public class MigrationGameTests implements FabricGameTest {
         for (String key : ModConfig.MACHINE_KEYS.values()) {
             helper.assertTrue(json.getAsJsonObject("machines").has(key), "Every machine has its section: " + key);
         }
+        helper.assertTrue(json.has("arcade") && json.getAsJsonObject("arcade").get("tickets").getAsBoolean(),
+                "The arcade tickets are added, on");
         JsonArray games = json.getAsJsonObject("currency").getAsJsonArray("games");
-        helper.assertTrue(games.contains(new JsonPrimitive("luckyWheel")) && games.contains(new JsonPrimitive("crash")),
+        helper.assertTrue(games.contains(new JsonPrimitive("plinko"))
+                && games.contains(new JsonPrimitive("luckyWheel")) && games.contains(new JsonPrimitive("crash")),
                 "The machines are paid in the currency, the other games kept");
         helper.assertTrue(json.getAsJsonObject("slotMachine").get("minimumStake").getAsInt() == 4242,
                 "A tuned value is untouched");

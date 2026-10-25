@@ -23,7 +23,8 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / 'platforms/fabric-1.21.1/src/main/resources/assets/gamblingitems'
 TEXTURES = ASSETS / 'textures/block'
 SIDES = ('down', 'up', 'north', 'south', 'west', 'east')
-MACHINES = ('slot_machine', 'lucky_wheel', 'coin_pusher', 'prize_claw', 'pachinko', 'capsule_gacha', 'high_stakes')
+MACHINES = ('slot_machine', 'lucky_wheel', 'coin_pusher', 'prize_claw', 'pachinko', 'capsule_gacha', 'high_stakes',
+            'plinko', 'big_six', 'video_poker', 'horse_race')
 
 # ---------------------------------------------------------------------------------------------
 # Textures
@@ -181,6 +182,18 @@ def sign(colour, seed):
     return image
 
 
+def turf(seed, dark=False):
+    """The grass of a race track: mown stripes across it, and blades of a lighter green."""
+    rng = random.Random(seed)
+    base = (40, 110, 52) if not dark else (30, 90, 42)
+    image = Image.new('RGB', (16, 16))
+    for y in range(16):
+        for x in range(16):
+            stripe = 8 if (x // 4) % 2 == 0 else -6
+            image.putpixel((x, y), clamp(tuple(c + stripe + rng.uniform(-7, 7) for c in base)))
+    return image
+
+
 TEXTURE_SET = {
     'cab_crimson': lambda: lacquer((128, 18, 32), 11),
     'cab_crimson_side': lambda: panel((112, 16, 28), (205, 165, 80), 12),
@@ -215,6 +228,20 @@ TEXTURE_SET = {
     'cab_sign_warm': lambda: sign((236, 170, 70), 31),
     'cab_sign_cyan': lambda: sign((60, 190, 220), 32),
     'cab_sign_red': lambda: sign((220, 60, 70), 33),
+    'cab_sign_violet': lambda: sign((170, 90, 230), 34),
+    'cab_sign_green': lambda: sign((70, 210, 120), 35),
+    'cab_violet': lambda: lacquer((70, 30, 120), 36),
+    'cab_violet_side': lambda: panel((62, 26, 106), (217, 178, 90), 37),
+    'cab_teal': lambda: lacquer((10, 96, 110), 38),
+    'cab_teal_side': lambda: panel((8, 84, 96), (240, 236, 220), 39),
+    'cab_orange': lambda: lacquer((214, 104, 24), 40, sheen=36),
+    'cab_orange_side': lambda: panel((190, 90, 20), (250, 230, 190), 41),
+    'cab_leather': lambda: flat((92, 18, 30), 42, 5),
+    'cab_turf': lambda: turf(43),
+    'cab_turf_dark': lambda: turf(44, dark=True),
+    'cab_lamp_violet': lambda: lamp((180, 90, 240)),
+    'cab_lamp_pink': lambda: lamp((240, 80, 170)),
+    'cab_lamp_blue': lambda: lamp((60, 110, 240)),
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -222,9 +249,11 @@ TEXTURE_SET = {
 
 
 class Cabinet:
-    def __init__(self, particle):
+    def __init__(self, particle, width=1):
         self.boxes = []
         self.particle = particle
+        # How many blocks wide: a giant machine's u runs to 32, its right column is u 16 to 32.
+        self.width = width
 
     def box(self, a, b, material, rotation=None):
         """A box from a to b, in (u, y, z). material is a texture, or (texture, {side: texture})."""
@@ -253,7 +282,7 @@ def side_faces(body, side):
 
 
 def plinth(c, inset=0.5):
-    c.box((inset, 0, inset), (16 - inset, 1.5, 16 - inset), 'cab_rubber')
+    c.box((inset, 0, inset), (16 * c.width - inset, 1.5, 16 - inset), 'cab_rubber')
 
 
 def tray(c, u1, u2, y, z_front, z_back, material='cab_chrome'):
@@ -460,32 +489,184 @@ def capsule_gacha():
 
 
 def high_stakes():
+    """The VIP terminal: a fluted pedestal on a stepped gold base, a leather desk, and a tall screen
+    leaning back under a hood, with neon wings on either side and a crown lamp on top."""
     c = Cabinet('cab_obsidian')
-    c.box((3, 0, 3), (13, 1, 13), 'cab_gold')
-    c.box((4, 1, 4), (12, 12, 12), side_faces('cab_obsidian', 'cab_obsidian_side'))
-    for u in (4, 11.4):
-        c.box((u, 1, 3.8), (u + .6, 12, 4.4), 'cab_gold')
-    c.box((7.7, 1.6, 3.85), (8.3, 11.4, 4), 'cab_lamp_red')
-    # The desk, its gold edge, a card slot and two buttons.
-    c.box((0, 12, -.5), (16, 13.5, 12), 'cab_obsidian')
-    c.box((0, 12, -.7), (16, 13.5, -.5), 'cab_gold')
-    c.box((2.5, 13.5, 0), (5, 14, 2.2), 'cab_lamp_green')
-    c.box((11, 13.5, 0), (13.5, 14, 2.2), 'cab_lamp_red')
-    c.box((6.5, 13.5, .8), (9.5, 13.7, 3), 'cab_chrome')
-    # The screen, leaning back, framed in gold.
+    # A stepped base: gold, then obsidian, then a thin gold band.
+    c.box((1.5, 0, 1.5), (14.5, .8, 14.5), 'cab_gold')
+    c.box((2.2, .8, 2.2), (13.8, 1.8, 13.8), 'cab_obsidian')
+    c.box((2.6, 1.8, 2.6), (13.4, 2.2, 13.4), 'cab_gold')
+    # The pedestal, fluted with gold and a red light running down its front.
+    c.box((3.5, 2.2, 3.5), (12.5, 11.4, 12.5), side_faces('cab_obsidian', 'cab_obsidian_side'))
+    for u in (3.5, 6.2, 9.2, 11.9):
+        c.box((u, 2.2, 3.3), (u + .6, 11.4, 3.5), 'cab_gold')
+    c.box((7.6, 3, 3.25), (8.4, 10.8, 3.5), 'cab_lamp_red')
+    c.box((3, 11.4, 3), (13, 12, 13), 'cab_gold')
+    # The desk: leather top, gold edge, a chip tray, a card slot and the two keys.
+    c.box((0, 12, -.8), (16, 13.2, 12), 'cab_obsidian')
+    c.box((0, 12.2, -1), (16, 13.2, -.8), 'cab_gold')
+    c.box((.6, 13.2, -.4), (15.4, 13.4, 4.4), 'cab_leather')
+    c.box((0, 13.2, -.8), (16, 13.6, -.4), 'cab_gold')
+    c.box((2.2, 13.4, -.1), (5.3, 13.6, 2.5), 'cab_gold')
+    c.box((2.5, 13.6, .2), (5, 14.2, 2.2), 'cab_lamp_green')
+    c.box((10.7, 13.4, -.1), (13.8, 13.6, 2.5), 'cab_gold')
+    c.box((11, 13.6, .2), (13.5, 14.2, 2.2), 'cab_lamp_red')
+    c.box((6.2, 13.4, .6), (9.8, 13.6, 3.4), 'cab_chrome')
+    c.box((6.8, 13.6, 1.6), (9.2, 13.65, 2.2), 'cab_lamp_amber')
+    # The screen, leaning back, framed in gold under a hood.
     tilt = {'angle': 22.5, 'axis': 'x', 'origin': (8, 13.5, 6.5)}
-    c.box((.5, 13.5, 5), (15.5, 33.5, 8), side_faces('cab_obsidian', 'cab_obsidian_side'), tilt)
+    c.box((.5, 13.5, 5), (15.5, 33.5, 8.5), side_faces('cab_obsidian', 'cab_obsidian_side'), tilt)
     c.box((1.3, 14.3, 4.8), (14.7, 32.7, 5), 'cab_screen', tilt)
-    for a, b in (((.5, 32.9, 4.5), (15.5, 33.5, 5)), ((.5, 13.5, 4.5), (15.5, 14.1, 5)),
-                 ((.5, 14.1, 4.5), (1.1, 32.9, 5)), ((14.9, 14.1, 4.5), (15.5, 32.9, 5))):
+    for a, b in (((.5, 32.9, 4.3), (15.5, 33.5, 5)), ((.5, 13.5, 4.3), (15.5, 14.1, 5)),
+                 ((.5, 14.1, 4.3), (1.1, 32.9, 5)), ((14.9, 14.1, 4.3), (15.5, 32.9, 5))):
         c.box(a, b, 'cab_gold', tilt)
-    c.box((.5, 33.5, 5), (15.5, 34.2, 8), 'cab_lamp_red', tilt)
+    c.box((0, 33.5, 3), (16, 34.6, 8.5), 'cab_obsidian', tilt)
+    c.box((0, 33.2, 2.7), (16, 33.5, 3.3), 'cab_lamp_red', tilt)
+    # Neon wings on the flanks of the screen.
+    for u in (-.4, 15.6):
+        c.box((u, 14.5, 5.5), (u + .8, 32.5, 6.3), 'cab_lamp_red', tilt)
+    # The crown: an obsidian block with a gold diamond that glows.
+    c.box((4.5, 34.5, 9), (11.5, 36.5, 13), 'cab_obsidian')
+    c.box((4.2, 34.2, 8.8), (11.8, 34.6, 13.2), 'cab_gold')
+    c.box((6.8, 36.4, 10.2), (9.2, 38.8, 11.8), 'cab_lamp_red', {'angle': 45, 'axis': 'z', 'origin': (8, 37.6, 11)})
+    return c
+
+
+def plinko():
+    """Giant plinko, two blocks wide: a tall pegged board behind glass, fed by a chute on top."""
+    c = Cabinet('cab_teal', width=2)
+    plinth(c)
+    body = side_faces('cab_teal', 'cab_teal_side')
+    c.box((0, 1.5, 2), (32, 12.5, 16), body)
+    c.box((0, 1.5, 1.7), (32, 2.2, 2), 'cab_chrome')
+    screen_panel(c, 8, 3, 24, 8.4, 1.9, frame='cab_chrome')            # odds
+    screen_panel(c, 8, 8.6, 24, 11.8, 1.9, frame='cab_chrome')         # status
+    tray(c, 1.5, 7, 2.2, -.8, 2)
+    tray(c, 25, 30.5, 2.2, -.8, 2)
+    # The deck and the big drop button in the middle.
+    c.box((0, 12.5, -1.5), (32, 13.5, 4), 'cab_chrome')
+    c.box((13.6, 13.5, -1), (18.4, 13.8, 1.8), 'cab_chrome')
+    c.box((14.2, 13.8, -.5), (17.8, 14.8, 1.3), 'cab_lamp_red')
+    # The board, its frame and its glass.
+    c.box((0, 13.5, 4), (32, 35, 16), body)
+    c.box((1.6, 14.2, 3.9), (30.4, 34.4, 4), 'cab_screen')
+    c.frame(1, 13.5, 31, 35, 1, 4, .7, 'cab_chrome')
+    for u in (.3, 31.1):
+        c.box((u, 14, .9), (u + .6, 34.6, 1.5), 'cab_lamp_cyan')
+    # The crown with the sign, and the chute the ball is fed into.
+    c.box((1, 35, 5), (31, 39, 11), 'cab_teal')
+    c.box((2, 35.5, 4.8), (30, 38.5, 5), 'cab_sign_cyan')
+    c.frame(1, 35, 31, 39, 4.4, 5, .5, 'cab_chrome')
+    c.box((14, 35, 1.5), (18, 36, 4.4), 'cab_chrome')
+    c.box((13.6, 36, 1), (18.4, 39.6, 1.6), 'cab_chrome')
+    c.box((13.6, 36, 1.6), (14.2, 39.6, 4.4), 'cab_chrome')
+    c.box((17.8, 36, 1.6), (18.4, 39.6, 4.4), 'cab_chrome')
+    c.box((14.2, 36, 1.6), (17.8, 36.4, 4.4), 'cab_interior')
+    return c
+
+
+def big_six():
+    """The Big Six wheel, two blocks wide: a great upright wheel of fifty-four slots over a betting deck."""
+    c = Cabinet('cab_violet', width=2)
+    plinth(c)
+    body = side_faces('cab_violet', 'cab_violet_side')
+    c.box((0, 1.5, 2), (32, 9.5, 16), body)
+    c.box((0, 1.5, 1.7), (32, 2.2, 2), 'cab_brass')
+    screen_panel(c, 3, 3, 29, 8.8, 1.9)                    # the prize of each symbol, and the status
+    # The deck with one betting button per symbol, in the colours of the prizes.
+    c.box((0, 9.5, -2.4), (32, 10.2, 4), 'cab_brass')
+    lenses = ('cab_lamp_white', 'cab_lamp_blue', 'cab_lamp_cyan', 'cab_lamp_green', 'cab_lamp_amber', 'cab_lamp_violet',
+              'cab_lamp_red')
+    for symbol, lens in enumerate(lenses):
+        u = 3 + symbol * 3.8
+        c.box((u - .2, 10.2, -1.8), (u + 3.2, 10.5, 1.2), 'cab_brass')
+        c.box((u + .2, 10.5, -1.4), (u + 2.8, 11.3, .8), lens)
+    # The tower behind the wheel, and the wheel: a back plate, a brass rim and the face it is drawn on.
+    c.box((5, 10.2, 5), (27, 36, 16), body)
+    c.box((2, 10.2, 4), (4, 38, 6), 'cab_brass')
+    c.box((28, 10.2, 4), (30, 38, 6), 'cab_brass')
+    c.disc(16, 25, 11.4, 3.4, 4.6, 'cab_violet')
+    c.disc(16, 25, 11, 2.2, 3.4, 'cab_brass')
+    c.disc(16, 25, 10.2, 2, 2.2, 'cab_screen')
+    # The leather flapper over the top of the wheel, then the crown.
+    c.box((15.4, 35.8, 1.4), (16.6, 37.4, 3.6), 'cab_brass')
+    c.box((4, 37, 5), (28, 40, 10), 'cab_violet')
+    c.box((4.6, 37.4, 4.8), (27.4, 39.6, 5), 'cab_sign_violet')
+    c.frame(4, 37, 28, 40, 4.4, 5, .4, 'cab_brass')
+    for u in (2.2, 28.2):
+        c.box((u, 38, 4.2), (u + 1.6, 39.6, 5.8), 'cab_lamp_amber')
+    return c
+
+
+def video_poker():
+    """A bar-top video poker: an upright screen with the five cards, the hold keys and the deal key under it."""
+    c = Cabinet('cab_navy')
+    plinth(c)
+    body = side_faces('cab_navy', 'cab_navy_side')
+    c.box((0, 1.5, 1.5), (16, 12.4, 16), body)
+    c.box((0, 1.5, 1.2), (16, 2.2, 1.5), 'cab_chrome')
+    screen_panel(c, 1.5, 2.8, 14.5, 11.8, 1.4, frame='cab_chrome')   # paytable
+    # The deck: five amber hold keys and the red deal key.
+    c.box((0, 12.4, -1.8), (16, 13, 3), 'cab_navy')
+    c.box((0, 12.2, -2), (16, 12.6, -1.8), 'cab_chrome')
+    for card in range(5):
+        u = 1 + card * 2.1
+        c.box((u, 13, -1.2), (u + 1.9, 13.3, 1.2), 'cab_chrome')
+        c.box((u + .2, 13.3, -1), (u + 1.7, 13.8, 1), 'cab_lamp_amber')
+    c.box((12, 13, -1.2), (15.2, 13.3, 1.2), 'cab_chrome')
+    c.box((12.3, 13.3, -1), (14.9, 14.2, 1), 'cab_lamp_red')
+    # The screen, upright, in a chrome bezel.
+    c.box((.5, 13, 3), (15.5, 32, 16), body)
+    screen_panel(c, .8, 15.6, 15.2, 31.4, 2, frame='cab_chrome', thick=.6, depth=.8)
+    # The marquee.
+    c.box((0, 32, 1), (16, 37, 15), 'cab_navy')
+    c.box((.6, 32.6, .8), (15.4, 36.4, 1), 'cab_sign_warm')
+    c.frame(0, 32, 16, 37, .5, 1, .5, 'cab_chrome')
+    c.box((2, 37, 3), (14, 37.6, 12), 'cab_chrome')
+    return c
+
+
+def horse_race():
+    """The derby, two blocks wide: six lanes of turf rising in terraces, the starting gates on the left,
+    the finish on the right, and a tote board behind."""
+    c = Cabinet('cab_orange', width=2)
+    plinth(c)
+    body = side_faces('cab_orange', 'cab_orange_side')
+    c.box((0, 1.5, 2), (32, 11.4, 16), body)
+    c.box((0, 1.5, 1.7), (32, 2.2, 2), 'cab_brass')
+    screen_panel(c, 4, 3, 28, 10.6, 1.9)                    # each horse's odds and the bets
+    # The deck: one betting button in front of each lane, in the colour of its horse.
+    c.box((0, 11.4, -2.4), (32, 12, 3.5), 'cab_brass')
+    silks = ('cab_lamp_red', 'cab_lamp_blue', 'cab_lamp_green', 'cab_lamp_amber', 'cab_lamp_violet', 'cab_lamp_white')
+    for horse, lens in enumerate(silks):
+        u = 3 + horse * 4.4
+        c.box((u - .2, 12, -1.8), (u + 3.6, 12.3, 1.2), 'cab_brass')
+        c.box((u + .2, 12.3, -1.4), (u + 3.2, 13.1, .8), lens)
+    # The terraces: each lane higher and further back than the one before it.
+    for lane in range(6):
+        y, z = 13.6 + lane * 1.6, 3.5 + lane * 1.8
+        turf = 'cab_turf' if lane % 2 == 0 else 'cab_turf_dark'
+        c.box((1, 12, z), (31, y, z + 1.8), (turf, {'north': 'cab_orange', 'east': 'cab_orange', 'west': 'cab_orange'}))
+        c.box((1, y, z), (31, y + .3, z + .2), 'cab_cream')
+        # The starting gate and the finish post of the lane.
+        c.box((3.6, y, z + .1), (3.9, y + 1.8, z + .3), 'cab_chrome')
+        c.box((28.6, y, z + .1), (28.9, y + 2.2, z + .3), 'cab_lamp_white')
+    # The back wall with the tote board, flanked by lit pillars, and the crown.
+    c.box((0, 12, 14.4), (32, 36, 16), body)
+    screen_panel(c, 4, 24.4, 28, 34.4, 14.3)
+    for u in (0, 30.6):
+        c.box((u, 12, 1), (u + 1.4, 36, 2.4), 'cab_brass')
+        c.box((u + .3, 14, .8), (u + 1.1, 35, 1), 'cab_lamp_amber')
+    c.box((2, 36, 8), (30, 40, 15), 'cab_orange')
+    c.box((2.6, 36.4, 7.8), (29.4, 39.6, 8), 'cab_sign_warm')
+    c.frame(2, 36, 30, 40, 7.4, 8, .4, 'cab_brass')
     return c
 
 
 BUILDERS = {'slot_machine': slot_machine, 'lucky_wheel': lucky_wheel, 'coin_pusher': coin_pusher,
             'prize_claw': prize_claw, 'pachinko': pachinko, 'capsule_gacha': capsule_gacha,
-            'high_stakes': high_stakes}
+            'high_stakes': high_stakes, 'plinko': plinko, 'big_six': big_six, 'video_poker': video_poker,
+            'horse_race': horse_race}
 
 # ---------------------------------------------------------------------------------------------
 # Models
@@ -549,20 +730,44 @@ def textures_of(cabinet):
     return textures
 
 
-def parts(cabinet):
+def shift_u(a, b, rotation, column):
+    """A box of the right column moved into the space of its own block."""
+    if column == 0:
+        return a, b, rotation
+    du = 16 * column
+    a, b = (a[0] - du, a[1], a[2]), (b[0] - du, b[1], b[2])
+    if rotation:
+        rotation = dict(rotation, origin=(rotation['origin'][0] - du,) + tuple(rotation['origin'][1:]))
+    return a, b, rotation
+
+
+def parts(cabinet, column=0):
+    """The elements of each part of one column; a box across both columns is cut at u = 16."""
     result = [[], [], []]
     for a, b, material, rotation in cabinet.boxes:
         if rotation:
-            centre = (a[1] + b[1]) / 2
+            centre_u, centre = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+            if min(cabinet.width - 1, max(0, int(centre_u // 16))) != column:
+                continue
             part = min(2, int(centre // 16))
-            f, t = to_model_space(a, b, part * 16)
-            result[part].append(element(f, t, material, rotation_in_model(rotation, part * 16)))
+            ca, cb, crot = shift_u(a, b, rotation, column)
+            f, t = to_model_space(ca, cb, part * 16)
+            result[part].append(element(f, t, material, rotation_in_model(crot, part * 16)))
             continue
+        if cabinet.width == 1:
+            left, right = a[0], b[0]
+        else:
+            # The outer edge keeps what stands past the block; the edge between the columns is cut.
+            left = a[0] if column == 0 else max(a[0], 16)
+            right = min(b[0], 16) if column == 0 else b[0]
+            if left >= right:
+                continue
         for part in range(3):
             low, high = max(a[1], part * 16), min(b[1], part * 16 + 16)
             if low >= high:
                 continue
-            f, t = to_model_space((a[0], low, a[2]), (b[0], high, b[2]), part * 16)
+            ca, cb, _ = shift_u((left, low, a[2]), (right, high, b[2]), None, column)
+            f, t = to_model_space(ca, cb, part * 16)
             result[part].append(element(f, t, material, None))
     return result
 
@@ -578,9 +783,10 @@ DISPLAY = {
 
 
 def inventory(cabinet):
-    """The whole cabinet at two fifths of its size, standing in the middle of an item slot."""
-    scale = 0.4
-    offset = (8 - 8 * scale, 0, 8 - 8 * scale)
+    """The whole cabinet at two fifths of its size (a fifth for a giant), standing in the middle of an item slot."""
+    scale = 0.4 / cabinet.width
+    # x = 16 - u runs from 16 - 16 * width to 16, so its middle is at 16 - 8 * width.
+    offset = (8 - (16 - 8 * cabinet.width) * scale, 0, 8 - 8 * scale)
     elements = []
     for a, b, material, rotation in cabinet.boxes:
         f, t = to_model_space(a, b, 0, scale, offset)
@@ -601,17 +807,21 @@ def main():
     for machine in MACHINES:
         cabinet = BUILDERS[machine]()
         textures = textures_of(cabinet)
-        for index, elements in enumerate(parts(cabinet)):
-            save(f'models/block/{machine}_part{index}.json',
-                 {'parent': 'minecraft:block/block', 'textures': textures, 'elements': elements})
+        for column in range(cabinet.width):
+            suffix = '_right' if column else ''
+            for index, elements in enumerate(parts(cabinet, column)):
+                save(f'models/block/{machine}_part{index}{suffix}.json',
+                     {'parent': 'minecraft:block/block', 'textures': textures, 'elements': elements})
         save(f'models/block/{machine}.json', {'parent': 'minecraft:block/block', 'textures': textures,
                                               'display': DISPLAY, 'elements': inventory(cabinet)})
         save(f'models/item/{machine}.json', {'parent': f'gamblingitems:block/{machine}'})
         save(f'blockstates/{machine}.json', {'variants': {
-            f'facing={facing},part={part}': {'model': f'gamblingitems:block/{machine}_part{part}', 'y': rotation}
+            f'facing={facing},part={part},right={str(right).lower()}': {
+                'model': f'gamblingitems:block/{machine}_part{part}' + ('_right' if right and cabinet.width > 1 else ''),
+                'y': rotation}
             for facing, rotation in (('north', 0), ('east', 90), ('south', 180), ('west', 270))
-            for part in range(3)}})
-        print(machine, [len(p) for p in parts(cabinet)], 'elements')
+            for part in range(3) for right in (False, True)}})
+        print(machine, [[len(p) for p in parts(cabinet, column)] for column in range(cabinet.width)], 'elements')
 
 
 if __name__ == '__main__':

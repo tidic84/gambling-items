@@ -470,12 +470,31 @@ public final class StationTables {
             ItemStack stack = stackOf(parts[index]);
             if (stack.isEmpty()) continue;
             float x = centreX + (index - (shown - 1) / 2f) * 26;
+            int chip = chipColour(stack);
+            if (chip != 0) {
+                // Casino chips stand in a real stack, one disc per chip up to twenty, edged in white.
+                float top = 8 + Math.min(20, stack.getCount()) * 2.2f;
+                cylinder(pose, buffers, x, centreY, 10, 8, top, chip);
+                circle(pose, buffers, x, centreY, 7.5f, 0xfff3eee2, top + 0.05f);
+                circle(pose, buffers, x, centreY, 6, chip, top + 0.1f);
+                continue;
+            }
             pose.pushPose();
             pose.translate(x, centreY, 8);
             pose.scale(22, -22, 4);
             buffers.item(pose, stack, 0xf000f0, station.getLevel());
             pose.popPose();
         }
+    }
+
+    /** The colour of a casino chip by its face, as at a real table; 0 for anything else. */
+    private static int chipColour(ItemStack stack) {
+        int[] faces = dev.gamblingitems.fabric.arcade.ArcadeSettings.CHIPS;
+        int[] colours = {0xffe8e4dc, 0xffc8303c, 0xff1f8a4c, 0xff1c1c22};
+        for (int index = 0; index < faces.length; index++) {
+            if (stack.is(dev.gamblingitems.fabric.ModContent.chip(faces[index]))) return colours[index];
+        }
+        return 0;
     }
 
     /** One staked stack, written as "item*count"; anything unreadable is simply not drawn. */

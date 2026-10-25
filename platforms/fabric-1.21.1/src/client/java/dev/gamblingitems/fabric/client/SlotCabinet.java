@@ -54,8 +54,11 @@ public final class SlotCabinet {
         int raw = station.getLevel().getMaxLocalRawBrightness(station.getBlockPos().above());
         float light = 0.3f + 0.7f * raw / 15f;
         jackpot = celebrating(station, now);
+        CabinetSounds.follow(station, now, progress, playing);
+        AmbientMusic.heard(station);
         model(pose, station);
         try {
+            ArcadeCabinets.hover(station, pose, buffers, now);
             if (station.mode() == GameMode.SLOT_MACHINE) slots(station, pose, buffers, font, now, progress, playing);
             else MachineCabinet.render(station, pose, buffers, font, now, progress, playing, light);
         } finally {
@@ -187,6 +190,7 @@ public final class SlotCabinet {
         } else {
             text = Component.translatable("gui.gamblingitems." + station.resultKey).getString();
             if (station.multiplier > 0) text += "  " + GameScreens.multiplier(station.multiplier);
+            if (station.tickets > 0) text += "  " + Component.translatable("gui.gamblingitems.tickets_plus", station.tickets).getString();
             colour = station.highlight ? GREEN : RED;
         }
         boolean twoLines = y2 - y1 >= 26 && !station.playerName.isEmpty() && !station.idle();

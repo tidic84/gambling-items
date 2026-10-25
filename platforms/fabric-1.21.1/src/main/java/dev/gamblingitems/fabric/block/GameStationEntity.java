@@ -51,6 +51,10 @@ public final class GameStationEntity extends BlockEntity {
     public long cardsChangedAt;
     /** Client side only: the play a cabinet last celebrated as a big win, and the tick of its last sparks. */
     public long celebratedAt = -1, lastSpark;
+    /** Client only, never saved: what the cabinet already sounded, and what its renderer keeps between frames. */
+    public long soundedStart = -1, soundedStep = -1, busyCheckedAt;
+    public boolean soundedReveal, busyNearby;
+    public Object clientState;
     /** Server side only: what the seat fields were in the last packet built, see preview. */
     private String sentPreview = "";
 

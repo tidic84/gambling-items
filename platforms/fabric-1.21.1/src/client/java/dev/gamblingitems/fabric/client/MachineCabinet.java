@@ -98,6 +98,8 @@ final class MachineCabinet {
                 twoLineSign(pose, buffers, font, station, name, rolling, won, rollingKey, -32, -216, 32, -187.2f, now);
                 pose.popPose();
             }
+            case PLINKO, BIG_SIX, VIDEO_POKER, HORSE_RACE -> ArcadeCabinets.render(station, pose, buffers, font, table, outcome,
+                    shown, shownProgress, rolling, won, now, light);
             default -> {
                 // The screen leans back with its block model, about the same hinge.
                 pose.pushPose();
@@ -128,10 +130,18 @@ final class MachineCabinet {
                 // A cabinet never breaks on a table it cannot read; it shows the neutral board instead.
             }
         }
-        int count = station.mode() == GameMode.PACHINKO ? MachineTable.PACHINKO_POCKETS : 8;
+        int count = switch (station.mode()) {
+            case PACHINKO -> MachineTable.PACHINKO_POCKETS;
+            case PLINKO -> MachineTable.PLINKO_POCKETS;
+            case BIG_SIX -> 7;
+            case HORSE_RACE -> 6;
+            case VIDEO_POKER -> dev.gamblingitems.core.machines.VideoPokerRules.PAYTABLE.length;
+            default -> 8;
+        };
         int[] multipliers = new int[count], weights = new int[count];
         java.util.Arrays.fill(weights, 1);
         if (station.mode() == GameMode.PACHINKO) weights = new int[] {1, 8, 28, 56, 70, 56, 28, 8, 1};
+        if (station.mode() == GameMode.VIDEO_POKER) multipliers = dev.gamblingitems.core.machines.VideoPokerRules.PAYTABLE.clone();
         if (station.mode() == GameMode.HIGH_STAKES) java.util.Arrays.fill(multipliers, 200);
         return new int[][] {multipliers, weights};
     }
@@ -161,7 +171,7 @@ final class MachineCabinet {
     }
 
     /** The best prizes with their exact chance, on a dark panel; the claw and terminal show the chosen one first. */
-    private static void odds(PoseStack pose, WorldCanvas buffers, Font font, GameMode mode, int[][] table, int choice,
+    static void odds(PoseStack pose, WorldCanvas buffers, Font font, GameMode mode, int[][] table, int choice,
                              float x1, float y1, float x2, float y2) {
         quad(pose, buffers, x1, y1, x2, y2, 0xff0b111a, 0);
         List<String[]> lines = best(mode, table, choice);
@@ -473,18 +483,16 @@ final class MachineCabinet {
                               boolean shown, double progress, boolean rolling, boolean playing, double now, float light) {
         int[] multipliers = table[0];
         double turns = playing ? MachineMotion.crank(progress) : 0;
-        // While the crank turns the heap is stirred: each layer swirls round the globe, the upper ones further, and bobs.
+        // While the crank turns the heap is churned; the capsules then tumble back down and settle.
         boolean stirring = rolling && progress < 0.5;
-        for (int capsule = 0; capsule < 26; capsule++) {
-            int layer = capsule / 9;
-            double angle = capsule * 2.399 + turns * (0.9 + layer * 0.35);
-            double ring = Math.sqrt((capsule % 9 + 0.5) / 9.0) * (GLOBE_RADIUS - 1.6);
-            float bob = stirring ? (float) Math.abs(Math.sin(now * 0.8 + capsule * 1.7)) * 0.6f * (layer + 1) : 0;
-            float u = GLOBE_U + (float) (Math.cos(angle) * ring);
-            float z = GLOBE_Z + (float) (Math.sin(angle) * ring);
-            float y = GLOBE_Y - GLOBE_RADIUS + 1.2f + layer * 1.5f + (float) (ring * ring * 0.08) + bob;
+        CapsulePhysics heap = CapsulePhysics.of(station, GLOBE_U, GLOBE_Y, GLOBE_Z, GLOBE_RADIUS);
+        long tick = (long) Math.floor(now);
+        heap.advance(tick, stirring && !ClientOptions.reducedMotion() ? 1 : 0);
+        float partial = (float) (now - tick);
+        for (int capsule = 0; capsule < CapsulePhysics.COUNT; capsule++) {
             int colour = MachineMotion.tier(multipliers.length == 0 ? 0 : multipliers[capsule % multipliers.length]);
-            capsule(pose, buffers, u, y, z, 0.75f, colour | 0xff000000, 0, stirring ? (float) (angle * 2) : 0, light);
+            capsule(pose, buffers, heap.x(capsule, partial), heap.y(capsule, partial) - CapsulePhysics.RADIUS,
+                    heap.z(capsule, partial), CapsulePhysics.RADIUS, colour | 0xff000000, 0, heap.spin(capsule, partial), light);
         }
         globe(pose, buffers, light);
         crank(pose, buffers, turns);
@@ -606,11 +614,29 @@ final class MachineCabinet {
     private static void terminal(PoseStack pose, WorldCanvas buffers, Font font, GameStationEntity station, int[][] table,
                                  int[] outcome, boolean shown, double progress, boolean rolling, boolean won, double now,
                                  String name, String rollingKey) {
-        quad(pose, buffers, -53.6f, -197.6f, 53.6f, -50.4f, 0xff070a10, 0);
-        quad(pose, buffers, -53.6f, -197.6f, 53.6f, -184, 0xff151a24, 0.05f);
+        // A deep red-black glass, a gold title bar, and a thin red glow running round the edge.
+        for (int band = 0; band < 6; band++) {
+            float y1 = -197.6f + band * 24.6f;
+            quad(pose, buffers, -53.6f, y1, 53.6f, Math.min(-50.4f, y1 + 24.6f), shade(0xff1a0a10, 1 - band * 0.12f), 0);
+        }
+        quad(pose, buffers, -53.6f, -197.6f, 53.6f, -184, 0xff2a1018, 0.05f);
+        quad(pose, buffers, -53.6f, -184.6f, 53.6f, -184, GOLD, 0.06f);
+        int glow = jackpotColour(now, rolling, won);
+        quad(pose, buffers, -53.6f, -52, 53.6f, -50.4f, glow, 0.06f);
+        quad(pose, buffers, -53.6f, -184, -52, -52, glow, 0.06f);
+        quad(pose, buffers, 52, -184, 53.6f, -52, glow, 0.06f);
         label(pose, buffers, font, name, 0, -190.8f, GOLD, 0.8f, 100, 0.1f);
         int[] targets = table[0];
         int index = Math.max(0, Math.min(targets.length - 1, shown ? outcome[0] : outcome[2]));
+        // Every target along the top of the screen, the chosen one lit: red key steps through them.
+        int shownTargets = Math.min(8, targets.length);
+        for (int chip = 0; chip < shownTargets; chip++) {
+            float x = -48 + chip * (96f / shownTargets);
+            boolean chosen = chip == index;
+            quad(pose, buffers, x + 0.6f, -180, x + 96f / shownTargets - 0.6f, -170, chosen ? GOLD : 0xff2a1a22, 0.1f);
+            label(pose, buffers, font, GameScreens.multiplier(Math.max(101, targets[chip])), x + 48f / shownTargets, -175,
+                    chosen ? DARK : SILVER, 0.42f, 96f / shownTargets - 2, 0.15f);
+        }
         int target = Math.max(101, targets[index]);
         float cx = -22, cy = -132, radius = 30;
         double win = 100.0 / target;
@@ -631,6 +657,13 @@ final class MachineCabinet {
             quad(pose, buffers, x, -104 - height, x + 3.5f, -104, rolling ? 0xff4cc3d9 : won ? GREEN : 0xff2a313d, 0.1f);
         }
         status(pose, buffers, font, station, rolling, rollingKey, -50, -92, 50, -62);
+    }
+
+    /** The glow round the high stakes screen: a slow red breath at rest, racing while it plays, green on a win. */
+    private static int jackpotColour(double now, boolean rolling, boolean won) {
+        if (won) return (long) (now / 4) % 2 == 0 ? GREEN : 0xff2f8a6c;
+        float pulse = (float) (0.55 + 0.45 * Math.sin(now * (rolling ? 0.9 : 0.12)));
+        return shade(0xffd2434f, pulse) | 0xff000000;
     }
 
     /** A slice of a ring, drawn as a strip of quads; a disc is a slice from the centre round. */

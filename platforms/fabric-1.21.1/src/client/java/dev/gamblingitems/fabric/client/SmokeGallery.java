@@ -29,6 +29,13 @@ final class SmokeGallery {
             ModContent.CASE_STATION, ModContent.CRASH_STATION, ModContent.ROULETTE_STATION,
             ModContent.BLACKJACK_STATION, ModContent.BATTLE_STATION, ModContent.BINGO_STATION};
     private static final Block[] TABLES = {ModContent.BLACKJACK_TABLE, ModContent.ROULETTE_TABLE, ModContent.BINGO_TABLE};
+    /** The arcade row along the back wall, two blocks wide each, played for real through their controls. */
+    private static final Block[] ARCADE = {ModContent.PLINKO, ModContent.BIG_SIX, ModContent.VIDEO_POKER, ModContent.HORSE_RACE};
+    private static final dev.gamblingitems.core.machines.CabinetControls.Control[] ARCADE_CONTROLS = {
+            dev.gamblingitems.core.machines.CabinetControls.Control.PLAY, dev.gamblingitems.core.machines.CabinetControls.Control.PICK_1,
+            dev.gamblingitems.core.machines.CabinetControls.Control.PLAY, dev.gamblingitems.core.machines.CabinetControls.Control.PICK_1};
+    /** Arcade shots carry their cabinet as ARCADE_SHOT + index. */
+    private static final int ARCADE_SHOT = 100;
     private static final List<Shot> SHOTS = new ArrayList<>();
     private static BlockPos origin;
 
@@ -69,7 +76,8 @@ final class SmokeGallery {
             ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player == null) return;
             player.connection.teleport(shot.x(), shot.y(), shot.z(), shot.yaw(), shot.pitch());
-            if (shot.cabinet() >= 0) play(player.serverLevel(), shot.cabinet(), shot.ahead());
+            if (shot.cabinet() >= ARCADE_SHOT) playArcade(player, shot.cabinet() - ARCADE_SHOT, shot.ahead());
+            else if (shot.cabinet() >= 0) play(player.serverLevel(), shot.cabinet(), shot.ahead());
         });
         if (phase == SETTLE) ClientSmoke.shot(minecraft, "gamblingitems-gallery-" + shot.name() + ".png");
     }
@@ -91,6 +99,33 @@ final class SmokeGallery {
         }
         for (int i = 0; i < STATIONS.length; i++) place(level, o.offset(-14 + 4 * i, 0, 10), STATIONS[i], Direction.NORTH, player);
         for (int i = 0; i < TABLES.length; i++) place(level, o.offset(16, 0, -6 + 5 * i), TABLES[i], Direction.WEST, player);
+        // The arcade: a back wall with its neon, carpet in front, the wide cabinets, the cashier, the board and the croupier.
+        for (int x = -14; x <= 18; x++) {
+            for (int y = 0; y <= 4; y++) level.setBlock(o.offset(x, y, -12), Blocks.DARK_PRISMARINE.defaultBlockState(), 2);
+            level.setBlock(o.offset(x, 4, -11), ModContent.NEON_TUBE.defaultBlockState()
+                    .setValue(dev.gamblingitems.fabric.arcade.NeonBlock.COLOR, net.minecraft.world.item.DyeColor.values()[(x + 14) % 16]), 2);
+            for (int z = -10; z <= -8; z++) {
+                level.setBlock(o.offset(x, 0, z), ((x + z) & 1) == 0 ? ModContent.CASINO_CARPET.defaultBlockState()
+                        : ModContent.CASINO_CARPET_BLUE.defaultBlockState(), 2);
+            }
+        }
+        for (int i = 0; i < ARCADE.length; i++) place(level, o.offset(-12 + 4 * i, 0, -11), ARCADE[i], Direction.SOUTH, player);
+        place(level, o.offset(5, 0, -11), ModContent.CASHIER, Direction.SOUTH, player);
+        place(level, o.offset(8, 1, -11), ModContent.LEADERBOARD, Direction.SOUTH, player);
+        place(level, o.offset(12, 0, -11), ModContent.CROUPIER, Direction.SOUTH, player);
+        place(level, o.offset(12, 0, -9), ModContent.BLACKJACK_TABLE, Direction.NORTH, player);
+    }
+
+    /** Plays an arcade cabinet for real, a diamond in hand, as a player touching its control would. */
+    private static void playArcade(ServerPlayer player, int index, int ahead) {
+        BlockPos pos = origin.offset(-12 + 4 * index, 0, -11);
+        player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(net.minecraft.world.item.Items.DIAMOND, 4));
+        var mode = ((dev.gamblingitems.fabric.block.SlotMachineBlock) ARCADE[index]).mode();
+        dev.gamblingitems.fabric.block.CabinetPlay.use(player, mode, pos, ARCADE_CONTROLS[index]);
+        if (player.serverLevel().getBlockEntity(pos) instanceof dev.gamblingitems.fabric.block.GameStationEntity station) {
+            station.startedAt -= ahead;
+            player.serverLevel().sendBlockUpdated(pos, station.getBlockState(), station.getBlockState(), 3);
+        }
     }
 
     /** Starts a play on a cabinet as the server would show it, long enough to be caught midway. */
@@ -114,7 +149,8 @@ final class SmokeGallery {
     }
 
     private static void place(ServerLevel level, BlockPos pos, Block block, Direction facing, ServerPlayer player) {
-        BlockState state = block.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, facing);
+        BlockState state = block.defaultBlockState();
+        if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) state = state.setValue(BlockStateProperties.HORIZONTAL_FACING, facing);
         level.setBlock(pos, state, 3);
         block.setPlacedBy(level, pos, state, player, ItemStack.EMPTY);
     }
@@ -142,5 +178,13 @@ final class SmokeGallery {
         for (int i = 0; i < tables.length; i++) {
             SHOTS.add(new Shot("table_" + tables[i], x + 13, y + .5, z - 6 + 5 * i, -90, 35));
         }
+        SHOTS.add(new Shot("arcade", x + 2, y + 2.5, z - 2, 180, 14));
+        String[] arcade = {"plinko", "big_six", "video_poker", "horse_race"};
+        for (int i = 0; i < arcade.length; i++) {
+            double centre = x - 12 + 4 * i + .5;
+            SHOTS.add(new Shot("arcade_" + arcade[i], centre, y, z - 11 + 4, 180, 2, ARCADE_SHOT + i, 0));
+            SHOTS.add(new Shot("arcade_" + arcade[i] + "_later", centre, y, z - 11 + 4, 180, 2, ARCADE_SHOT + i, 90));
+        }
+        SHOTS.add(new Shot("arcade_decor", x + 8.5, y + .8, z - 6, 180, 6));
     }
 }

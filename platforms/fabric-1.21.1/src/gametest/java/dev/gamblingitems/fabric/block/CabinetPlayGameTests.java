@@ -65,7 +65,7 @@ public class CabinetPlayGameTests implements FabricGameTest {
             helper.assertTrue(CabinetPlay.control(GameMode.SLOT_MACHINE, state, root, world(root, facing, 16, 22, 6)) == Control.PLAY,
                     "The lever on the right flank plays, facing " + facing);
             helper.assertTrue(CabinetPlay.control(GameMode.SLOT_MACHINE, state, root, world(root, facing, 8, 24, 0)) == Control.NONE,
-                    "The reels open the window, facing " + facing);
+                    "The reels are not a control, facing " + facing);
         }
         helper.succeed();
     }
@@ -75,7 +75,7 @@ public class CabinetPlayGameTests implements FabricGameTest {
         BlockPos root = place(helper, ModContent.SLOT_MACHINE, Direction.NORTH);
         ServerPlayer player = player(helper, root, ItemStack.EMPTY);
         helper.assertFalse(CabinetPlay.use(player, GameMode.SLOT_MACHINE, root, Control.PLAY),
-                "An empty hand with nothing waiting opens the window");
+                "An empty hand with nothing waiting plays nothing");
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND, 64));
         helper.assertTrue(CabinetPlay.use(player, GameMode.SLOT_MACHINE, root, Control.PLAY), "The lever is pulled");
         helper.assertTrue(player.getMainHandItem().getCount() < 64, "The stake is taken from the hand");

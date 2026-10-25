@@ -54,12 +54,15 @@ public final class MachineMotion {
      * The ball of a pachinko board: its column, counted in half pin spacings from the middle, and its
      * row, from 0 at the top to {@link MachineTable#PACHINKO_ROWS} in the pockets, with a hop between rows.
      */
-    public static double[] ball(int path, double progress) {
-        double row = progress * MachineTable.PACHINKO_ROWS;
-        int passed = (int) Math.min(MachineTable.PACHINKO_ROWS, Math.floor(row));
+    public static double[] ball(int path, double progress) { return ball(path, progress, MachineTable.PACHINKO_ROWS); }
+
+    /** The same ball on a board of any number of rows: Plinko's has twelve. */
+    public static double[] ball(int path, double progress, int rows) {
+        double row = progress * rows;
+        int passed = (int) Math.min(rows, Math.floor(row));
         double column = 0;
         for (int index = 0; index < passed; index++) column += (path >> index & 1) == 1 ? 1 : -1;
-        if (passed < MachineTable.PACHINKO_ROWS) {
+        if (passed < rows) {
             double within = row - passed;
             column += ((path >> passed & 1) == 1 ? 1 : -1) * within;
             // A ball bounces off each pin before it falls on.

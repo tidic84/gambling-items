@@ -91,32 +91,36 @@ public final class CashierMenu extends AbstractContainerMenu {
         return handled;
     }
 
-    /** Every item of value in the tray becomes chips, dearest first; what is below one chip comes back in change. */
+    /**
+     * Every item of value in the tray becomes chips, dearest first, and the rest comes back in change.
+     * Change must be exact: when the rest cannot be paid in items, a few chips fewer are tried, then nothing is done.
+     */
     private boolean toChips() {
         long value = itemValue();
         long chipValue = arcade().chipValue();
-        long units = value / chipValue;
-        if (units == 0) return false;
         ItemStack[] before = snapshot();
+        for (long units = value / chipValue, least = Math.max(1, units - 25); units >= least; units--) {
+            if (change(value, units, chipValue)) {
+                tray.setChanged();
+                return true;
+            }
+            restore(before);
+        }
+        return false;
+    }
+
+    private boolean change(long value, long units, long chipValue) {
         for (int slot = 0; slot < TRAY_SLOTS; slot++) {
             if (!tray.getItem(slot).isEmpty() && !isChip(tray.getItem(slot))) tray.setItem(slot, ItemStack.EMPTY);
         }
         long rest = value - units * chipValue;
-        boolean fits = true;
-        for (int index = ArcadeSettings.CHIPS.length - 1; index >= 0 && fits; index--) {
+        for (int index = ArcadeSettings.CHIPS.length - 1; index >= 0; index--) {
             int chip = ArcadeSettings.CHIPS[index];
-            long count = units / chip;
+            if (!place(new ItemStack(ModContent.chip(chip)), units / chip)) return false;
             units %= chip;
-            fits = place(new ItemStack(ModContent.chip(chip)), count);
         }
-        fits = fits && (rest == 0 || ItemBank.canStore(setup.catalog(), tray, 0, TRAY_SLOTS, rest));
-        if (!fits) {
-            restore(before);
-            return false;
-        }
-        if (rest > 0) ItemBank.store(setup.catalog(), tray, 0, TRAY_SLOTS, rest);
-        tray.setChanged();
-        return true;
+        return rest == 0 || ItemBank.canStore(setup.catalog(), tray, 0, TRAY_SLOTS, rest)
+                && ItemBank.store(setup.catalog(), tray, 0, TRAY_SLOTS, rest) == 0;
     }
 
     /** Every chip in the tray is changed back into items of the catalogue, dearest first. */
@@ -127,11 +131,11 @@ public final class CashierMenu extends AbstractContainerMenu {
         for (int slot = 0; slot < TRAY_SLOTS; slot++) {
             if (isChip(tray.getItem(slot))) tray.setItem(slot, ItemStack.EMPTY);
         }
-        if (!ItemBank.canStore(setup.catalog(), tray, 0, TRAY_SLOTS, value)) {
+        if (!ItemBank.canStore(setup.catalog(), tray, 0, TRAY_SLOTS, value)
+                || ItemBank.store(setup.catalog(), tray, 0, TRAY_SLOTS, value) != 0) {
             restore(before);
             return false;
         }
-        ItemBank.store(setup.catalog(), tray, 0, TRAY_SLOTS, value);
         tray.setChanged();
         return true;
     }

@@ -50,8 +50,8 @@ public final class DecorBlock extends BaseEntityBlock {
             propertiesCodec()).apply(instance, (kind, properties) -> new DecorBlock(Kind.valueOf(kind), properties)));
     //#endif
     /** The leaderboard hangs flat against the wall behind it; the croupier stands a little narrower than a block. */
-    private static final VoxelShape[] BOARD = {Block.box(0, 0, 14, 16, 16, 16), Block.box(0, 0, 0, 2, 16, 16),
-            Block.box(0, 0, 0, 16, 16, 2), Block.box(14, 0, 0, 16, 16, 16)};
+    private static final VoxelShape[] BOARD = {Block.box(0, 0, 0, 16, 16, 2), Block.box(14, 0, 0, 16, 16, 16),
+            Block.box(0, 0, 14, 16, 16, 16), Block.box(0, 0, 0, 2, 16, 16)};
     private static final VoxelShape CROUPIER = Block.box(3, 0, 3, 13, 16, 13);
     private static final VoxelShape CROUPIER_COLLISION = Block.box(3, 0, 3, 13, 24, 13);
     /** How often a leaderboard reads the week's wins again, in ticks. */
@@ -78,7 +78,7 @@ public final class DecorBlock extends BaseEntityBlock {
     }
 
     @Override protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        // Facing north, the board's back is to the south: get2DDataValue is 2 for north, 0 for south.
+        // The plate is against the wall behind the board: facing north (2), the wall is to the south.
         return kind == Kind.LEADERBOARD ? BOARD[state.getValue(FACING).get2DDataValue()] : CROUPIER;
     }
 

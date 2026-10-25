@@ -26,7 +26,11 @@ public final class CabinetCommands {
     private CabinetCommands() {}
 
     public static LiteralArgumentBuilder<CommandSourceStack> cabinet() {
+        //#if MC >= 1.21.11
+        //$ return Commands.literal("cabinet").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+        //#else
         return Commands.literal("cabinet").requires(source -> source.hasPermission(2))
+        //#endif
                 .then(Commands.argument("pos", BlockPosArgument.blockPos())
                         .then(Commands.literal("info").executes(context -> info(context)))
                         .then(Commands.literal("open").executes(context -> change(context, cabinet -> cabinet.closed = false)))

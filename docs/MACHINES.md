@@ -71,6 +71,24 @@ Chaque joueur peut régler `config/gamblingitems/client.json` sur son propre cli
 
 Les clés manquantes sont ajoutées au fichier, les valeurs déjà présentes sont conservées.
 
+## Modèles et textures
+
+Les modèles des bornes, des écrans et des tables sont générés, pas écrits à la main. Après une modification, relancer depuis la racine du dépôt :
+
+```
+python tools/generate_cabinet_models.py   # les 7 bornes (3 blocs de haut) et leurs textures cab_*
+python tools/generate_station_models.py   # le moniteur 3×2 des 8 écrans et leurs icônes d'inventaire
+python tools/generate_table_models.py     # les tables de blackjack, roulette et bingo
+```
+
+Seul le décor fixe est dans les modèles. Ce qui bouge (rouleaux, roue, pièces, pince, bille, capsules, cadran, levier) est dessiné par `SlotCabinet` et `MachineCabinet`. Pour photographier toutes les bornes, tous les écrans et toutes les tables en jeu :
+
+```
+JAVA_TOOL_OPTIONS="-Dgamblingitems.clientsmoke=true -Dgamblingitems.clientsmoke.gallery=true" ./gradlew -p platforms/fabric-1.21.1 runClient --args="--quickPlaySingleplayer smoke"
+```
+
+Les captures arrivent dans `run/screenshots/gamblingitems-gallery-*.png`.
+
 ## Limites connues
 
 - Les sons propres au mod (`ui.tick`, `ui.start`, `ui.win`, `ui.lose`) réutilisent des sons vanilla : un pack de ressources peut les remplacer.

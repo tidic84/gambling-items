@@ -101,8 +101,9 @@ public final class MachineScreen extends CasinoScreen<MachineMenu> {
 
     @Override protected void renderGame(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
         int x = leftPos, y = topPos;
-        GameScreens.rounded(g, x + SHOW_X, y + SHOW_Y, SHOW_WIDTH, SHOW_HEIGHT, GameScreens.HOLE);
+        GameScreens.cabinet(g, x + SHOW_X, y + SHOW_Y, SHOW_WIDTH, SHOW_HEIGHT, lacquer());
         GameScreens.card(g, x + ODDS_X, y + SHOW_Y, ODDS_WIDTH, 116);
+        GameScreens.cardHeader(g, x + ODDS_X, y + SHOW_Y, ODDS_WIDTH);
         double progress = progress(partialTick);
         double now = (minecraft.level == null ? 0 : minecraft.level.getGameTime()) + partialTick;
         boolean shown = menu.shown() >= 0;
@@ -129,6 +130,18 @@ public final class MachineScreen extends CasinoScreen<MachineMenu> {
         }
         GameScreens.slots(g, menu, x, y);
         GameScreens.fitted(g, font, tr("inventory"), x + 12, y + 203, 62, GameScreens.MUTED);
+    }
+
+    /** The lacquer of the cabinet in the world, so the window looks like the machine it was opened from. */
+    private int lacquer() {
+        return switch (mode()) {
+            case LUCKY_WHEEL -> 0xff1f3566;
+            case COIN_PUSHER -> 0xff17603e;
+            case PRIZE_CLAW -> 0xffb8407a;
+            case PACHINKO -> 0xff8f8a80;
+            case CAPSULE_GACHA -> 0xffc06a3a;
+            default -> 0xff2a2a33;
+        };
     }
 
     /** What the machine is doing, then what it paid, written out rather than told by a colour. */
@@ -166,7 +179,7 @@ public final class MachineScreen extends CasinoScreen<MachineMenu> {
     /** The odds of the machine, every line read off the same table the server draws from. */
     private void odds(GuiGraphics g, int x, int y, int mouseX, int mouseY) {
         int left = x + ODDS_X;
-        GameScreens.fitted(g, font, tr("machine_odds"), left + 8, y + SHOW_Y + 6, ODDS_WIDTH - 16, GameScreens.TEXT);
+        GameScreens.fitted(g, font, tr("machine_odds"), left + 8, y + SHOW_Y + 4, ODDS_WIDTH - 16, GameScreens.GOLD);
         BigDecimal back = menu.table().returnToPlayer(menu.choice()).multiply(menu.settings().returnRate());
         GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.machine_return", percent(back)),
                 left + 8, y + SHOW_Y + 18, ODDS_WIDTH - 16, GameScreens.DIM);

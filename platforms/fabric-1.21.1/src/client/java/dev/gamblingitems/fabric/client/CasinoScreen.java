@@ -175,7 +175,7 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
         GameScreens.window(g, x, y, imageWidth, imageHeight);
         if (!portable()) {
             GameScreens.item(g, icon(mode()), x + 9, y + 6, 1);
-            GameScreens.heading(g, font, tr("mode." + mode().id()), x + 30, y + 10, 1);
+            GameScreens.heading(g, font, tr("mode." + mode().id()), x + 30, y + 10, 1, GameScreens.GOLD);
             int after = x + 38 + font.width(tr("mode." + mode().id()));
             GameScreens.fitted(g, font, subtitle(), after, y + 10, x + imageWidth - 56 - after, GameScreens.DIM);
         }
@@ -276,7 +276,7 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
             GameScreens.item(g, icon(target), getX() + (compact ? 6 : 5), getY() + 3.5f, .75f);
             if (!compact) g.drawString(font, getMessage(), getX() + 22, getY() + 5,
                     current() || hot ? GameScreens.TEXT : GameScreens.MUTED, false);
-            if (current()) ArenaShapes.rounded(g, getX() + 6, getY() + height + 2, width - 12, 2, 1, GameScreens.GREEN);
+            if (current()) ArenaShapes.rounded(g, getX() + 6, getY() + height + 2, width - 12, 2, 1, GameScreens.GOLD);
         }
     }
 }

@@ -79,14 +79,21 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
         pose.mulPose(Axis.YP.rotationDegrees(-station.getBlockState().getValue(GameStationBlock.FACING).toYRot()));
         pose.translate(0, 0, 0.515);
         pose.scale(1f / 128, -1f / 128, 1f / 128);
-        rectangle(pose, buffers, -188, -188, 188, 60, 0xff304358, 0);
-        rectangle(pose, buffers, -186, -186, 186, 58, 0xff0d131c, 1);
-        rectangle(pose, buffers, -186, -186, 186, -183, GOLD, 2);
-        rectangle(pose, buffers, -180, -146, 180, -49, 0xff172231, 2);
-        line(pose, buffers, Component.translatable("gui.gamblingitems.station." + station.mode().id()).getString(), -177, GOLD);
+        int accent = accent(station.mode());
+        // The glass: night blue, darker towards the foot, under a header in the colour of the game.
+        for (int band = 0; band < 8; band++) {
+            int top = -190 + band * 31;
+            rectangle(pose, buffers, -190, top, 190, Math.min(62, top + 31), shade(0xff111b2a, 1 - band * 0.06f), 0);
+        }
+        rectangle(pose, buffers, -190, -190, 190, -160, shade(accent, 0.45f), 1);
+        rectangle(pose, buffers, -190, -190, 190, -186, accent, 1.5f);
+        rectangle(pose, buffers, -190, -161, 190, -160, GOLD, 1.5f);
+        line(pose, buffers, Component.translatable("gui.gamblingitems.station." + station.mode().id()).getString(), -181, GOLD, 1.7f);
+        rectangle(pose, buffers, -182, -148, 182, -50, 0xff22344a, 1.6f);
+        rectangle(pose, buffers, -181, -147, 181, -51, 0xff0c141f, 1.8f);
         boolean rolling = station.animating();
         String owner = station.idle() ? station.previewPlayer : station.playerName;
-        line(pose, buffers, owner.isEmpty() ? Component.translatable("gui.gamblingitems.station_ready").getString() : owner, -162, TEXT);
+        line(pose, buffers, owner.isEmpty() ? Component.translatable("gui.gamblingitems.station_ready").getString() : owner, -157, TEXT, 0.9f);
         String status = station.idle() ? station.previewText : rolling ? station.rollingText : result(station);
         marquee(pose, buffers, status, -43, station.highlight && !rolling ? GREEN : GOLD, station.getLevel().getGameTime());
         String detail = station.publicBets.isEmpty() ? station.previewPlayer + " : " + station.previewText : station.publicBets;
@@ -120,9 +127,12 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
             if (locked) color = 0xff1c2631;
             if (hovered == button && !locked) {
                 rectangle(pose, buffers, x - 1, y - 1, x + control.width() + 1, y + control.height() + 1, GOLD);
-                color = 0xff41607a;
+                color = shade(color, 1.35f);
             }
+            // A raised key: lighter along the top, a shadow along the bottom.
             rectangle(pose, buffers, x, y, x + control.width(), y + control.height(), color, 4);
+            rectangle(pose, buffers, x, y, x + control.width(), y + 3, shade(color, 1.4f), 4.2f);
+            rectangle(pose, buffers, x, y + control.height() - 3, x + control.width(), y + control.height(), shade(color, 0.6f), 4.2f);
             String text = Component.translatable("gui.gamblingitems.panel." + key).getString();
             pose.pushPose();
             pose.translate(x + control.width() / 2f, y + (control.height() - 8) / 2f, 0.02);
@@ -291,5 +301,34 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
         pose.translate(0, 0, 8);
         buffers.text(pose, font, text, -font.width(text) / 2f, y, color, 0xF000F0);
         pose.popPose();
+    }
+
+    /** A centred line at a size, shrunk to fit the width of the screen. */
+    private void line(PoseStack pose, WorldCanvas buffers, String text, int y, int color, float scale) {
+        float fitted = Math.min(scale, 348f / Math.max(1, font.width(text)));
+        pose.pushPose();
+        pose.translate(0, y, 8);
+        pose.scale(fitted, fitted, fitted);
+        buffers.text(pose, font, text, -font.width(text) / 2f, -4, color, 0xF000F0);
+        pose.popPose();
+    }
+
+    /** The colour a station wears in its header, one per game. */
+    private static int accent(dev.gamblingitems.core.GameMode mode) {
+        return switch (mode) {
+            case UPGRADER -> 0xff2fbf7a;
+            case TRADE_UP -> 0xff4cc3d9;
+            case CASE_OPENING -> 0xffd9b25a;
+            case CRASH -> 0xffd2434f;
+            case ROULETTE -> 0xffb8323f;
+            case BLACKJACK -> 0xff17784a;
+            case CASE_BATTLE -> 0xff8a5cd0;
+            case BINGO -> 0xff3a72d8;
+            default -> GOLD;
+        };
+    }
+
+    private static int shade(int colour, float factor) {
+        return SlotCabinet.shade(colour, factor);
     }
 }

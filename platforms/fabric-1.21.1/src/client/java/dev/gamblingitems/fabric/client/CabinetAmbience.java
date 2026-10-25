@@ -23,6 +23,9 @@ import static dev.gamblingitems.fabric.client.SlotCabinet.*;
 final class CabinetAmbience {
     private static final int[] CONFETTI = {0xffe8463c, 0xfff6c33a, 0xff3cb4e6, 0xff5ad25a, 0xffd25ac8, 0xfff0ecdc};
     private static final int CONFETTI_COUNT = 48, NEON_RADIUS = 8, NEON_RESCAN = 40;
+    /** The tubes already haloed in the frame being drawn. */
+    private static final it.unimi.dsi.fastutil.longs.LongOpenHashSet HALOED = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+    private static long haloedIn = -1;
 
     private CabinetAmbience() {}
 
@@ -102,7 +105,7 @@ final class CabinetAmbience {
         cube(pose, buffers, centre - 4.6f, y, 7, centre + 4.6f, y + 3.8f, 7.8f, GOLD, 1);
         cube(pose, buffers, centre - 4.1f, y + .5f, 6.95f, centre + 4.1f, y + 3.3f, 7, 0xff141418, 1);
         surface(pose, 6.9f);
-        label(pose, buffers, font, Component.translatable("gui.gamblingitems.vip").getString(), (centre - 8) * 8,
+        label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.vip"), (centre - 8) * 8,
                 (8 - (y + 1.9f)) * 8, GOLD, 2, 60, 0.3f);
         pose.popPose();
     }
@@ -166,23 +169,29 @@ final class CabinetAmbience {
             }
             station.neons = found;
         }
+        if (haloedIn != WorldCanvas.frameNumber()) {
+            haloedIn = WorldCanvas.frameNumber();
+            HALOED.clear();
+        }
         BlockPos origin = station.getBlockPos();
+        float grow = 1.2f + 1.3f * beat, low = 6.75f - grow, high = 9.25f + grow;
+        pose.pushPose();
+        pose.scale(1f / 16, 1f / 16, 1f / 16);
         for (BlockPos pos : station.neons) {
+            // Several cabinets reach the same tube: its halo is drawn once a frame, or they would add up.
+            if (!HALOED.add(pos.asLong())) continue;
             var state = station.getLevel().getBlockState(pos);
             if (!(state.getBlock() instanceof NeonBlock)) continue;
             int colour = CabinetTheme.colour(1 + state.getValue(NeonBlock.COLOR).getId());
             int halo = (int) (0x70 * beat) << 24 | (colour & 0xffffff);
-            float grow = 1.2f + 1.3f * beat;
-            pose.pushPose();
-            pose.translate(pos.getX() - origin.getX(), pos.getY() - origin.getY(), pos.getZ() - origin.getZ());
-            pose.scale(1f / 16, 1f / 16, 1f / 16);
-            float low = 6.75f - grow, high = 9.25f + grow;
+            // In sixteenths of a block from the cabinet; cube() takes u, the mirror of x.
+            float x = 16 * (pos.getX() - origin.getX()), y = 16 * (pos.getY() - origin.getY()), z = 16 * (pos.getZ() - origin.getZ());
             switch (state.getValue(NeonBlock.FACING).getAxis()) {
-                case Y -> cube(pose, buffers, low, 1.5f, low, high, 14.5f, high, halo, 1);
-                case Z -> cube(pose, buffers, low, low, 1.5f, high, high, 14.5f, halo, 1);
-                case X -> cube(pose, buffers, 1.5f, low, low, 14.5f, high, high, halo, 1);
+                case Y -> cube(pose, buffers, low - x, y + 1.5f, z + low, high - x, y + 14.5f, z + high, halo, 1);
+                case Z -> cube(pose, buffers, low - x, y + low, z + 1.5f, high - x, y + high, z + 14.5f, halo, 1);
+                case X -> cube(pose, buffers, 1.5f - x, y + low, z + low, 14.5f - x, y + high, z + high, halo, 1);
             }
-            pose.popPose();
         }
+        pose.popPose();
     }
 }

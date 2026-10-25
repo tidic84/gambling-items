@@ -163,6 +163,20 @@ JAVA_TOOL_OPTIONS="-Dgamblingitems.clientsmoke=true -Dgamblingitems.clientsmoke.
 
 Les captures arrivent dans `run/screenshots/gamblingitems-gallery-*.png`. `-Dgamblingitems.clientsmoke.gallery.only=floor` ne garde que les vues dont le nom commence ainsi (ici : jeux de table, tabourets, thèmes, VIP, gros gain).
 
+### Mesure des FPS
+
+```
+JAVA_TOOL_OPTIONS="-Dgamblingitems.clientsmoke=true -Dgamblingitems.clientsmoke.bench=true" ./gradlew -p platforms/fabric-1.21.1 runClient --args="--quickPlaySingleplayer smoke"
+```
+
+Construit la salle de la galerie, fait jouer toutes les bornes en continu, puis mesure 20 s depuis trois places : la salle vue d'en haut (`floor`), de près (`close`) et dos aux meubles (`away`). Le résultat (FPS moyens, 1 % bas, temps passé à dessiner les meubles) est écrit dans `run/gamblingitems-bench.txt`. Les chiffres dépendent du PC : ne comparer que deux mesures faites sur la même machine.
+
+Ce qui garde le rendu rapide, à respecter dans le nouveau code de rendu :
+- les quads ont leur propre tampon (`WorldCanvas`), vidé une fois par meuble : ne pas dessiner dans le tampon partagé, où chaque passage quad ↔ texte coûte un appel de dessin ;
+- un meuble entièrement derrière la vue n'est pas dessiné, le texte de moins de 2 pixels non plus, et les formes rondes ont moins de segments de loin (`WorldCanvas.segments`) ;
+- rien n'est alloué à chaque image si on peut l'éviter : `WorldCanvas.translate` et `WorldCanvas.width` gardent les traductions et les largeurs de texte, `WorldCanvas.text` écrit sans empiler de pose ;
+- un cube opaque n'a que ses faces extérieures ; un cube translucide garde les deux sens.
+
 `generate_sounds.py` réécrit aussi les anciens sons : l'encodeur OGG n'est pas reproductible octet pour octet, donc ne garder que les fichiers des bornes ajoutées (`git checkout` des autres).
 
 ## Limites connues

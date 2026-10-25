@@ -92,9 +92,9 @@ public final class StationTables {
             float y = (float) (-30 - Math.sin(angle) * 48);
             quad(pose, buffers, x - 2, y - 2, x + 2, y + 2, LINE, 3);
         }
-        label(pose, buffers, font, Component.translatable("gui.gamblingitems.blackjack_pays").getString(),
+        label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.blackjack_pays"),
                 0, -26, GOLD, 0.6f, 3);
-        label(pose, buffers, font, Component.translatable("gui.gamblingitems.blackjack_stands").getString(),
+        label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.blackjack_stands"),
                 0, -14, SILVER, 0.5f, 3);
         shoe(pose, buffers);
         discardTray(pose, buffers);
@@ -116,15 +116,15 @@ public final class StationTables {
         String hand = sides.length > 0 ? sides[0] : "";
         String dealer = sides.length > 1 ? sides[1] : "";
         // Both hands are counted on the felt, so nobody has to add up the cards themselves.
-        String dealerLine = Component.translatable("gui.gamblingitems.dealer").getString()
+        String dealerLine = WorldCanvas.translate("gui.gamblingitems.dealer")
                 + score(dealer, dealer.contains("?"));
         label(pose, buffers, font, dealerLine, 0, -118, GOLD, 0.7f, 3);
         cards(pose, buffers, font, dealer, -104, landing);
         cards(pose, buffers, font, hand, 8, landing);
         String name = station.previewPlayer.isEmpty() ? station.playerName : station.previewPlayer;
         String seat = hand.isEmpty() && name.isEmpty()
-                ? Component.translatable("gui.gamblingitems.blackjack_ready").getString()
-                : (name.isEmpty() ? Component.translatable("gui.gamblingitems.your_hand").getString() : name)
+                ? WorldCanvas.translate("gui.gamblingitems.blackjack_ready")
+                : (name.isEmpty() ? WorldCanvas.translate("gui.gamblingitems.your_hand") : name)
                         + score(hand, false);
         label(pose, buffers, font, seat, 0, 50, TEXT, 0.8f, 3);
     }
@@ -326,10 +326,10 @@ public final class StationTables {
     /** The even money bets read in the language of the player, not in the code. */
     private static String outsideLabel(String area) {
         return switch (area) {
-            case "RED" -> Component.translatable("gui.gamblingitems.colour.red").getString();
-            case "BLACK" -> Component.translatable("gui.gamblingitems.colour.black").getString();
-            case "EVEN" -> Component.translatable("gui.gamblingitems.bet.even").getString();
-            case "ODD" -> Component.translatable("gui.gamblingitems.bet.odd").getString();
+            case "RED" -> WorldCanvas.translate("gui.gamblingitems.colour.red");
+            case "BLACK" -> WorldCanvas.translate("gui.gamblingitems.colour.black");
+            case "EVEN" -> WorldCanvas.translate("gui.gamblingitems.bet.even");
+            case "ODD" -> WorldCanvas.translate("gui.gamblingitems.bet.odd");
             default -> area;
         };
     }
@@ -391,11 +391,11 @@ public final class StationTables {
         circle(pose, buffers, cupX, cupY, 24, 0xff16202c, 4);
         circle(pose, buffers, cupX, cupY, 20, last > 0 ? GREEN : 0xff1d2a3c, 5);
         label(pose, buffers, font, last > 0 ? String.valueOf(last) : "-", cupX, cupY, TEXT, 0.9f, 6);
-        label(pose, buffers, font, Component.translatable("gui.gamblingitems.bingo_drum").getString(),
+        label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.bingo_drum"),
                 cupX, cupY + 34, SILVER, 0.5f, 3);
         // One line per card, in front of the board rather than across it.
         String[] lines = station.publicBets.isEmpty()
-                ? new String[] {Component.translatable("gui.gamblingitems.bingo_waiting").getString()}
+                ? new String[] {WorldCanvas.translate("gui.gamblingitems.bingo_waiting")}
                 : station.publicBets.split("\n");
         for (int index = 0; index < lines.length && index < 3; index++) {
             label(pose, buffers, font, lines[index], 96, 18 + index * 18, TEXT, 0.55f, 3);
@@ -427,7 +427,7 @@ public final class StationTables {
             quad(pose, buffers, control.x(), control.y(), control.x() + control.width(),
                     control.y() + control.height(), colour, 6);
             String text = Component.translatable("gui.gamblingitems.panel." + control.label()).getString();
-            float scale = Math.min(0.55f, (control.width() - 6f) / Math.max(1, font.width(text)));
+            float scale = Math.min(0.55f, (control.width() - 6f) / Math.max(1, WorldCanvas.width(font, text)));
             label(pose, buffers, font, text, control.x() + control.width() / 2f,
                     control.y() + control.height() / 2f, TEXT, scale, 7);
         }
@@ -520,7 +520,7 @@ public final class StationTables {
     /** A coplanar triangle fan, with no overlapping blades or depth drift. */
     private static void circle(PoseStack pose, WorldCanvas buffers, float centreX, float centreY,
                                float radius, int colour, float lift) {
-        int steps = 40;
+        int steps = WorldCanvas.segments(pose, radius, 40);
         buffers.quads(pose, (matrix, vertices) -> {
         for (int step = 0; step < steps; step++) {
             double a = step * 2 * Math.PI / steps, b = (step + 1) * 2 * Math.PI / steps;
@@ -559,8 +559,9 @@ public final class StationTables {
     private static void cylinder(PoseStack pose, WorldCanvas buffers, float x, float y,
                                  float radius, float bottom, float top, int colour) {
         circle(pose, buffers, x, y, radius, colour, top);
-        for (int step = 0; step < 40; step++) {
-            double a = step * Math.PI / 20, b = (step + 1) * Math.PI / 20;
+        int steps = WorldCanvas.segments(pose, radius, 40);
+        for (int step = 0; step < steps; step++) {
+            double a = step * 2 * Math.PI / steps, b = (step + 1) * 2 * Math.PI / steps;
             wall(pose, buffers, x + (float) Math.cos(a) * radius, y + (float) Math.sin(a) * radius,
                     x + (float) Math.cos(b) * radius, y + (float) Math.sin(b) * radius,
                     bottom, top, shade(colour, .68f + .13f * (float) Math.cos(a - .8)));
@@ -570,6 +571,7 @@ public final class StationTables {
     /** A flat coloured rectangle, wound the way the station screen winds its own. */
     private static void quad(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                              float x2, float y2, int colour, float lift) {
+        if (WorldCanvas.tiny(pose, x2 - x1, y2 - y1)) return;
         buffers.quads(pose, (matrix, vertices) -> {
         WorldCanvas.vertex(vertices, matrix, x1, y1, lift, colour);
         WorldCanvas.vertex(vertices, matrix, x1, y2, lift, colour);
@@ -585,11 +587,7 @@ public final class StationTables {
     private static void label(PoseStack pose, WorldCanvas buffers, Font font, String text,
                               float x, float y, int colour, float scale, float lift) {
         if (text.isEmpty()) return;
-        pose.pushPose();
-        pose.translate(x, y, lift + 0.4f);
-        pose.scale(scale, scale, scale);
         // Half a line above the middle, so a number sits in its cell whatever its size.
-        buffers.text(pose, font, text, -font.width(text) / 2f, -4.5f, colour, 0xF000F0);
-        pose.popPose();
+        buffers.text(pose, font, text, x, y, lift + 0.4f, scale, -WorldCanvas.width(font, text) / 2f, -4.5f, colour, 0xF000F0);
     }
 }

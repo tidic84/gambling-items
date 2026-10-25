@@ -230,8 +230,8 @@ final class ArcadeCabinets {
         surface(pose, 2f);
         quad(pose, buffers, -52.8f, -198, 52.8f, -65.6f, 0xff06223a, 0);
         quad(pose, buffers, -52.8f, -198, 52.8f, -170, 0xff0a3054, 0.05f);
-        label(pose, buffers, font, Component.translatable("gui.gamblingitems.video_poker_title").getString(), 0, -189, GOLD, 0.8f, 100, 0.1f);
-        String owner = station.playerName.isEmpty() ? Component.translatable("gui.gamblingitems.station_ready").getString() : station.playerName;
+        label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.video_poker_title"), 0, -189, GOLD, 0.8f, 100, 0.1f);
+        String owner = station.playerName.isEmpty() ? WorldCanvas.translate("gui.gamblingitems.station_ready") : station.playerName;
         label(pose, buffers, font, owner, 0, -177, SILVER, 0.55f, 100, 0.1f);
         for (int card = 0; card < VideoPokerRules.HAND; card++) {
             float x1 = (float) ((CabinetControls.CARD_U + card * CabinetControls.CARD_STEP - 8) * 8);
@@ -246,7 +246,7 @@ final class ArcadeCabinets {
             }
             if (keep && cards != null) {
                 quad(pose, buffers, x1, -166, x2, -158, GOLD, 0.2f);
-                label(pose, buffers, font, Component.translatable("gui.gamblingitems.video_poker_held").getString(),
+                label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.video_poker_held"),
                         (x1 + x2) / 2, -162, DARK, 0.5f, x2 - x1 - 2, 0.3f);
             }
         }
@@ -269,7 +269,7 @@ final class ArcadeCabinets {
         int[] paytable = table[0];
         for (int hand = 0; hand < Math.min(9, paytable.length); hand++) {
             float y = -25 + (8 - hand) * 7.6f;
-            label(pose, buffers, font, Component.translatable("gui.gamblingitems.poker_hand." + hand).getString(),
+            label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.poker_hand." + hand),
                     -20, y, hand >= 7 ? GOLD : TEXT, 0.45f, 56, 0.2f);
             label(pose, buffers, font, times(paytable[hand]), 33, y, SILVER, 0.45f, 30, 0.2f);
         }
@@ -353,7 +353,7 @@ final class ArcadeCabinets {
                         64, -164, GOLD, 0.7f, 170, 0.1f);
             }
         } else {
-            label(pose, buffers, font, Component.translatable("gui.gamblingitems.horse_race_idle").getString(),
+            label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.horse_race_idle"),
                     64, -176, SILVER, 0.7f, 170, 0.1f);
         }
         pose.popPose();

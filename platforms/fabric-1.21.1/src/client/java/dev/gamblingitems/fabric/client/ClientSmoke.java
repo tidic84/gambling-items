@@ -48,6 +48,10 @@ public final class ClientSmoke {
     public static void tick(Minecraft minecraft) {
         if (!ENABLED || minecraft.player == null || minecraft.getSingleplayerServer() == null) return;
         ticks++;
+        if (SmokeBench.ENABLED) {
+            SmokeBench.tick(minecraft, ticks);
+            return;
+        }
         if (SmokeGallery.ENABLED) {
             SmokeGallery.tick(minecraft, ticks);
             return;

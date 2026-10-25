@@ -54,10 +54,10 @@ final class ArcadeDecor {
             quad(pose, buffers, x - 1.6f, -157, x + 1.6f, -154, colour, 0.1f);
             quad(pose, buffers, x - 1.6f, 92, x + 1.6f, 95, lamp(bulb + 1, now, false, false), 0.1f);
         }
-        label(pose, buffers, font, Component.translatable("gui.gamblingitems.leaderboard_title").getString(), 0, -143, GOLD, 1.3f, 240, 0.2f);
+        label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.leaderboard_title"), 0, -143, GOLD, 1.3f, 240, 0.2f);
         String[] rows = station.previewText.isEmpty() ? new String[0] : station.previewText.split("\n");
         if (rows.length == 0) {
-            label(pose, buffers, font, Component.translatable("gui.gamblingitems.leaderboard_empty").getString(), 0, -20, SILVER, 0.9f, 240, 0.2f);
+            label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.leaderboard_empty"), 0, -20, SILVER, 0.9f, 240, 0.2f);
         }
         for (String row : rows) {
             String[] cells = row.split("\\|");
@@ -67,7 +67,7 @@ final class ArcadeDecor {
             if (index % 2 == 0) quad(pose, buffers, -124, y - 9, 124, y + 9, 0xff111a26, 0.05f);
             label(pose, buffers, font, String.valueOf(index + 1), -112, y, colour, 0.9f, 16, 0.2f);
             labelLeft(pose, buffers, font, cells[0], -98, y, colour, 0.85f, 80);
-            labelLeft(pose, buffers, font, Component.translatable("gui.gamblingitems.mode." + cells[1]).getString(), -12, y, SILVER, 0.7f, 70);
+            labelLeft(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.mode." + cells[1]), -12, y, SILVER, 0.7f, 70);
             label(pose, buffers, font, times(cells[3]), 76, y, GREEN, 0.75f, 30, 0.2f);
             label(pose, buffers, font, cells[2] + " T", 108, y, colour, 0.8f, 32, 0.2f);
             index++;
@@ -85,8 +85,8 @@ final class ArcadeDecor {
 
     private static void labelLeft(PoseStack pose, WorldCanvas buffers, Font font, String text, float x, float y, int colour,
                                   float scale, float width) {
-        float fitted = Math.min(scale, width / Math.max(1, font.width(text)));
-        label(pose, buffers, font, text, x + font.width(text) * fitted / 2, y, colour, scale, width, 0.2f);
+        float fitted = Math.min(scale, width / Math.max(1, WorldCanvas.width(font, text)));
+        label(pose, buffers, font, text, x + WorldCanvas.width(font, text) * fitted / 2, y, colour, scale, width, 0.2f);
     }
 
     // --- Croupier -------------------------------------------------------------------------------

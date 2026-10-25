@@ -128,7 +128,7 @@ public final class SlotCabinet {
         lever(pose, buffers, progress, playing);
 
         surface(pose, 0.3f);
-        sign(pose, buffers, font, Component.translatable("gui.gamblingitems.mode.slot_machine").getString(),
+        sign(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.mode.slot_machine"),
                 -59, -227, 59, -197, rolling, won, now);
         pose.popPose();
 
@@ -164,7 +164,7 @@ public final class SlotCabinet {
     static void sign(PoseStack pose, WorldCanvas buffers, Font font, String name, float x1, float y1, float x2, float y2,
                      boolean rolling, boolean won, double now) {
         float height = y2 - y1;
-        if (jackpot && (long) (now / 8) % 2 == 0) name = Component.translatable("gui.gamblingitems.big_win").getString();
+        if (jackpot && (long) (now / 8) % 2 == 0) name = WorldCanvas.translate("gui.gamblingitems.big_win");
         int[] palette = CabinetAmbience.palette(theme, now, 0);
         quad(pose, buffers, x1, y1, x2, y2, palette == null ? 0xff1a0d10 : palette[2], 0);
         for (int band = 0; band < 6; band++) {
@@ -190,13 +190,13 @@ public final class SlotCabinet {
         String text;
         int colour;
         if (rolling) {
-            text = Component.translatable("gui.gamblingitems." + rollingKey).getString();
+            text = WorldCanvas.translate("gui.gamblingitems." + rollingKey);
             colour = TEXT;
         } else if (station.idle()) {
-            text = Component.translatable("gui.gamblingitems.station_ready").getString();
+            text = WorldCanvas.translate("gui.gamblingitems.station_ready");
             colour = SILVER;
         } else {
-            text = Component.translatable("gui.gamblingitems." + station.resultKey).getString();
+            text = WorldCanvas.translate("gui.gamblingitems." + station.resultKey);
             if (station.multiplier > 0) text += "  " + GameScreens.multiplier(station.multiplier);
             if (station.tickets > 0) text += "  " + Component.translatable("gui.gamblingitems.tickets_plus", station.tickets).getString();
             colour = station.highlight ? GREEN : RED;
@@ -245,7 +245,7 @@ public final class SlotCabinet {
     /** The best lines of the paytable, printed on the belly of the cabinet. */
     private static void paytable(PoseStack pose, WorldCanvas buffers, Font font) {
         quad(pose, buffers, -44, -20, 44, 28, 0xff0b111a, 0);
-        label(pose, buffers, font, Component.translatable("gui.gamblingitems.slot_paytable").getString(),
+        label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.slot_paytable"),
                 0, -13, GOLD, 0.55f, 80, 0.2f);
         for (int line = 0; line < 3; line++) {
             int symbol = SlotRules.SYMBOLS - 1 - line;
@@ -297,6 +297,7 @@ public final class SlotCabinet {
     /** A flat rectangle of a canvas; lift brings it towards the player, in canvas pixels. */
     static void quad(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                      float x2, float y2, int colour, float lift) {
+        if (WorldCanvas.tiny(pose, x2 - x1, y2 - y1)) return;
         buffers.quads(pose, (matrix, vertices) -> {
             WorldCanvas.vertex(vertices, matrix, x1, y1, lift, colour);
             WorldCanvas.vertex(vertices, matrix, x1, y2, lift, colour);
@@ -312,30 +313,56 @@ public final class SlotCabinet {
     static void cube(PoseStack pose, WorldCanvas buffers, float u1, float y1, float z1,
                      float u2, float y2, float z2, int colour, float light) {
         float x1 = 16 - u2, x2 = 16 - u1;
+        if (WorldCanvas.tiny(pose, Math.max(x2 - x1, Math.abs(y2 - y1)), z2 - z1)) return;
         int top = shade(colour, light), front = shade(colour, 0.8f * light), side = shade(colour, 0.62f * light),
                 bottom = shade(colour, 0.5f * light);
+        // An opaque box is only ever seen from outside: the outward winding of each face is enough. Each face
+        // below is listed outward for a box running from its first corner to its second, in a pose that does not
+        // mirror; a translucent box shows its far faces through its near ones and keeps both windings.
+        int sides = (colour >>> 24) < 0xff ? BOTH : outward(pose, x2 - x1, y2 - y1, z2 - z1);
         buffers.quads(pose, (matrix, vertices) -> {
-            face(vertices, matrix, top, x1, y2, z1, x1, y2, z2, x2, y2, z2, x2, y2, z1);
-            face(vertices, matrix, bottom, x1, y1, z1, x2, y1, z1, x2, y1, z2, x1, y1, z2);
-            face(vertices, matrix, front, x1, y1, z1, x1, y2, z1, x2, y2, z1, x2, y1, z1);
-            face(vertices, matrix, front, x1, y1, z2, x2, y1, z2, x2, y2, z2, x1, y2, z2);
-            face(vertices, matrix, side, x1, y1, z1, x1, y1, z2, x1, y2, z2, x1, y2, z1);
-            face(vertices, matrix, side, x2, y1, z1, x2, y2, z1, x2, y2, z2, x2, y1, z2);
+            face(vertices, matrix, top, sides, x1, y2, z1, x1, y2, z2, x2, y2, z2, x2, y2, z1);
+            face(vertices, matrix, bottom, sides, x1, y1, z1, x2, y1, z1, x2, y1, z2, x1, y1, z2);
+            face(vertices, matrix, front, sides, x1, y1, z1, x1, y2, z1, x2, y2, z1, x2, y1, z1);
+            face(vertices, matrix, front, sides, x1, y1, z2, x2, y1, z2, x2, y2, z2, x1, y2, z2);
+            face(vertices, matrix, side, sides, x1, y1, z1, x1, y1, z2, x1, y2, z2, x1, y2, z1);
+            face(vertices, matrix, side, sides, x2, y1, z1, x2, y2, z1, x2, y2, z2, x2, y1, z2);
         });
+    }
+
+    /** Which windings of a face are drawn: as listed, reversed, or both. */
+    private static final int LISTED = 1, REVERSED = 2, BOTH = LISTED | REVERSED;
+
+    /** The winding that faces out of a box with these extents, once the pose has placed it. */
+    private static int outward(PoseStack pose, float width, float height, float depth) {
+        org.joml.Matrix4f matrix = pose.last().pose();
+        // A pose that mirrors (negative determinant) turns every face inside out, as does a box given backwards.
+        boolean flipped = (matrix.determinant3x3() < 0) != (width < 0 ^ height < 0 ^ depth < 0);
+        return flipped ? REVERSED : LISTED;
     }
 
     static void face(com.mojang.blaze3d.vertex.VertexConsumer vertices, org.joml.Matrix4f matrix, int colour,
                              float ax, float ay, float az, float bx, float by, float bz,
                              float cx, float cy, float cz, float dx, float dy, float dz) {
         // Both windings, so the face shows whichever way culling faces it.
-        WorldCanvas.vertex(vertices, matrix, ax, ay, az, colour);
-        WorldCanvas.vertex(vertices, matrix, bx, by, bz, colour);
-        WorldCanvas.vertex(vertices, matrix, cx, cy, cz, colour);
-        WorldCanvas.vertex(vertices, matrix, dx, dy, dz, colour);
-        WorldCanvas.vertex(vertices, matrix, dx, dy, dz, colour);
-        WorldCanvas.vertex(vertices, matrix, cx, cy, cz, colour);
-        WorldCanvas.vertex(vertices, matrix, bx, by, bz, colour);
-        WorldCanvas.vertex(vertices, matrix, ax, ay, az, colour);
+        face(vertices, matrix, colour, BOTH, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz);
+    }
+
+    private static void face(com.mojang.blaze3d.vertex.VertexConsumer vertices, org.joml.Matrix4f matrix, int colour, int sides,
+                             float ax, float ay, float az, float bx, float by, float bz,
+                             float cx, float cy, float cz, float dx, float dy, float dz) {
+        if ((sides & LISTED) != 0) {
+            WorldCanvas.vertex(vertices, matrix, ax, ay, az, colour);
+            WorldCanvas.vertex(vertices, matrix, bx, by, bz, colour);
+            WorldCanvas.vertex(vertices, matrix, cx, cy, cz, colour);
+            WorldCanvas.vertex(vertices, matrix, dx, dy, dz, colour);
+        }
+        if ((sides & REVERSED) != 0) {
+            WorldCanvas.vertex(vertices, matrix, dx, dy, dz, colour);
+            WorldCanvas.vertex(vertices, matrix, cx, cy, cz, colour);
+            WorldCanvas.vertex(vertices, matrix, bx, by, bz, colour);
+            WorldCanvas.vertex(vertices, matrix, ax, ay, az, colour);
+        }
     }
 
     /** A pane of glass in model space, given by two opposite corners of an upright rectangle. */
@@ -355,11 +382,8 @@ public final class SlotCabinet {
     static void label(PoseStack pose, WorldCanvas buffers, Font font, String text,
                       float x, float y, int colour, float scale, float width, float lift) {
         if (text.isEmpty()) return;
-        pose.pushPose();
-        pose.translate(x, y, lift + 0.4f);
-        float fitted = Math.min(scale, width / Math.max(1, font.width(text)));
-        pose.scale(fitted, fitted, fitted);
-        buffers.text(pose, font, text, -font.width(text) / 2f, -4, colour, 0xF000F0);
-        pose.popPose();
+        int measured = WorldCanvas.width(font, text);
+        float fitted = Math.min(scale, width / Math.max(1, measured));
+        buffers.text(pose, font, text, x, y, lift + 0.4f, fitted, -measured / 2f, -4, colour, 0xF000F0);
     }
 }

@@ -64,8 +64,7 @@ final class SmokeGallery {
         if (ticks == 20) server.execute(() -> {
             ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player == null) return;
-            origin = player.blockPosition();
-            build(player.serverLevel(), origin, player);
+            build(player);
             player.setGameMode(GameType.CREATIVE);
             player.getAbilities().flying = true;
             player.onUpdateAbilities();
@@ -101,6 +100,24 @@ final class SmokeGallery {
             minecraft.player.setXRot(shot.pitch());
         }
         if (phase == SETTLE) ClientSmoke.shot(minecraft, "gamblingitems-gallery-" + shot.name() + ".png");
+    }
+
+    static BlockPos origin() {
+        return origin;
+    }
+
+    /** Builds the room around the player, who stands at its origin. */
+    static void build(ServerPlayer player) {
+        origin = player.blockPosition();
+        build(player.serverLevel(), origin, player);
+    }
+
+    /** Starts a play on every cabinet of the room at once, one of them celebrating a big win. */
+    static void playAll(ServerPlayer player) {
+        for (int i = 0; i < CABINETS.length; i++) play(player.serverLevel(), i, 0);
+        for (int i = 0; i < ARCADE.length; i++) playArcade(player, i, 0);
+        for (int i = 0; i < TABLE_GAMES.length; i++) playAt(player, origin.offset(-14 + 2 * i, 0, TABLE_Z), TABLE_GAMES[i], TABLE_CONTROLS[i], 0);
+        bigWin(player.serverLevel(), 0);
     }
 
     private static void build(ServerLevel level, BlockPos o, ServerPlayer player) {

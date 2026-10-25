@@ -64,6 +64,47 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
     //#endif
 
     private void draw(GameStationEntity station, float partialTick, PoseStack pose, WorldCanvas buffers) {
+        long start = SmokeBench.ENABLED ? System.nanoTime() : 0;
+        if (inView(station)) {
+            drawStation(station, partialTick, pose, buffers);
+            buffers.flush();
+        }
+        if (SmokeBench.ENABLED) SmokeBench.furniture(System.nanoTime() - start);
+    }
+
+    /** How far the furniture reaches from the middle of its block, in blocks, glows and confetti included. */
+    private static final double REACH = 3.5;
+    /** The view widens with sprinting and speed; this much more than the set field of view stays drawn. */
+    private static final double FOV_MARGIN = 1.5;
+
+    /**
+     * Furniture is drawn off screen, so that a tall cabinet never vanishes with the section its base
+     * stands in, but not once it is wholly behind the view. The cone's tip is set four blocks behind the
+     * eyes, where the camera stands in third person; a camera looking back at the player culls nothing.
+     * Also sets how much detail the piece is drawn with, from how far it stands.
+     */
+    private static boolean inView(GameStationEntity station) {
+        var minecraft = net.minecraft.client.Minecraft.getInstance();
+        var viewer = minecraft.getCameraEntity();
+        WorldCanvas.focus(0);
+        if (viewer == null) return true;
+        var eye = viewer.getEyePosition();
+        var pos = station.getBlockPos();
+        // Measured from the eyes to the near side of the piece: what it shows is never drawn too coarse.
+        WorldCanvas.focus(Math.sqrt(pos.getCenter().distanceToSqr(eye)) - 1.5);
+        if (minecraft.options.getCameraType().isMirrored()) return true;
+        var look = viewer.getViewVector(1);
+        double dx = pos.getX() + .5 - (eye.x - look.x * 4), dy = pos.getY() + 1.5 - (eye.y - look.y * 4),
+                dz = pos.getZ() + .5 - (eye.z - look.z * 4);
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (distance <= REACH) return true;
+        double aspect = (double) minecraft.getWindow().getWidth() / Math.max(1, minecraft.getWindow().getHeight());
+        double half = Math.toRadians(minecraft.options.fov().get() * FOV_MARGIN) / 2;
+        double reach = Math.atan(Math.tan(Math.min(half, 1.5)) * Math.sqrt(1 + aspect * aspect)) + Math.asin(REACH / distance);
+        return reach >= Math.PI || (dx * look.x + dy * look.y + dz * look.z) / distance >= Math.cos(reach);
+    }
+
+    private void drawStation(GameStationEntity station, float partialTick, PoseStack pose, WorldCanvas buffers) {
         if (station.getBlockState().getBlock() instanceof dev.gamblingitems.fabric.arcade.DecorBlock decor) {
             ArcadeDecor.render(station, decor, partialTick, pose, buffers, font);
             return;
@@ -97,7 +138,7 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
         rectangle(pose, buffers, -181, -147, 181, -51, 0xff0c141f, 1.8f);
         boolean rolling = station.animating();
         String owner = station.idle() ? station.previewPlayer : station.playerName;
-        line(pose, buffers, owner.isEmpty() ? Component.translatable("gui.gamblingitems.station_ready").getString() : owner, -157, TEXT, 0.9f);
+        line(pose, buffers, owner.isEmpty() ? WorldCanvas.translate("gui.gamblingitems.station_ready") : owner, -157, TEXT, 0.9f);
         String status = station.idle() ? station.previewText : rolling ? station.rollingText : result(station);
         marquee(pose, buffers, status, -43, station.highlight && !rolling ? GREEN : GOLD, station.getLevel().getGameTime());
         String detail = station.publicBets.isEmpty() ? station.previewPlayer + " : " + station.previewText : station.publicBets;
@@ -137,10 +178,10 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
             rectangle(pose, buffers, x, y, x + control.width(), y + control.height(), color, 4);
             rectangle(pose, buffers, x, y, x + control.width(), y + 3, shade(color, 1.4f), 4.2f);
             rectangle(pose, buffers, x, y + control.height() - 3, x + control.width(), y + control.height(), shade(color, 0.6f), 4.2f);
-            String text = Component.translatable("gui.gamblingitems.panel." + key).getString();
+            String text = WorldCanvas.translate("gui.gamblingitems.panel." + key);
             pose.pushPose();
             pose.translate(x + control.width() / 2f, y + (control.height() - 8) / 2f, 0.02);
-            float scale = Math.min(1f, (control.width() - 10f) / Math.max(1, font.width(text)));
+            float scale = Math.min(1f, (control.width() - 10f) / Math.max(1, WorldCanvas.width(font, text)));
             pose.scale(scale, scale, scale);
             line(pose, buffers, text, 0, TEXT);
             pose.popPose();
@@ -178,7 +219,7 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
                 line(pose, buffers, station.phase == 1 ? countdown(station, now) : station.phase == 2 ? "..." : station.rollingText,
                         -102, GOLD);
                 label(pose, buffers, "ROULETTE", -170, -137, GOLD);
-                label(pose, buffers, Component.translatable("gui.gamblingitems.panel.bet").getString(), 90, -137, TEXT);
+                label(pose, buffers, WorldCanvas.translate("gui.gamblingitems.panel.bet"), 90, -137, TEXT);
                 label(pose, buffers, station.playerName, 90, -122, GOLD);
             }
             case CRASH -> {
@@ -268,7 +309,7 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
     }
 
     private void marquee(PoseStack pose, WorldCanvas buffers, String text, int y, int color, long ticks) {
-        if (font.width(text) > 348) {
+        if (WorldCanvas.width(font, text) > 348) {
             String padded = text + "   |   ";
             int offset = (int) (ticks / 5 % padded.length());
             text = padded.substring(offset) + padded.substring(0, offset);
@@ -292,7 +333,7 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
 
     private String result(GameStationEntity station) {
         if (station.resultItem.isEmpty()) {
-            return Component.translatable("gui.gamblingitems." + station.resultKey).getString();
+            return WorldCanvas.translate("gui.gamblingitems." + station.resultKey);
         }
         ResourceLocation id = ResourceLocation.tryParse(station.resultItem);
         if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) return station.resultItem;
@@ -303,17 +344,17 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
         text = font.plainSubstrByWidth(text, 348);
         pose.pushPose();
         pose.translate(0, 0, 8);
-        buffers.text(pose, font, text, -font.width(text) / 2f, y, color, 0xF000F0);
+        buffers.text(pose, font, text, -WorldCanvas.width(font, text) / 2f, y, color, 0xF000F0);
         pose.popPose();
     }
 
     /** A centred line at a size, shrunk to fit the width of the screen. */
     private void line(PoseStack pose, WorldCanvas buffers, String text, int y, int color, float scale) {
-        float fitted = Math.min(scale, 348f / Math.max(1, font.width(text)));
+        float fitted = Math.min(scale, 348f / Math.max(1, WorldCanvas.width(font, text)));
         pose.pushPose();
         pose.translate(0, y, 8);
         pose.scale(fitted, fitted, fitted);
-        buffers.text(pose, font, text, -font.width(text) / 2f, -4, color, 0xF000F0);
+        buffers.text(pose, font, text, -WorldCanvas.width(font, text) / 2f, -4, color, 0xF000F0);
         pose.popPose();
     }
 

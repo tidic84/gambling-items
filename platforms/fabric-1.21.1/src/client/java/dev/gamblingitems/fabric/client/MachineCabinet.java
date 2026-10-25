@@ -179,7 +179,7 @@ final class MachineCabinet {
         List<String[]> lines = best(mode, table, choice);
         float row = (y2 - y1) / 4;
         float scale = Math.min(0.6f, row / 11);
-        label(pose, buffers, font, Component.translatable("gui.gamblingitems.machine_odds").getString(),
+        label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.machine_odds"),
                 (x1 + x2) / 2, y1 + row * 0.55f, GOLD, scale, x2 - x1 - 6, 0.2f);
         for (int line = 0; line < lines.size(); line++) {
             float y = y1 + row * (line + 1.5f);
@@ -671,7 +671,7 @@ final class MachineCabinet {
     /** A slice of a ring, drawn as a strip of quads; a disc is a slice from the centre round. */
     static void sector(PoseStack pose, WorldCanvas buffers, float cx, float cy, float inner, float outer,
                        double from, double to, int colour, float lift) {
-        int steps = Math.max(1, (int) Math.ceil(Math.abs(to - from) / (Math.PI / 24)));
+        int steps = Math.max(1, (int) Math.ceil(WorldCanvas.segments(pose, outer, 48) * Math.abs(to - from) / (2 * Math.PI)));
         buffers.quads(pose, (matrix, vertices) -> {
             for (int step = 0; step < steps; step++) {
                 double a = from + (to - from) * step / steps, b = from + (to - from) * (step + 1) / steps;

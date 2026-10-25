@@ -122,6 +122,61 @@ class MachineTableTest {
         assertTrue(error.getMessage().contains("-3"), "The message names the wrong value");
     }
 
+    private static final MachineTable PLINKO = new MachineTable(GameMode.PLINKO,
+            new int[] {4100, 1100, 400, 180, 110, 50, 40, 50, 110, 180, 400, 1100, 4100}, new int[0]);
+    private static final MachineTable BIG_SIX = new MachineTable(GameMode.BIG_SIX,
+            new int[] {200, 300, 600, 1100, 2100, 4100, 4100}, new int[] {24, 15, 7, 4, 2, 1, 1});
+    private static final MachineTable RACE = new MachineTable(GameMode.HORSE_RACE,
+            new int[] {270, 380, 520, 790, 1350, 3100}, new int[] {35, 25, 18, 12, 7, 3});
+
+    @Test
+    void theArcadeTablesGiveBackWhatTheyAnnounce() {
+        assertEquals(new BigDecimal("0.956201"), PLINKO.returnToPlayer(0));
+        assertEquals(4096, java.util.Arrays.stream(PLINKO.weights()).sum(), "Twelve rows: 4096 paths");
+        assertEquals(new BigDecimal("0.888889"), BIG_SIX.returnToPlayer(0), "The real big six: 1 to 1 on 24 of 54");
+        assertEquals(new BigDecimal("0.759259"), BIG_SIX.returnToPlayer(6));
+        for (int horse = 0; horse < RACE.choices(); horse++) {
+            assertTrue(RACE.returnToPlayer(horse).compareTo(new BigDecimal("0.95")) <= 0, "Horse " + horse);
+        }
+        assertEquals(VideoPokerRules.STANDARD_RETURN,
+                new MachineTable(GameMode.VIDEO_POKER, VideoPokerRules.PAYTABLE, new int[0]).returnToPlayer(0));
+    }
+
+    @Test
+    void onlyTheSymbolOrTheHorseBetOnPays() {
+        assertEquals(7, BIG_SIX.choices());
+        // Tickets 0-23 are the 24 segments of the first symbol; the second segment of it is shown.
+        MachineTable.Outcome first = BIG_SIX.play(0, draws(5, 1));
+        assertEquals(200, first.multiplier());
+        assertArrayEquals(new int[] {0, 1}, first.shown());
+        assertEquals(0, BIG_SIX.play(1, draws(5, 1)).multiplier(), "Another symbol bet loses");
+        assertEquals(4100, BIG_SIX.play(6, draws(53, 0)).multiplier(), "The last segment is the second joker");
+        assertEquals(3100, RACE.play(5, draws(99, 400)).multiplier());
+        assertEquals(0, RACE.play(4, draws(99, 400)).multiplier());
+        assertEquals(new BigDecimal("0.03000000"), RACE.chance(5, 1));
+    }
+
+    @Test
+    void aPlinkoBallFallsThroughTwelveRows() {
+        MachineTable.Outcome outcome = PLINKO.play(0, draws(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1));
+        assertArrayEquals(new int[] {12, 0b1111_1111_1111}, outcome.shown());
+        assertEquals(4100, outcome.multiplier());
+        assertThrows(IllegalArgumentException.class, () -> new MachineTable(GameMode.PLINKO, new int[9], new int[0]),
+                "A plinko board has thirteen pockets");
+    }
+
+    @Test
+    void aVideoPokerPaytableNeverPaysAboveTheStandardOne() {
+        int[] richer = VideoPokerRules.PAYTABLE.clone();
+        richer[VideoPokerRules.FULL_HOUSE]++;
+        assertThrows(IllegalArgumentException.class, () -> new MachineTable(GameMode.VIDEO_POKER, richer, new int[0]));
+        int[] poorer = VideoPokerRules.PAYTABLE.clone();
+        poorer[VideoPokerRules.FULL_HOUSE] = 800;
+        assertEquals(80_000, new MachineTable(GameMode.VIDEO_POKER, poorer, new int[0]).bestMultiplier());
+        assertThrows(IllegalStateException.class,
+                () -> new MachineTable(GameMode.VIDEO_POKER, poorer, new int[0]).play(0, bound -> 0));
+    }
+
     @Test
     void anUnreachablePrizeIsNotTheBest() {
         MachineTable gacha = new MachineTable(GameMode.CAPSULE_GACHA, new int[] {50, 90_000}, new int[] {1, 0});

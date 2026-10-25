@@ -3,6 +3,7 @@ package dev.gamblingitems.fabric.machines;
 import dev.gamblingitems.core.GameMode;
 import dev.gamblingitems.core.machines.MachineTable;
 import dev.gamblingitems.fabric.ModContent;
+import dev.gamblingitems.fabric.arcade.Arcade;
 import dev.gamblingitems.fabric.block.GameStationEntity;
 import dev.gamblingitems.fabric.block.GameSurface;
 import dev.gamblingitems.fabric.menu.ValueSync;
@@ -113,9 +114,10 @@ public final class MachineMenu extends AbstractContainerMenu implements dev.gamb
                 MachineSettings.VAULT_SIZE, settings().maximumPayout(stake));
     }
 
+    /** A machine paying tickets needs no room for its prize: tickets are never handed over as items. */
     public boolean canPlay() {
         long credit = credit();
-        return settings().enabled() && !playing() && settings().accepts(credit) && isPayable(credit);
+        return settings().enabled() && !playing() && settings().accepts(credit) && (setup.paysTickets() || isPayable(credit));
     }
 
     @Override public boolean clickMenuButton(Player player, int button) {
@@ -144,7 +146,13 @@ public final class MachineMenu extends AbstractContainerMenu implements dev.gamb
         long stake = credit();
         MachineTable.Outcome outcome = table().play(choice(), draw);
         long paid = outcome.multiplier() == 0 ? 0 : MachineTable.payout(stake, outcome.multiplier(), settings().returnRate());
-        if (paid >= stake) {
+        long tickets = 0;
+        if (setup.paysTickets()) {
+            // The arcade keeps what was played and pays the whole win in tickets, counted once it shows.
+            Arcade.keepStake(vault, MachineSettings.INPUT_SLOT, MachineSettings.FIRST_PAYOUT_SLOT);
+            tickets = Arcade.pay(player, mode().id(), stake, outcome.multiplier(), paid, setup.ticketValue(),
+                    player.level().getGameTime() + settings().playTicks());
+        } else if (paid >= stake) {
             // The items played stay in front of the player; only the profit is made up in change.
             if (paid > stake) ItemBank.store(catalog(), vault, MachineSettings.FIRST_PAYOUT_SLOT,
                     MachineSettings.VAULT_SIZE, paid - stake);
@@ -162,18 +170,19 @@ public final class MachineMenu extends AbstractContainerMenu implements dev.gamb
         ValueSync.write(data, WON, paid);
         animationEnd = player.level().getGameTime() + settings().playTicks();
         data.set(TICKS, settings().playTicks());
-        showOnMachine(player, outcome, paid >= stake);
+        showOnMachine(player, outcome, paid >= stake, tickets);
         return true;
     }
 
     /** The machine plays the same outcome to everyone standing in front of it. */
-    private void showOnMachine(Player player, MachineTable.Outcome outcome, boolean won) {
+    private void showOnMachine(Player player, MachineTable.Outcome outcome, boolean won, long tickets) {
         access.execute((level, pos) -> {
             if (!(level.getBlockEntity(pos) instanceof GameStationEntity machine)) return;
             machine.reels = outcome.shown()[0] + "," + outcome.shown()[1] + "," + choice();
             machine.wheelColours = encode(table());
             machine.animationTicks = settings().playTicks();
             machine.multiplier = outcome.multiplier();
+            machine.tickets = tickets;
             machine.show(player.getName().getString(),
                     java.math.BigDecimal.valueOf(outcome.multiplier(), 2).stripTrailingZeros().toPlainString() + "x",
                     outcome.multiplier() == 0 ? "machine_result_lost" : won ? "machine_result_won" : "machine_result_back", "",
@@ -232,6 +241,7 @@ public final class MachineMenu extends AbstractContainerMenu implements dev.gamb
     }
 
     @Override public boolean accepts(ItemStack stack) { return catalog().valueOf(stack) > 0; }
+    @Override public long valueOf(ItemStack stack) { return catalog().valueOf(stack); }
     @Override public int choices() { return table().choices(); }
     @Override public long minimumStake() { return settings().minimumStake(); }
 

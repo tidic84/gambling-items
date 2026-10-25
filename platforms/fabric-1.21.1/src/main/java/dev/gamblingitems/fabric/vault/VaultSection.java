@@ -19,7 +19,13 @@ public enum VaultSection {
     PRIZE_CLAW("prize_claw", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
     PACHINKO("pachinko", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
     CAPSULE_GACHA("capsule_gacha", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
-    HIGH_STAKES("high_stakes", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE);
+    HIGH_STAKES("high_stakes", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    PLINKO("plinko", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    BIG_SIX("big_six", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    VIDEO_POKER("video_poker", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    HORSE_RACE("horse_race", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    /** The cashier's exchange tray, where items wait to be changed. */
+    CASHIER("cashier", dev.gamblingitems.fabric.arcade.CashierMenu.TRAY_SLOTS);
 
     private final String id;
     private final int size;

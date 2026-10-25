@@ -3,6 +3,7 @@ package dev.gamblingitems.fabric.slots;
 import dev.gamblingitems.core.GameMode;
 import dev.gamblingitems.core.slots.SlotRules;
 import dev.gamblingitems.fabric.ModContent;
+import dev.gamblingitems.fabric.arcade.Arcade;
 import dev.gamblingitems.fabric.block.GameStationEntity;
 import dev.gamblingitems.fabric.block.GameSurface;
 import dev.gamblingitems.fabric.menu.ValueSync;
@@ -120,9 +121,10 @@ public final class SlotMenu extends AbstractContainerMenu implements dev.gamblin
                 SlotSettings.VAULT_SIZE, settings().maximumPayout(stake));
     }
 
+    /** A cabinet paying tickets needs no room for its prize: tickets are never handed over as items. */
     public boolean canSpin() {
         long credit = credit();
-        return !spinning() && credit >= settings().minimumStake() && isPayable(credit);
+        return !spinning() && credit >= settings().minimumStake() && (setup.paysTickets() || isPayable(credit));
     }
 
     @Override public boolean clickMenuButton(Player player, int button) {
@@ -148,7 +150,13 @@ public final class SlotMenu extends AbstractContainerMenu implements dev.gamblin
         int[] reels = SlotRules.spin(draw);
         int multiplier = SlotRules.multiplier(reels);
         long paid = multiplier == 0 ? 0 : SlotRules.payout(stake, multiplier, settings().returnRate());
-        if (multiplier == 0) {
+        long tickets = 0;
+        if (setup.paysTickets()) {
+            // The arcade keeps what was played and pays the whole win in tickets, counted once the reels stop.
+            Arcade.keepStake(vault, SlotSettings.INPUT_SLOT, SlotSettings.FIRST_PAYOUT_SLOT);
+            tickets = Arcade.pay(player, GameMode.SLOT_MACHINE.id(), stake, multiplier, paid, setup.ticketValue(),
+                    player.level().getGameTime() + settings().spinTicks());
+        } else if (multiplier == 0) {
             for (int slot = SlotSettings.INPUT_SLOT; slot < SlotSettings.FIRST_PAYOUT_SLOT; slot++) {
                 vault.setItem(slot, ItemStack.EMPTY);
             }
@@ -167,12 +175,12 @@ public final class SlotMenu extends AbstractContainerMenu implements dev.gamblin
         ValueSync.write(data, WON, paid);
         animationEnd = player.level().getGameTime() + settings().spinTicks();
         data.set(TICKS, settings().spinTicks());
-        showOnCabinet(player, reels, multiplier, paid);
+        showOnCabinet(player, reels, multiplier, tickets);
         return true;
     }
 
     /** The cabinet plays the same line to everyone standing in front of it. */
-    private void showOnCabinet(Player player, int[] reels, int multiplier, long paid) {
+    private void showOnCabinet(Player player, int[] reels, int multiplier, long tickets) {
         StringBuilder line = new StringBuilder();
         for (int reel : reels) {
             if (line.length() > 0) line.append(',');
@@ -183,6 +191,7 @@ public final class SlotMenu extends AbstractContainerMenu implements dev.gamblin
             cabinet.reels = line.toString();
             cabinet.animationTicks = settings().spinTicks();
             cabinet.multiplier = Math.max(0, multiplier);
+            cabinet.tickets = tickets;
             cabinet.show(player.getName().getString(),
                     java.math.BigDecimal.valueOf(multiplier, 2).stripTrailingZeros().toPlainString() + "x",
                     multiplier == 0 ? "slot_lost" : "slot_won",
@@ -217,6 +226,7 @@ public final class SlotMenu extends AbstractContainerMenu implements dev.gamblin
     }
 
     @Override public boolean accepts(ItemStack stack) { return catalog().valueOf(stack) > 0; }
+    @Override public long valueOf(ItemStack stack) { return catalog().valueOf(stack); }
     @Override public int choices() { return 1; }
     @Override public long minimumStake() { return settings().minimumStake(); }
 

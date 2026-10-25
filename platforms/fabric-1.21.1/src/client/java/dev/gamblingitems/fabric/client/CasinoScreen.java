@@ -49,13 +49,16 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
         imageWidth = width;
         imageHeight = height;
         //#endif
-        rules = new GameRules(mode().id());
+        rules = new GameRules(key());
     }
 
     /** The game this window plays, for its icon, its rules and its tab. */
     protected abstract GameMode mode();
     /** Whether the window was opened from a portable item, which shows the tabs of its games. */
     protected abstract boolean portable();
+    /** The name of the window in the translations: its game, unless it is a counter of its own. */
+    protected String key() { return mode().id(); }
+    protected ItemStack headerIcon() { return icon(mode()); }
     /** A line about the stakes, shown beside the name of the game at its block. */
     protected Component subtitle() { return tr(GameMenus.TERMINAL.contains(mode()) ? "station" : "casino_table"); }
     protected static Component tr(String key) { return Component.translatable("gui.gamblingitems." + key); }
@@ -77,6 +80,10 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
             case PACHINKO -> Items.SNOWBALL;
             case CAPSULE_GACHA -> Items.HEART_OF_THE_SEA;
             case HIGH_STAKES -> Items.NETHER_STAR;
+            case PLINKO -> Items.SLIME_BALL;
+            case BIG_SIX -> Items.COMPASS;
+            case VIDEO_POKER -> Items.MAP;
+            case HORSE_RACE -> Items.SADDLE;
         });
     }
 
@@ -174,9 +181,9 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
         int x = leftPos, y = topPos;
         GameScreens.window(g, x, y, imageWidth, imageHeight);
         if (!portable()) {
-            GameScreens.item(g, icon(mode()), x + 9, y + 6, 1);
-            GameScreens.heading(g, font, tr("mode." + mode().id()), x + 30, y + 10, 1, GameScreens.GOLD);
-            int after = x + 38 + font.width(tr("mode." + mode().id()));
+            GameScreens.item(g, headerIcon(), x + 9, y + 6, 1);
+            GameScreens.heading(g, font, tr("mode." + key()), x + 30, y + 10, 1, GameScreens.GOLD);
+            int after = x + 38 + font.width(tr("mode." + key()));
             GameScreens.fitted(g, font, subtitle(), after, y + 10, x + imageWidth - 56 - after, GameScreens.DIM);
         }
         renderGame(g, tick, mouseX, mouseY);

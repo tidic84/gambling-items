@@ -35,6 +35,21 @@ class CabinetControlsTest {
     }
 
     @Test
+    void theArcadeMachinesHaveAButtonPerChoice() {
+        assertEquals(2, CabinetControls.width(GameMode.PLINKO));
+        assertEquals(1, CabinetControls.width(GameMode.VIDEO_POKER));
+        assertEquals(Control.PLAY, CabinetControls.at(GameMode.PLINKO, 16, 15, 0));
+        assertEquals(Control.PICK_7, CabinetControls.at(GameMode.BIG_SIX, CabinetControls.SYMBOL_U + 6 * CabinetControls.SYMBOL_STEP + 1, 11, 0));
+        assertEquals(6, Control.PICK_7.pick());
+        assertEquals(-1, Control.PLAY.pick());
+        assertEquals(Control.PICK_6, CabinetControls.at(GameMode.HORSE_RACE, CabinetControls.LANE_U + 5 * CabinetControls.LANE_STEP + 1, 13, 0));
+        // The third card answers on the screen and at its hold button.
+        assertEquals(Control.PICK_3, CabinetControls.at(GameMode.VIDEO_POKER, CabinetControls.CARD_U + 2 * CabinetControls.CARD_STEP + 1, 23, 2));
+        assertEquals(Control.PICK_3, CabinetControls.at(GameMode.VIDEO_POKER, CabinetControls.HOLD_U + 2 * CabinetControls.HOLD_STEP + 1, 14, 0));
+        assertEquals(Control.PLAY, CabinetControls.at(GameMode.VIDEO_POKER, 13.8, 14, 0));
+    }
+
+    @Test
     void stationsHaveNoCabinetControls() {
         assertEquals(Control.NONE, CabinetControls.at(GameMode.ROULETTE, 8, 8, 0));
     }

@@ -25,10 +25,12 @@ public final class GameMenus {
     public static final Set<GameMode> AVAILABLE = EnumSet.of(GameMode.UPGRADER, GameMode.TRADE_UP, GameMode.CASE_OPENING, GameMode.CRASH,
             GameMode.ROULETTE, GameMode.BLACKJACK, GameMode.CASE_BATTLE,
             GameMode.BINGO, GameMode.SLOT_MACHINE, GameMode.LUCKY_WHEEL, GameMode.COIN_PUSHER,
-            GameMode.PRIZE_CLAW, GameMode.PACHINKO, GameMode.CAPSULE_GACHA, GameMode.HIGH_STAKES);
-    /** The prize machines: each is played at its own block only, never from a portable item. */
+            GameMode.PRIZE_CLAW, GameMode.PACHINKO, GameMode.CAPSULE_GACHA, GameMode.HIGH_STAKES,
+            GameMode.PLINKO, GameMode.BIG_SIX, GameMode.VIDEO_POKER, GameMode.HORSE_RACE);
+    /** The prize machines: each is played on the model of its own cabinet, with no window. */
     public static final List<GameMode> MACHINES = List.of(GameMode.LUCKY_WHEEL, GameMode.COIN_PUSHER,
-            GameMode.PRIZE_CLAW, GameMode.PACHINKO, GameMode.CAPSULE_GACHA, GameMode.HIGH_STAKES);
+            GameMode.PRIZE_CLAW, GameMode.PACHINKO, GameMode.CAPSULE_GACHA, GameMode.HIGH_STAKES,
+            GameMode.PLINKO, GameMode.BIG_SIX, GameMode.VIDEO_POKER, GameMode.HORSE_RACE);
     /** The item games of the exchange terminal, in the order of its tabs. */
     public static final List<GameMode> TERMINAL = List.of(GameMode.TRADE_UP, GameMode.UPGRADER,
             GameMode.CASE_OPENING, GameMode.CASE_BATTLE);
@@ -57,7 +59,7 @@ public final class GameMenus {
      */
     public static boolean open(ServerPlayer player, GameMode mode, ContainerLevelAccess access) {
         boolean portable = access == ContainerLevelAccess.NULL;
-        if (player.isSpectator() || !AVAILABLE.contains(mode) || portable && MACHINES.contains(mode)) return false;
+        if (player.isSpectator() || !AVAILABLE.contains(mode) || MACHINES.contains(mode)) return false;
         dev.gamblingitems.fabric.block.StationInteractions.close(player.getUUID());
         if (portable) (TERMINAL.contains(mode) ? LAST_TERMINAL_GAME : LAST_CASINO_GAME).put(player.getUUID(), mode);
         switch (mode) {
@@ -70,9 +72,6 @@ public final class GameMenus {
             case CASE_BATTLE -> BattleMenus.open(player, access);
             case BINGO -> BingoMenus.open(player, access);
             case SLOT_MACHINE -> SlotMenus.open(player, access);
-            case LUCKY_WHEEL, COIN_PUSHER, PRIZE_CLAW, PACHINKO, CAPSULE_GACHA, HIGH_STAKES -> {
-                return dev.gamblingitems.fabric.machines.MachineMenus.open(player, mode, access);
-            }
             default -> {
                 return false;
             }

@@ -48,12 +48,13 @@ import net.minecraft.world.item.Items;
 
 /** Server-side settings. Item values are shared by every game; each game keeps its own tuning. */
 public final class ModConfig {
-    public static final int SCHEMA_VERSION = 20;
+    public static final int SCHEMA_VERSION = 21;
     /** One displayed unit of currency, so every screen counts in the currency's own units. */
     public static final long CURRENCY_UNIT = 1_000;
     /** The casino games that can be switched to a currency. Upgrader, trade up, cases and battles never are. */
     public static final List<String> CURRENCY_GAMES = List.of("crash", "roulette", "blackjack", "bingo", "slotMachine",
-            "luckyWheel", "coinPusher", "prizeClaw", "pachinko", "capsuleGacha", "highStakes");
+            "luckyWheel", "coinPusher", "prizeClaw", "pachinko", "capsuleGacha", "highStakes",
+            "plinko", "bigSix", "videoPoker", "horseRace");
     /** The key of each prize machine under "machines", which is also its name among the currency games. */
     public static final Map<GameMode, String> MACHINE_KEYS = machineKeys();
     private static ValueCatalog values;
@@ -67,6 +68,7 @@ public final class ModConfig {
     private static BingoSetup bingo;
     private static SlotSetup slots;
     private static Map<GameMode, MachineSetup> machines;
+    private static dev.gamblingitems.fabric.arcade.ArcadeSettings arcade;
 
     private ModConfig() {}
 
@@ -81,6 +83,7 @@ public final class ModConfig {
     public static BingoSetup bingo() { return require(bingo); }
     public static SlotSetup slots() { return require(slots); }
     public static MachineSetup machine(GameMode mode) { return require(require(machines).get(mode)); }
+    public static dev.gamblingitems.fabric.arcade.ArcadeSettings arcade() { return require(arcade); }
 
     private static Map<GameMode, String> machineKeys() {
         Map<GameMode, String> keys = new java.util.EnumMap<>(GameMode.class);
@@ -90,6 +93,10 @@ public final class ModConfig {
         keys.put(GameMode.PACHINKO, "pachinko");
         keys.put(GameMode.CAPSULE_GACHA, "capsuleGacha");
         keys.put(GameMode.HIGH_STAKES, "highStakes");
+        keys.put(GameMode.PLINKO, "plinko");
+        keys.put(GameMode.BIG_SIX, "bigSix");
+        keys.put(GameMode.VIDEO_POKER, "videoPoker");
+        keys.put(GameMode.HORSE_RACE, "horseRace");
         return java.util.Collections.unmodifiableMap(keys);
     }
 
@@ -192,7 +199,25 @@ public final class ModConfig {
         if (schema < 20) {
             json.add("machines", defaultMachines());
             JsonArray games = json.getAsJsonObject("currency").getAsJsonArray("games");
-            if (games != null && games.contains(new JsonPrimitive("slotMachine"))) MACHINE_KEYS.values().forEach(games::add);
+            if (games != null && games.contains(new JsonPrimitive("slotMachine"))) {
+                for (String key : List.of("luckyWheel", "coinPusher", "prizeClaw", "pachinko", "capsuleGacha", "highStakes")) games.add(key);
+            }
+        }
+        // Schema 21 opens the arcade: tickets, chips and a prize counter, and four more machines.
+        // The cabinets now pay in tickets; "arcade.tickets": false brings back the payouts in items.
+        if (schema < 21) {
+            json.add("arcade", defaultArcade());
+            JsonObject machines = json.getAsJsonObject("machines");
+            JsonObject added = defaultMachines();
+            for (String key : List.of("plinko", "bigSix", "videoPoker", "horseRace")) {
+                if (!machines.has(key)) machines.add(key, added.get(key));
+            }
+            JsonArray games = json.getAsJsonObject("currency").getAsJsonArray("games");
+            if (games != null && games.contains(new JsonPrimitive("slotMachine"))) {
+                for (String key : List.of("plinko", "bigSix", "videoPoker", "horseRace")) {
+                    if (!games.contains(new JsonPrimitive(key))) games.add(key);
+                }
+            }
         }
         json.addProperty("schemaVersion", SCHEMA_VERSION);
         return true;
@@ -210,8 +235,10 @@ public final class ModConfig {
         entries.sort(Comparator.comparingLong(ValueCatalog.Entry::value).thenComparing(entry -> entry.id().toString()));
         var valuation = dev.gamblingitems.fabric.value.RecipeValuation.build(server, new ValueCatalog(entries),
                 json.getAsJsonObject("automaticValues"));
-        ValueCatalog catalog = valuation.catalog();
+        var arcadeSettings = readArcade(json.getAsJsonObject("arcade"));
+        ValueCatalog catalog = withChips(valuation.catalog(), arcadeSettings.chipValue());
         write(directory.resolve("resolved-values.json"), valuation.report());
+        long ticketValue = arcadeSettings.tickets() ? arcadeSettings.ticketValue() : 0;
         JsonObject upgraderJson = json.getAsJsonObject("upgrader");
         JsonObject tradeUpJson = json.getAsJsonObject("tradeUp");
         CaseCatalog caseCatalog = readCases(json.getAsJsonArray("cases"), catalog);
@@ -226,8 +253,9 @@ public final class ModConfig {
         if (machinesJson == null) throw new IllegalArgumentException("Missing \"machines\"");
         Map<GameMode, MachineSetup> machineSetups = new java.util.EnumMap<>(GameMode.class);
         MACHINE_KEYS.forEach((mode, key) -> machineSetups.put(mode,
-                new MachineSetup(casino.get(key), readMachine(machinesJson, mode, key))));
+                new MachineSetup(casino.get(key), readMachine(machinesJson, mode, key), ticketValue)));
         values = catalog;
+        arcade = arcadeSettings;
         upgrader = new UpgradeSetup(catalog, upgraderJson.get("returnBasisPoints").getAsInt(),
                 upgraderJson.get("maximumChanceBasisPoints").getAsInt());
         tradeUp = new TradeUpSetup(catalog, new TradeUpSettings(
@@ -248,7 +276,7 @@ public final class ModConfig {
                 slotsJson.get("minimumStake").getAsLong(),
                 slotsJson.get("returnBasisPoints").getAsInt(),
                 slotsJson.get("spinTicks").getAsInt(),
-                slotsJson.get("resultTicks").getAsInt()));
+                slotsJson.get("resultTicks").getAsInt()), ticketValue);
         battle = new BattleSetup(cases, new BattleSettings(
                 battleJson.get("lobbyTicks").getAsInt(),
                 battleJson.get("roundTicks").getAsInt(),
@@ -335,6 +363,69 @@ public final class ModConfig {
             catalogs.put(game, currency);
         }
         return catalogs;
+    }
+
+    /**
+     * The casino chips join the shared catalogue at their worth, unless an administrator priced them
+     * in "values" already: they can then be staked anywhere a priced item can.
+     */
+    private static ValueCatalog withChips(ValueCatalog catalog, long chipValue) {
+        List<ValueCatalog.Entry> entries = new ArrayList<>(catalog.entries());
+        for (int chip : dev.gamblingitems.fabric.arcade.ArcadeSettings.CHIPS) {
+            ResourceLocation id = dev.gamblingitems.fabric.ModContent.id("chip_" + chip);
+            if (entries.stream().noneMatch(entry -> entry.id().equals(id))) entries.add(new ValueCatalog.Entry(id, chipValue * chip));
+        }
+        entries.sort(Comparator.comparingLong(ValueCatalog.Entry::value).thenComparing(entry -> entry.id().toString()));
+        return new ValueCatalog(entries);
+    }
+
+    /** The arcade: what a ticket and a chip are worth, how long a race takes bets, and the prize counter. */
+    private static dev.gamblingitems.fabric.arcade.ArcadeSettings readArcade(JsonObject json) {
+        if (json == null) throw new IllegalArgumentException("Missing \"arcade\"");
+        List<dev.gamblingitems.fabric.arcade.ArcadeSettings.Prize> prizes = new ArrayList<>();
+        JsonArray shelf = json.getAsJsonArray("prizes");
+        if (shelf == null) throw new IllegalArgumentException("Missing arcade.prizes");
+        for (int index = 0; index < shelf.size(); index++) {
+            JsonObject prize = shelf.get(index).getAsJsonObject();
+            String where = "arcade.prizes[" + index + "]";
+            ResourceLocation id = ResourceLocation.parse(required(prize, "item", where).getAsString());
+            if (!BuiltInRegistries.ITEM.containsKey(id) || dev.gamblingitems.fabric.Compat.item(id) == Items.AIR) {
+                throw new IllegalArgumentException(where + ": unknown item " + id);
+            }
+            prizes.add(new dev.gamblingitems.fabric.arcade.ArcadeSettings.Prize(id,
+                    required(prize, "count", where).getAsInt(), required(prize, "tickets", where).getAsLong()));
+        }
+        return new dev.gamblingitems.fabric.arcade.ArcadeSettings(required(json, "tickets", "arcade").getAsBoolean(),
+                required(json, "ticketValue", "arcade").getAsLong(), required(json, "chipValue", "arcade").getAsLong(),
+                required(json, "raceBettingTicks", "arcade").getAsInt(), prizes);
+    }
+
+    /**
+     * A ticket is worth a hundredth of an iron ingot, so a win counts in hundreds of tickets, and a
+     * chip of 1 an iron ingot. The prize counter asks for each prize the tickets of its value.
+     */
+    private static JsonObject defaultArcade() {
+        JsonObject json = new JsonObject();
+        json.addProperty("tickets", true);
+        json.addProperty("ticketValue", 10);
+        json.addProperty("chipValue", 1_000);
+        json.addProperty("raceBettingTicks", 200);
+        JsonArray prizes = new JsonArray();
+        Object[][] shelf = {{"minecraft:iron_ingot", 1, 100}, {"minecraft:cookie", 16, 150}, {"minecraft:gold_ingot", 1, 200},
+                {"minecraft:firework_rocket", 16, 300}, {"minecraft:ender_pearl", 1, 400}, {"minecraft:emerald", 1, 500},
+                {"minecraft:name_tag", 1, 800}, {"minecraft:diamond", 1, 1_000}, {"minecraft:saddle", 1, 1_200},
+                {"minecraft:jukebox", 1, 1_200}, {"minecraft:music_disc_cat", 1, 1_500}, {"minecraft:golden_apple", 1, 1_700},
+                {"minecraft:totem_of_undying", 1, 6_000}, {"minecraft:enchanted_golden_apple", 1, 20_000},
+                {"minecraft:netherite_ingot", 1, 24_800}, {"minecraft:nether_star", 1, 50_000}};
+        for (Object[] entry : shelf) {
+            JsonObject prize = new JsonObject();
+            prize.addProperty("item", (String) entry[0]);
+            prize.addProperty("count", (Integer) entry[1]);
+            prize.addProperty("tickets", (Integer) entry[2]);
+            prizes.add(prize);
+        }
+        json.add("prizes", prizes);
+        return json;
     }
 
     /** Disabled: the casino plays with every priced item until an administrator names a currency. */
@@ -434,6 +525,7 @@ public final class ModConfig {
         json.add("slotMachine", defaultSlots());
         json.add("machines", defaultMachines());
         json.add("currency", defaultCurrency());
+        json.add("arcade", defaultArcade());
         return json;
     }
 
@@ -448,8 +540,12 @@ public final class ModConfig {
         try {
             int[] multipliers, weights;
             switch (mode) {
-                case PACHINKO -> {
+                case PACHINKO, PLINKO -> {
                     multipliers = hundredths(json.getAsJsonArray("pockets"), where + ".pockets");
+                    weights = new int[0];
+                }
+                case VIDEO_POKER -> {
+                    multipliers = hundredths(json.getAsJsonArray("paytable"), where + ".paytable");
                     weights = new int[0];
                 }
                 case HIGH_STAKES -> {
@@ -567,6 +663,24 @@ public final class ModConfig {
         JsonObject highStakes = machine(10_000, 9_600, 50);
         highStakes.add("targets", decimals("1.25", "1.5", "2", "3", "5", "10", "25", "100"));
         machines.add("highStakes", highStakes);
+        // Twelve rows of pins: the edges are rare and pay big, the middle gives back less than the stake.
+        JsonObject plinko = machine(1_000, 10_000, 100);
+        plinko.add("pockets", decimals("41", "11", "4", "1.8", "1.1", "0.5", "0.4", "0.5", "1.1", "1.8", "4", "11", "41"));
+        machines.add("plinko", plinko);
+        // The real big six wheel: 54 segments, the bet on a symbol paid as printed on its layout.
+        JsonObject bigSix = machine(1_000, 10_000, 120);
+        bigSix.add("prizes", prizes("weight", new String[][] {{"2", "24"}, {"3", "15"}, {"6", "7"}, {"11", "4"},
+                {"21", "2"}, {"41", "1"}, {"41", "1"}}));
+        machines.add("bigSix", bigSix);
+        // Jacks or better, 9/6: the paytable stake included, from a pair of jacks to the royal flush.
+        JsonObject poker = machine(1_000, 9_600, 30);
+        poker.add("paytable", decimals("1", "2", "3", "4", "6", "9", "25", "50", "800"));
+        machines.add("videoPoker", poker);
+        // Six horses: the stronger they are, the more often they win and the less they pay.
+        JsonObject race = machine(1_000, 10_000, 200);
+        race.add("prizes", prizes("weight", new String[][] {{"2.7", "35"}, {"3.8", "25"}, {"5.2", "18"}, {"7.9", "12"},
+                {"13.5", "7"}, {"31", "3"}}));
+        machines.add("horseRace", race);
         return machines;
     }
 

@@ -25,6 +25,17 @@ public final class GameStationEntity extends BlockEntity {
     public int durationTicks;
     public String reelItems = "", wheelColours = "";
     public int phase = -1, targetSlot = -1, animationTicks, multiplier = 100;
+    /** The tickets the last play of an arcade cabinet won, shown once it is revealed. */
+    public long tickets;
+    /**
+     * An administrator's settings for this one cabinet, over the server's: closed, and a smallest and
+     * largest stake (0 keeps the server's). See /gamblingitems cabinet.
+     */
+    public boolean closed;
+    public long minimumStake, maximumStake;
+    /** Video poker: the stake of the hand being played, and who plays it. */
+    public long handStake;
+    public String handOwner = "";
     public long phaseEnd;
     public String previewPlayer = "", previewText = "", publicBets = "";
     /** Cards on the felt: the hand, then the dealer, "12,25|7?" with ? for the hole card. */
@@ -81,6 +92,21 @@ public final class GameStationEntity extends BlockEntity {
         level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
     }
 
+    /** Back to the resting screen, keeping what a round shows meanwhile: its bets and its countdown. */
+    public void clearResult() {
+        playerName = "";
+        rollingText = "";
+        resultKey = "";
+        resultItem = "";
+        highlight = false;
+        durationTicks = 0;
+        startedAt = 0;
+        reels = "";
+        tickets = 0;
+        setChanged();
+        level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+    }
+
     /** Returns the screen to its resting state, for a game whose round simply ended. */
     public void clear() {
         playerName = "";
@@ -131,6 +157,12 @@ public final class GameStationEntity extends BlockEntity {
         tag.putInt("animationTicks", animationTicks);
         tag.putInt("multiplier", multiplier);
         tag.putLong("phaseEnd", phaseEnd);
+        tag.putLong("tickets", tickets);
+        tag.putBoolean("closed", closed);
+        tag.putLong("minimumStake", minimumStake);
+        tag.putLong("maximumStake", maximumStake);
+        tag.putLong("handStake", handStake);
+        tag.putString("handOwner", handOwner);
     }
 
     //#if MC >= 1.21.6
@@ -164,6 +196,12 @@ public final class GameStationEntity extends BlockEntity {
         animationTicks = Nbt.integer(tag, "animationTicks", 0);
         multiplier = Nbt.integer(tag, "multiplier", 0);
         phaseEnd = Nbt.longValue(tag, "phaseEnd");
+        tickets = Nbt.longValue(tag, "tickets");
+        closed = Nbt.bool(tag, "closed");
+        minimumStake = Nbt.longValue(tag, "minimumStake");
+        maximumStake = Nbt.longValue(tag, "maximumStake");
+        handStake = Nbt.longValue(tag, "handStake");
+        handOwner = Nbt.string(tag, "handOwner");
     }
 
     //#if MC >= 1.20.5

@@ -17,7 +17,12 @@ public enum GameMode {
     PRIZE_CLAW("prize_claw"),
     PACHINKO("pachinko"),
     CAPSULE_GACHA("capsule_gacha"),
-    HIGH_STAKES("high_stakes");
+    HIGH_STAKES("high_stakes"),
+    // The arcade: a giant plinko board, a big six wheel, video poker and a horse race.
+    PLINKO("plinko"),
+    BIG_SIX("big_six"),
+    VIDEO_POKER("video_poker"),
+    HORSE_RACE("horse_race");
 
     private final String id;
 

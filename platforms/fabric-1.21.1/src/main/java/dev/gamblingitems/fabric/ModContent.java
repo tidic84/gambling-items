@@ -1,6 +1,12 @@
 package dev.gamblingitems.fabric;
 
 import dev.gamblingitems.core.GameMode;
+import dev.gamblingitems.fabric.arcade.ArcadeSettings;
+import dev.gamblingitems.fabric.arcade.CashierBlock;
+import dev.gamblingitems.fabric.arcade.CashierMenu;
+import dev.gamblingitems.fabric.arcade.CashierSetup;
+import dev.gamblingitems.fabric.arcade.DecorBlock;
+import dev.gamblingitems.fabric.arcade.NeonBlock;
 import dev.gamblingitems.fabric.block.GameStationBlock;
 import dev.gamblingitems.fabric.block.GameTableBlock;
 import dev.gamblingitems.fabric.block.SlotMachineBlock;
@@ -32,8 +38,13 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.CarpetBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -88,6 +99,36 @@ public final class ModContent {
     public static final Item CAPSULE_GACHA_ITEM = machineItem("capsule_gacha", CAPSULE_GACHA);
     public static final SlotMachineBlock HIGH_STAKES = machine("high_stakes", GameMode.HIGH_STAKES);
     public static final Item HIGH_STAKES_ITEM = machineItem("high_stakes", HIGH_STAKES);
+    /** The wide machines take two columns: Plinko, the Big Six wheel and the horse race. */
+    public static final SlotMachineBlock PLINKO = machine("plinko", GameMode.PLINKO);
+    public static final Item PLINKO_ITEM = machineItem("plinko", PLINKO);
+    public static final SlotMachineBlock BIG_SIX = machine("big_six", GameMode.BIG_SIX);
+    public static final Item BIG_SIX_ITEM = machineItem("big_six", BIG_SIX);
+    public static final SlotMachineBlock VIDEO_POKER = machine("video_poker", GameMode.VIDEO_POKER);
+    public static final Item VIDEO_POKER_ITEM = machineItem("video_poker", VIDEO_POKER);
+    public static final SlotMachineBlock HORSE_RACE = machine("horse_race", GameMode.HORSE_RACE);
+    public static final Item HORSE_RACE_ITEM = machineItem("horse_race", HORSE_RACE);
+    /** Casino chips: items of value like any other, worth the configured chip value times their face. */
+    private static final java.util.Map<Integer, Item> CHIPS = chips();
+    public static final CashierBlock CASHIER = Registry.register(BuiltInRegistries.BLOCK, id("cashier"),
+            new CashierBlock(blockProperties("cashier").strength(2.5F).sound(SoundType.WOOD).noOcclusion()));
+    public static final Item CASHIER_ITEM = blockItem("cashier", CASHIER);
+    public static final DecorBlock LEADERBOARD = Registry.register(BuiltInRegistries.BLOCK, id("leaderboard"),
+            new DecorBlock(DecorBlock.Kind.LEADERBOARD, blockProperties("leaderboard").strength(1.5F)
+                    .sound(SoundType.METAL).noOcclusion().lightLevel(state -> 10)));
+    public static final Item LEADERBOARD_ITEM = blockItem("leaderboard", LEADERBOARD);
+    public static final DecorBlock CROUPIER = Registry.register(BuiltInRegistries.BLOCK, id("croupier"),
+            new DecorBlock(DecorBlock.Kind.CROUPIER, blockProperties("croupier").strength(1.5F)
+                    .sound(SoundType.WOOL).noOcclusion()));
+    public static final Item CROUPIER_ITEM = blockItem("croupier", CROUPIER);
+    public static final NeonBlock NEON_TUBE = Registry.register(BuiltInRegistries.BLOCK, id("neon_tube"),
+            new NeonBlock(blockProperties("neon_tube").strength(0.3F).sound(SoundType.GLASS).noOcclusion()
+                    .lightLevel(state -> 15)));
+    public static final Item NEON_TUBE_ITEM = blockItem("neon_tube", NEON_TUBE);
+    public static final Block CASINO_CARPET = carpet("casino_carpet");
+    public static final Item CASINO_CARPET_ITEM = blockItem("casino_carpet", CASINO_CARPET);
+    public static final Block CASINO_CARPET_BLUE = carpet("casino_carpet_blue");
+    public static final Item CASINO_CARPET_BLUE_ITEM = blockItem("casino_carpet_blue", CASINO_CARPET_BLUE);
     // The identifier of the first station is kept so existing worlds still read their block entities.
     public static final BlockEntityType<GameStationEntity> STATION_ENTITY = Registry.register(
             BuiltInRegistries.BLOCK_ENTITY_TYPE, id("upgrade_station"),
@@ -102,7 +143,7 @@ public final class ModContent {
                     CASE_STATION, CRASH_STATION, ROULETTE_STATION, BLACKJACK_STATION,
                     BATTLE_STATION, BINGO_STATION, BLACKJACK_TABLE, ROULETTE_TABLE,
                     BINGO_TABLE, SLOT_MACHINE, LUCKY_WHEEL, COIN_PUSHER, PRIZE_CLAW, PACHINKO,
-                    CAPSULE_GACHA, HIGH_STAKES)
+                    CAPSULE_GACHA, HIGH_STAKES, PLINKO, BIG_SIX, VIDEO_POKER, HORSE_RACE, LEADERBOARD, CROUPIER)
             //#if MC >= 1.21.2 && LOADER == fabric
             //$ .build());
             //#elif MC >= 1.21.2
@@ -157,10 +198,40 @@ public final class ModContent {
                     Platform.menuType(
                     (id, inventory, opening) -> new dev.gamblingitems.fabric.machines.MachineMenu(id, inventory, opening.setup()),
                     Opening.codec(dev.gamblingitems.fabric.machines.MachineSetup.CODEC)));
+    public static final MenuType<CashierMenu> CASHIER_MENU =
+            Registry.register(BuiltInRegistries.MENU, id("cashier"),
+                    Platform.menuType(
+                    (id, inventory, opening) -> new CashierMenu(id, inventory, opening.setup()),
+                    Opening.codec(CashierSetup.CODEC)));
+    /** Everything of the mod in one tab of its own. */
+    public static final CreativeModeTab TAB = Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, id("casino"),
+            Platform.creativeTab(Component.translatable("itemGroup.gamblingitems.casino"),
+                    () -> new ItemStack(SLOT_MACHINE_ITEM), ModContent::creativeEntries));
 
     private ModContent() {}
 
     public static Item key(CaseRarity rarity) { return KEYS.get(rarity); }
+
+    /** The chip of a face value of {@link ArcadeSettings#CHIPS}. */
+    public static Item chip(int face) { return CHIPS.get(face); }
+
+    private static java.util.Map<Integer, Item> chips() {
+        var chips = new java.util.LinkedHashMap<Integer, Item>();
+        for (int face : ArcadeSettings.CHIPS) {
+            chips.put(face, Registry.register(BuiltInRegistries.ITEM, id("chip_" + face),
+                    new Item(itemProperties("chip_" + face))));
+        }
+        return chips;
+    }
+
+    private static Block carpet(String path) {
+        return Registry.register(BuiltInRegistries.BLOCK, id(path),
+                new CarpetBlock(blockProperties(path).strength(0.1F).sound(SoundType.WOOL)));
+    }
+
+    private static Item blockItem(String path, Block block) {
+        return Registry.register(BuiltInRegistries.ITEM, id(path), new BlockItem(block, blockItemProperties(path)));
+    }
 
     private static java.util.Map<CaseRarity, Item> keys() {
         var keys = new java.util.EnumMap<CaseRarity, Item>(CaseRarity.class);
@@ -231,16 +302,19 @@ public final class ModContent {
     /** Loading this class registers everything above; each loader calls this at its registration time. */
     public static void initialize() {}
 
-    /** What the functional blocks tab lists, in order. */
+    /** What the mod's tab lists, in order. */
     public static java.util.List<Item> creativeEntries() {
         var entries = new java.util.ArrayList<Item>();
         entries.add(TERMINAL);
         entries.add(POCKET_CASINO);
         for (CaseRarity rarity : CaseRarity.values()) entries.add(key(rarity));
+        entries.addAll(CHIPS.values());
         entries.addAll(java.util.List.of(UPGRADE_STATION_ITEM, TRADE_UP_STATION_ITEM, CASE_STATION_ITEM,
                 CRASH_STATION_ITEM, ROULETTE_STATION_ITEM, BLACKJACK_STATION_ITEM, BATTLE_STATION_ITEM,
                 BLACKJACK_TABLE_ITEM, ROULETTE_TABLE_ITEM, BINGO_STATION_ITEM, BINGO_TABLE_ITEM, SLOT_MACHINE_ITEM,
-                LUCKY_WHEEL_ITEM, COIN_PUSHER_ITEM, PRIZE_CLAW_ITEM, PACHINKO_ITEM, CAPSULE_GACHA_ITEM, HIGH_STAKES_ITEM));
+                LUCKY_WHEEL_ITEM, COIN_PUSHER_ITEM, PRIZE_CLAW_ITEM, PACHINKO_ITEM, CAPSULE_GACHA_ITEM, HIGH_STAKES_ITEM,
+                VIDEO_POKER_ITEM, PLINKO_ITEM, BIG_SIX_ITEM, HORSE_RACE_ITEM, CASHIER_ITEM, LEADERBOARD_ITEM,
+                CROUPIER_ITEM, NEON_TUBE_ITEM, CASINO_CARPET_ITEM, CASINO_CARPET_BLUE_ITEM));
         return entries;
     }
 }

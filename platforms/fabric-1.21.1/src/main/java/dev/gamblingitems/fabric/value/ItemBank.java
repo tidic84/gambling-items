@@ -24,7 +24,8 @@ public final class ItemBank {
         List<Denomination> denominations = new ArrayList<>();
         long previous = -1;
         for (ValueCatalog.Entry entry : catalog.entries()) {
-            if (entry.value() == previous) continue;
+            // Change is never made in casino chips: those only come from the cashier.
+            if (entry.value() == previous || entry.id().getNamespace().equals("gamblingitems")) continue;
             previous = entry.value();
             denominations.add(new Denomination(entry, entry.value()));
         }

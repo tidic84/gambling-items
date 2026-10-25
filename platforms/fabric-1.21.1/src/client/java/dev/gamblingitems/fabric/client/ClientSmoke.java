@@ -6,7 +6,10 @@ import dev.gamblingitems.fabric.menu.GameMenus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import dev.gamblingitems.fabric.machines.MachineMenu;
+import dev.gamblingitems.core.machines.CabinetControls.Control;
+import dev.gamblingitems.fabric.block.CabinetPlay;
+import dev.gamblingitems.fabric.block.SlotMachineBlock;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -24,11 +27,13 @@ public final class ClientSmoke {
     private static final int STEP = 60, SETTLE = 40;
     private static final List<GameMode> MODES = new ArrayList<>();
     private static int ticks = -1;
-    // Machines are only opened at their block: the smoke places one in front of the player and plays it once.
-    private static final Map<GameMode, Block> MACHINES = Map.of(GameMode.LUCKY_WHEEL, ModContent.LUCKY_WHEEL,
-            GameMode.COIN_PUSHER, ModContent.COIN_PUSHER, GameMode.PRIZE_CLAW, ModContent.PRIZE_CLAW,
-            GameMode.PACHINKO, ModContent.PACHINKO, GameMode.CAPSULE_GACHA, ModContent.CAPSULE_GACHA,
-            GameMode.HIGH_STAKES, ModContent.HIGH_STAKES);
+    // Machines have no window: the smoke places one in front of the player and plays it once on its model.
+    private static final Map<GameMode, Block> MACHINES = Map.ofEntries(Map.entry(GameMode.LUCKY_WHEEL, ModContent.LUCKY_WHEEL),
+            Map.entry(GameMode.COIN_PUSHER, ModContent.COIN_PUSHER), Map.entry(GameMode.PRIZE_CLAW, ModContent.PRIZE_CLAW),
+            Map.entry(GameMode.PACHINKO, ModContent.PACHINKO), Map.entry(GameMode.CAPSULE_GACHA, ModContent.CAPSULE_GACHA),
+            Map.entry(GameMode.HIGH_STAKES, ModContent.HIGH_STAKES), Map.entry(GameMode.PLINKO, ModContent.PLINKO),
+            Map.entry(GameMode.BIG_SIX, ModContent.BIG_SIX), Map.entry(GameMode.VIDEO_POKER, ModContent.VIDEO_POKER),
+            Map.entry(GameMode.HORSE_RACE, ModContent.HORSE_RACE));
 
     static {
         MODES.addAll(GameMenus.TERMINAL);
@@ -71,17 +76,16 @@ public final class ClientSmoke {
                 return;
             }
             var pos = player.blockPosition().relative(player.getDirection(), 2);
-            player.level().setBlockAndUpdate(pos, machine.defaultBlockState());
-            GameMenus.open(player, mode, ContainerLevelAccess.create(player.level(), pos));
-        });
-        if (phase == SETTLE / 2) server.execute(() -> {
-            var player = server.getPlayerList().getPlayer(id);
-            if (player == null || !(player.containerMenu instanceof MachineMenu menu)) return;
-            menu.getSlot(0).set(new ItemStack(Items.DIAMOND, 2));
-            menu.clickMenuButton(player, MachineMenu.PLAY_BUTTON);
+            player.level().setBlockAndUpdate(pos, machine.defaultBlockState()
+                    .setValue(SlotMachineBlock.FACING, player.getDirection().getOpposite()));
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND, 2));
+            boolean picks = mode == GameMode.BIG_SIX || mode == GameMode.HORSE_RACE;
+            CabinetPlay.use(player, mode, pos, picks ? Control.PICK_1 : Control.PLAY);
         });
         if (phase == SETTLE) {
-            shot(minecraft, "gamblingitems-smoke-" + mode.id() + (minecraft.screen instanceof CasinoScreen<?> ? "" : "-NOSCREEN") + ".png");
+            // A machine is played on its model and shows no window; every other game must.
+            boolean expected = MACHINES.containsKey(mode) != minecraft.screen instanceof CasinoScreen<?>;
+            shot(minecraft, "gamblingitems-smoke-" + mode.id() + (expected ? "" : "-NOSCREEN") + ".png");
         }
     }
 

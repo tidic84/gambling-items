@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.gamblingitems.core.GameMode;
-import dev.gamblingitems.fabric.menu.GameMenus;
+import dev.gamblingitems.core.machines.CabinetControls;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,6 +27,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.BlockHitResult;
@@ -39,13 +40,19 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * is played out there for everyone to see.
  *
  * <p>The bottom block carries the game, the middle one holds the reels and the top one is the
- * arched roof, half a block high. Right-clicking any of them sits the player down at the machine, except
- * its lever, crank or button, which plays it there and then: see {@link CabinetPlay}.
+ * arched roof, half a block high. A cabinet has no window: it is played at its lever, crank or
+ * buttons, there and then (see {@link CabinetPlay}); anywhere else a click tells how, and a
+ * sneaking click reads its rules out.
+ *
+ * <p>The giant machines stand two blocks wide: their right column is a second column of parts,
+ * marked {@link #RIGHT}, the game still carried by the bottom left block.
  */
 public final class SlotMachineBlock extends BaseEntityBlock implements GameSurface {
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     /** Which of the three blocks this is: 0 the cabinet, 1 the reels, 2 the roof above them. */
     public static final IntegerProperty PART = IntegerProperty.create("part", 0, 2);
+    /** True for the right column of a cabinet two blocks wide, seen from its front. */
+    public static final BooleanProperty RIGHT = BooleanProperty.create("right");
     /** How many blocks a cabinet occupies; the last of them is only half full. */
     public static final int PARTS = 3;
     /** The game is played on the block a player stands at. */
@@ -67,8 +74,12 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
     public SlotMachineBlock(GameMode mode, Properties properties) {
         super(properties);
         this.mode = mode;
-        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(PART, ANCHOR_PART));
+        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(PART, ANCHOR_PART)
+                .setValue(RIGHT, false));
     }
+
+    /** How many blocks wide this cabinet stands. */
+    public int width() { return CabinetControls.width(mode); }
 
     @Override public GameMode mode() { return mode; }
 
@@ -77,33 +88,47 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
     //#endif
 
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, PART);
+        builder.add(FACING, PART, RIGHT);
     }
 
     @Override public BlockState getStateForPlacement(BlockPlaceContext context) {
-        for (int part = 1; part < PARTS; part++) {
-            BlockPos above = context.getClickedPos().above(part);
-            if (context.getLevel().isOutsideBuildHeight(above)
-                    || !context.getLevel().getBlockState(above).canBeReplaced(context)) {
-                return null;
+        Direction facing = context.getHorizontalDirection().getOpposite();
+        for (int column = 0; column < width(); column++) {
+            for (int part = 0; part < PARTS; part++) {
+                if (column == 0 && part == 0) continue;
+                BlockPos target = partPos(context.getClickedPos(), facing, part, column == 1);
+                if (context.getLevel().isOutsideBuildHeight(target)
+                        || !context.getLevel().getBlockState(target).canBeReplaced(context)) {
+                    return null;
+                }
             }
         }
-        return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
+        return defaultBlockState().setValue(FACING, facing);
     }
 
     /** Where one block of the cabinet sits, counted from the block the player stands at. */
     public static BlockPos partPos(BlockPos anchor, int part) { return anchor.above(part); }
 
-    /** The block that carries the game, whichever half of the cabinet was touched. */
+    /** Where one block of a cabinet facing that way sits; the right column is on the player's right. */
+    public static BlockPos partPos(BlockPos anchor, Direction facing, int part, boolean right) {
+        return right ? anchor.above(part).relative(facing.getCounterClockWise()) : anchor.above(part);
+    }
+
+    /** The block that carries the game, whichever block of the cabinet was touched. */
     public static BlockPos anchor(BlockPos pos, BlockState state) {
-        return pos.below(state.getValue(PART));
+        BlockPos below = pos.below(state.getValue(PART));
+        return state.getValue(RIGHT) ? below.relative(state.getValue(FACING).getClockWise()) : below;
     }
 
     @Override public void setPlacedBy(Level level, BlockPos pos, BlockState state,
                                       LivingEntity placer, ItemStack stack) {
         if (level.isClientSide) return;
-        for (int part = 1; part < PARTS; part++) {
-            level.setBlock(partPos(pos, part), state.setValue(PART, part), 3);
+        Direction facing = state.getValue(FACING);
+        for (int column = 0; column < width(); column++) {
+            for (int part = 0; part < PARTS; part++) {
+                if (column == 0 && part == 0) continue;
+                level.setBlock(partPos(pos, facing, part, column == 1), state.setValue(PART, part).setValue(RIGHT, column == 1), 3);
+            }
         }
         // A prize machine shows its prizes from the start, before anyone has played it.
         if (mode != GameMode.SLOT_MACHINE) dev.gamblingitems.fabric.machines.MachineMenu.publishTable(
@@ -120,12 +145,14 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
         if (state.is(next.getBlock()) || level.isClientSide) return;
     //#endif
         BlockPos root = anchor(pos, state);
-        for (int part = 0; part < PARTS; part++) {
-            BlockPos target = partPos(root, part);
-            BlockState other = level.getBlockState(target);
-            if (!target.equals(pos) && other.is(this) && other.getValue(PART) == part
-                    && other.getValue(FACING) == state.getValue(FACING)) {
-                level.removeBlock(target, false);
+        for (int column = 0; column < width(); column++) {
+            for (int part = 0; part < PARTS; part++) {
+                BlockPos target = partPos(root, state.getValue(FACING), part, column == 1);
+                BlockState other = level.getBlockState(target);
+                if (!target.equals(pos) && other.is(this) && other.getValue(PART) == part
+                        && other.getValue(RIGHT) == (column == 1) && other.getValue(FACING) == state.getValue(FACING)) {
+                    level.removeBlock(target, false);
+                }
             }
         }
     }
@@ -142,7 +169,7 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
 
     /** Only the block the player stands at carries the game; the marquee is just cabinet. */
     @Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return state.getValue(PART) == ANCHOR_PART ? new GameStationEntity(pos, state) : null;
+        return state.getValue(PART) == ANCHOR_PART && !state.getValue(RIGHT) ? new GameStationEntity(pos, state) : null;
     }
 
     @Override protected RenderShape getRenderShape(BlockState state) { return RenderShape.MODEL; }
@@ -178,11 +205,11 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
     //$ }
     //#endif
 
-    /** A click on the lever, crank or button plays the machine; anywhere else opens its window. */
+    /** A click on the lever, crank or buttons plays the machine; anywhere else it tells how, or its rules. */
     private void play(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!(player instanceof ServerPlayer serverPlayer)) return;
         BlockPos root = anchor(pos, state);
         if (CabinetPlay.use(serverPlayer, mode, root, CabinetPlay.control(mode, state, root, hit.getLocation()))) return;
-        GameMenus.open(serverPlayer, mode, ContainerLevelAccess.create(level, root));
+        CabinetPlay.explain(serverPlayer, mode, root, player.isShiftKeyDown());
     }
 }

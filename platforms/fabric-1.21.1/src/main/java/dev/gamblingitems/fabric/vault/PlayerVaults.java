@@ -17,6 +17,8 @@ import net.minecraft.world.level.saveddata.SavedData;
 public final class PlayerVaults extends SavedData {
     public static final int SCHEMA_VERSION = 2;
     private final Map<UUID, Map<VaultSection, SimpleContainer>> vaults = new HashMap<>();
+    // Older versions of the mod ignore this key, so the schema stays the same.
+    private final ArcadeLedger arcade = new ArcadeLedger(this::setDirty);
 
     //#if MC >= 26.1
     //$ private static final net.minecraft.resources.ResourceLocation VAULTS_ID = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("gamblingitems", "gamblingitems_vaults");
@@ -68,6 +70,9 @@ public final class PlayerVaults extends SavedData {
         //#endif
     }
 
+    /** The arcade tickets of every player, kept with their vaults. */
+    public ArcadeLedger arcade() { return arcade; }
+
     public SimpleContainer forPlayer(UUID player, VaultSection section) {
         return vaults.computeIfAbsent(player, key -> new EnumMap<>(VaultSection.class))
                 .computeIfAbsent(section, key -> {
@@ -96,6 +101,7 @@ public final class PlayerVaults extends SavedData {
             throw new IllegalStateException("Unsupported gamblingitems vault schema: " + schema);
         }
         PlayerVaults storage = new PlayerVaults();
+        storage.arcade.read(Nbt.child(root, "arcade"));
         ListTag players = Nbt.compounds(root, "players");
         for (int index = 0; index < players.size(); index++) {
             CompoundTag entry = Nbt.compound(players, index);
@@ -159,6 +165,7 @@ public final class PlayerVaults extends SavedData {
             players.add(entry);
         });
         root.put("players", players);
+        root.put("arcade", arcade.write());
         return root;
     }
 }

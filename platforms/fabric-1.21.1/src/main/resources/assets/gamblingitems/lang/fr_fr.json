@@ -390,5 +390,11 @@
   "gui.gamblingitems.rules.prize_claw": "Préparez votre crédit, placez la pince au-dessus d'un lot avec les flèches ou en le cliquant dans la liste, puis descendez la pince. Chaque lot a sa valeur et sa prise : la chance que la pince le tienne jusqu'à la trappe. Les lots lourds glissent plus souvent. Le serveur décide si la pince tient avant qu'elle ne bouge.",
   "gui.gamblingitems.rules.pachinko": "Préparez votre crédit et lancez la bille. Elle tombe à travers huit rangées de clous, à gauche ou à droite à chances égales, dans l'une des neuf poches. Les poches du milieu sont les plus souvent atteintes : 70 billes sur 256 finissent au centre. Chaque poche paie son multiplicateur de la mise.",
   "gui.gamblingitems.rules.capsule_gacha": "Préparez votre crédit et tournez la manivelle : une capsule sort. Sa couleur est sa rareté, tirée par le serveur avec les chances de la liste, et l'ouvrir montre le multiplicateur de la mise qu'elle paie.",
-  "gui.gamblingitems.rules.high_stakes": "Choisissez un multiplicateur cible, puis engagez votre crédit. La cible est atteinte avec une chance d'exactement un sur la cible (2x une fois sur deux, 10x une fois sur dix) : l'arc vert du cadran est cette chance. L'atteindre paie la cible fois la mise, moins la part de la maison indiquée sous les chances. La manquer fait perdre la mise. La plus petite partie est plus élevée qu'ailleurs."
+  "gui.gamblingitems.rules.high_stakes": "Choisissez un multiplicateur cible, puis engagez votre crédit. La cible est atteinte avec une chance d'exactement un sur la cible (2x une fois sur deux, 10x une fois sur dix) : l'arc vert du cadran est cette chance. L'atteindre paie la cible fois la mise, moins la part de la maison indiquée sous les chances. La manquer fait perdre la mise. La plus petite partie est plus élevée qu'ailleurs.",
+  "gui.gamblingitems.world_play_started": "%s joué. Touche la même commande à main vide pour récupérer.",
+  "gui.gamblingitems.world_play_refused": "Cette machine prend au moins %s et doit pouvoir payer son meilleur lot.",
+  "gui.gamblingitems.world_play_busy": "La machine joue encore.",
+  "gui.gamblingitems.world_play_collected": "Gains et crédit récupérés.",
+  "gui.gamblingitems.world_play_position": "Position %s sur %s",
+  "gui.gamblingitems.big_win": "GROS GAIN !"
 }

@@ -29,7 +29,7 @@ import net.minecraft.world.item.ItemStack;
  * <p>The items played stay where they are: a winning line hands back the very items that were
  * staked and adds the profit in change, and a losing line is the only thing that takes them.
  */
-public final class SlotMenu extends AbstractContainerMenu {
+public final class SlotMenu extends AbstractContainerMenu implements dev.gamblingitems.fabric.block.CabinetMenu {
     public static final int SPIN_BUTTON = 1000, COLLECT_BUTTON = 1001;
     public static final int STAKE_X = 20, INPUT_Y = 146;
     public static final int INVENTORY_START = SlotSettings.STAKE_SLOTS;
@@ -216,6 +216,40 @@ public final class SlotMenu extends AbstractContainerMenu {
         super.broadcastChanges();
     }
 
+    @Override public boolean accepts(ItemStack stack) { return catalog().valueOf(stack) > 0; }
+    @Override public int choices() { return 1; }
+    @Override public long minimumStake() { return settings().minimumStake(); }
+
+    @Override public boolean playFromHand(ItemStack hand, int choice) {
+        if (owner.isSpectator() || !stillValid(owner) || spinning() || !returnCredit()) return false;
+        int count = dev.gamblingitems.fabric.block.CabinetPlay.stage(hand, vault, SlotSettings.INPUT_SLOT, this::canSpin);
+        if (count == 0) return false;
+        hand.shrink(count);
+        return pull(owner);
+    }
+
+    @Override public boolean collectAll() {
+        if (owner.isSpectator() || !stillValid(owner)) return false;
+        long before = credit();
+        returnCredit();
+        boolean moved = credit() < before;
+        return collect(owner) | moved;
+    }
+
+    /** Moves the credit left in front of the cabinet back to the inventory; false if some of it did not fit. */
+    private boolean returnCredit() {
+        boolean all = true;
+        for (int index = 0; index < SlotSettings.STAKE_SLOTS; index++) {
+            int slot = SlotSettings.INPUT_SLOT + index;
+            ItemStack staged = vault.getItem(slot).copy();
+            if (staged.isEmpty()) continue;
+            moveItemStackTo(staged, INVENTORY_START, slots.size(), false);
+            vault.setItem(slot, staged);
+            all &= staged.isEmpty();
+        }
+        return all;
+    }
+
     @Override public boolean stillValid(Player player) {
         if (player.level().isClientSide) return player == owner;
         return player == owner && player.isAlive() && access.evaluate(
@@ -253,14 +287,6 @@ public final class SlotMenu extends AbstractContainerMenu {
     @Override public void removed(Player player) {
         super.removed(player);
         // Winnings stay in the saved vault; the credit left in front of the machine comes back.
-        if (player instanceof ServerPlayer && player.isAlive()) {
-            for (int index = 0; index < SlotSettings.STAKE_SLOTS; index++) {
-                int slot = SlotSettings.INPUT_SLOT + index;
-                ItemStack staged = vault.getItem(slot).copy();
-                if (staged.isEmpty()) continue;
-                moveItemStackTo(staged, INVENTORY_START, slots.size(), false);
-                vault.setItem(slot, staged);
-            }
-        }
+        if (player instanceof ServerPlayer && player.isAlive()) returnCredit();
     }
 }

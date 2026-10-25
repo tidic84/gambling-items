@@ -34,7 +34,7 @@ import net.minecraft.world.item.ItemStack;
  * best prize could be handed over, draw, settle the vault, then show the outcome. A repeated or late
  * request finds the machine playing and is refused.
  */
-public final class MachineMenu extends AbstractContainerMenu {
+public final class MachineMenu extends AbstractContainerMenu implements dev.gamblingitems.fabric.block.CabinetMenu {
     public static final int PLAY_BUTTON = 1000, COLLECT_BUTTON = 1001, CHOICE_BUTTON = 1100;
     public static final int STAKE_X = 20, INPUT_Y = 146;
     public static final int INVENTORY_START = MachineSettings.STAKE_SLOTS;
@@ -194,7 +194,7 @@ public final class MachineMenu extends AbstractContainerMenu {
     }
 
     /** Shows the machine's prizes on its cabinet before anyone has played it, once per change of configuration. */
-    static void publishTable(ContainerLevelAccess access, MachineTable table) {
+    public static void publishTable(ContainerLevelAccess access, MachineTable table) {
         access.execute((level, pos) -> {
             if (!(level.getBlockEntity(pos) instanceof GameStationEntity machine)) return;
             String encoded = encode(table);
@@ -229,6 +229,41 @@ public final class MachineMenu extends AbstractContainerMenu {
             if (!playing()) ValueSync.write(data, STAKE, credit());
         }
         super.broadcastChanges();
+    }
+
+    @Override public boolean accepts(ItemStack stack) { return catalog().valueOf(stack) > 0; }
+    @Override public int choices() { return table().choices(); }
+    @Override public long minimumStake() { return settings().minimumStake(); }
+
+    @Override public boolean playFromHand(ItemStack hand, int choice) {
+        if (owner.isSpectator() || !stillValid(owner) || playing() || !returnCredit()) return false;
+        if (choice >= 0 && choice < choices()) data.set(CHOICE, choice);
+        int count = dev.gamblingitems.fabric.block.CabinetPlay.stage(hand, vault, MachineSettings.INPUT_SLOT, this::canPlay);
+        if (count == 0) return false;
+        hand.shrink(count);
+        return play(owner);
+    }
+
+    @Override public boolean collectAll() {
+        if (owner.isSpectator() || !stillValid(owner)) return false;
+        long before = credit();
+        returnCredit();
+        boolean moved = credit() < before;
+        return collect() | moved;
+    }
+
+    /** Moves the credit left in front of the machine back to the inventory; false if some of it did not fit. */
+    private boolean returnCredit() {
+        boolean all = true;
+        for (int index = 0; index < MachineSettings.STAKE_SLOTS; index++) {
+            int slot = MachineSettings.INPUT_SLOT + index;
+            ItemStack staged = vault.getItem(slot).copy();
+            if (staged.isEmpty()) continue;
+            moveItemStackTo(staged, INVENTORY_START, slots.size(), false);
+            vault.setItem(slot, staged);
+            all &= staged.isEmpty();
+        }
+        return all;
     }
 
     /** A machine is only played at its block: it has no portable item. */
@@ -269,14 +304,6 @@ public final class MachineMenu extends AbstractContainerMenu {
     @Override public void removed(Player player) {
         super.removed(player);
         // Winnings stay in the saved vault; the credit left in front of the machine comes back.
-        if (player instanceof ServerPlayer && player.isAlive()) {
-            for (int index = 0; index < MachineSettings.STAKE_SLOTS; index++) {
-                int slot = MachineSettings.INPUT_SLOT + index;
-                ItemStack staged = vault.getItem(slot).copy();
-                if (staged.isEmpty()) continue;
-                moveItemStackTo(staged, INVENTORY_START, slots.size(), false);
-                vault.setItem(slot, staged);
-            }
-        }
+        if (player instanceof ServerPlayer && player.isAlive()) returnCredit();
     }
 }

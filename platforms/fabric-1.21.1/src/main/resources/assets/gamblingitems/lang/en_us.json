@@ -390,5 +390,11 @@
   "gui.gamblingitems.rules.prize_claw": "Prepare your credit, move the claw over a prize with the arrows or by clicking it in the list, then drop the claw. Each prize has its value and its grip: the chance that the claw holds it all the way to the chute. Heavier prizes slip more often. The server decides whether the claw holds before it moves.",
   "gui.gamblingitems.rules.pachinko": "Prepare your credit and launch the ball. It falls through eight rows of pins, left or right at each with even chances, into one of nine pockets. The middle pockets are reached most often: 70 balls in 256 land in the very middle. Each pocket pays its multiplier of the stake.",
   "gui.gamblingitems.rules.capsule_gacha": "Prepare your credit and turn the crank: one capsule comes out. Its colour is its rarity, drawn by the server with the chances in the odds list, and opening it shows the multiplier of the stake it pays.",
-  "gui.gamblingitems.rules.high_stakes": "Choose a target multiplier, then engage your credit. The target is reached with a chance of exactly one in the target (2x one time in two, 10x one time in ten): the green arc of the dial is that chance. Reaching it pays the target times the stake, less the house share shown under the odds. Missing it loses the stake. The smallest play is higher than elsewhere."
+  "gui.gamblingitems.rules.high_stakes": "Choose a target multiplier, then engage your credit. The target is reached with a chance of exactly one in the target (2x one time in two, 10x one time in ten): the green arc of the dial is that chance. Reaching it pays the target times the stake, less the house share shown under the odds. Missing it loses the stake. The smallest play is higher than elsewhere.",
+  "gui.gamblingitems.world_play_started": "Played %s. Touch the same control with an empty hand to collect.",
+  "gui.gamblingitems.world_play_refused": "This machine takes at least %s and must be able to pay its best prize.",
+  "gui.gamblingitems.world_play_busy": "The machine is still playing.",
+  "gui.gamblingitems.world_play_collected": "Winnings and credit collected.",
+  "gui.gamblingitems.world_play_position": "Position %s of %s",
+  "gui.gamblingitems.big_win": "BIG WIN!"
 }

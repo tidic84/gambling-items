@@ -39,7 +39,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * is played out there for everyone to see.
  *
  * <p>The bottom block carries the game, the middle one holds the reels and the top one is the
- * arched roof, half a block high. Right-clicking any of them sits the player down at the machine.
+ * arched roof, half a block high. Right-clicking any of them sits the player down at the machine, except
+ * its lever, crank or button, which plays it there and then: see {@link CabinetPlay}.
  */
 public final class SlotMachineBlock extends BaseEntityBlock implements GameSurface {
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
@@ -104,6 +105,9 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
         for (int part = 1; part < PARTS; part++) {
             level.setBlock(partPos(pos, part), state.setValue(PART, part), 3);
         }
+        // A prize machine shows its prizes from the start, before anyone has played it.
+        if (mode != GameMode.SLOT_MACHINE) dev.gamblingitems.fabric.machines.MachineMenu.publishTable(
+                ContainerLevelAccess.create(level, pos), dev.gamblingitems.fabric.config.ModConfig.machine(mode).settings().table());
     }
 
     // Breaking any part of the furniture removes the others.
@@ -146,7 +150,7 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
     //#if MC >= 1.20.5
     @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                           Player player, BlockHitResult hit) {
-        play(state, level, pos, player);
+        play(state, level, pos, player, hit);
         return dev.gamblingitems.fabric.Compat.handled(level);
     }
 
@@ -158,7 +162,7 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
             ItemStack stack, BlockState state, Level level,
                                                         BlockPos pos, Player player, InteractionHand hand,
                                                         BlockHitResult hit) {
-        if (hand == InteractionHand.MAIN_HAND) play(state, level, pos, player);
+        if (hand == InteractionHand.MAIN_HAND) play(state, level, pos, player, hit);
         //#if MC >= 1.21.2
         //$ return dev.gamblingitems.fabric.Compat.handled(level);
         //#else
@@ -169,14 +173,16 @@ public final class SlotMachineBlock extends BaseEntityBlock implements GameSurfa
     //$ // Before 1.20.5 one method answered a click, with or without an item in hand.
     //$ @Override public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
     //$         InteractionHand hand, BlockHitResult hit) {
-    //$     if (hand == InteractionHand.MAIN_HAND) play(state, level, pos, player);
+    //$     if (hand == InteractionHand.MAIN_HAND) play(state, level, pos, player, hit);
     //$     return InteractionResult.sidedSuccess(level.isClientSide);
     //$ }
     //#endif
 
-    private void play(BlockState state, Level level, BlockPos pos, Player player) {
+    /** A click on the lever, crank or button plays the machine; anywhere else opens its window. */
+    private void play(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (!(player instanceof ServerPlayer serverPlayer)) return;
         BlockPos root = anchor(pos, state);
+        if (CabinetPlay.use(serverPlayer, mode, root, CabinetPlay.control(mode, state, root, hit.getLocation()))) return;
         GameMenus.open(serverPlayer, mode, ContainerLevelAccess.create(level, root));
     }
 }

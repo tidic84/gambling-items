@@ -23,6 +23,23 @@ public final class Platform {
 
     public static Path configDir() { return FabricLoader.getInstance().getConfigDir(); }
 
+    //#if MC == 1.20.1
+    //$ private static final net.minecraft.resources.ResourceLocation MENU_BUTTON =
+    //$         new net.minecraft.resources.ResourceLocation("gamblingitems", "menu_button");
+    //$ public static void initializeMenuNetworking() {
+    //$     net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.registerGlobalReceiver(MENU_BUTTON,
+    //$             (server, player, handler, buffer, responseSender) -> {
+    //$                 var action = dev.gamblingitems.fabric.menu.MenuButton.read(buffer);
+    //$                 server.execute(() -> dev.gamblingitems.fabric.menu.MenuButton.handle(player, action));
+    //$             });
+    //$ }
+    //$ public static net.minecraft.network.protocol.Packet<?> menuButtonPacket(int containerId, int button) {
+    //$     var buffer = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+    //$     new dev.gamblingitems.fabric.menu.MenuButton(containerId, button).write(buffer);
+    //$     return new net.minecraft.network.protocol.game.ServerboundCustomPayloadPacket(MENU_BUTTON, buffer);
+    //$ }
+    //#endif
+
     /** A menu whose client side is built from data the server sends when it opens. */
     public static <M extends AbstractContainerMenu, D> MenuType<M> menuType(
             MenuFactory<M, D> factory, StreamCodec<? super RegistryFriendlyByteBuf, D> codec) {

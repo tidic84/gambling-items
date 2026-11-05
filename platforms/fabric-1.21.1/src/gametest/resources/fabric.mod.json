@@ -7,6 +7,7 @@
   "entrypoints": {
     "fabric-gametest": [
       "dev.gamblingitems.fabric.upgrade.UpgradeGameTests",
+      "dev.gamblingitems.fabric.config.EnchantedBookConfigGameTests",
       "dev.gamblingitems.fabric.tradeup.TradeUpGameTests",
       "dev.gamblingitems.fabric.cases.CaseGameTests",
       "dev.gamblingitems.fabric.crash.CrashGameTests",
@@ -20,6 +21,7 @@
       "dev.gamblingitems.fabric.block.PanelReachGameTests",
       "dev.gamblingitems.fabric.block.TableGameTests",
       "dev.gamblingitems.fabric.menu.ValueSyncGameTests",
+      "dev.gamblingitems.fabric.menu.MenuButtonGameTests",
       "dev.gamblingitems.fabric.menu.LayoutGameTests",
       "dev.gamblingitems.fabric.ContentGameTests",
       "dev.gamblingitems.fabric.PortableGameTests"

@@ -33,11 +33,15 @@ English and French interfaces are included. Loader availability varies by Minecr
 
 **Version 0.2.1 fixes:** the Forge/NeoForge 1.20.1 startup crash and Minecraft 26.3 Upgrader target selection and roulette left-click issues. These fixes apply to their respective version-specific downloads.
 
+**Version 0.2.2:** fixes game buttons and portable-device tabs on Minecraft 1.20.1, validates access before tab changes, and adds configurable enchanted books to the Upgrader. Update both the server and every client together. See the [0.2.2 changelog](release/curseforge/changelog-0.2.2.md).
+
 ## Configuration
 
 Server settings live in `config/gamblingitems/games.json`. Adjust item values, game settings and exclusions to suit your modpack. The catalogue can estimate values from vanilla and modded crafting recipes; explicit configured values take priority.
 
 An optional casino currency lets you assign values to one or more vanilla or modded items. It is disabled by default. Selected casino games then accept and pay that currency; exchange games keep using the item catalogue. Restart the server after changing currency settings.
+
+The Upgrader supports enchanted books such as Mending and Sharpness V, including configured combinations. Set their enchantments, levels and prices in `upgrader.enchantedBooks`; eight examples are added automatically to existing configurations. Books can be selected as rewards or used as stakes when they exactly match a configured variant.
 
 See [portable devices and item values](ITEMS_AND_VALUES.md) for recipes and the limits of automatic valuation. This detailed guide is currently in French.
 

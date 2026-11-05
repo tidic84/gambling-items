@@ -8,12 +8,17 @@ Tokens are read from ~/.config/gambling-items/tokens.env (MODRINTH_TOKEN, CURSEF
 """
 import argparse
 import json
+import hashlib
+import os
 from pathlib import Path
 import time
 import urllib.request
 import uuid
 
-from port import version_key
+try:
+    from .port import version_key
+except ImportError:
+    from port import version_key
 
 ROOT = Path(__file__).resolve().parents[1]
 CURSEFORGE_PROJECT = 1716536
@@ -23,11 +28,12 @@ USER_AGENT = 'tidic84/gambling-items-publisher (alexim13550@gmail.com)'
 
 
 def tokens():
-    values = {}
-    for line in (Path.home() / '.config/gambling-items/tokens.env').read_text().splitlines():
+    values = {name: os.environ[name] for name in ('MODRINTH_TOKEN', 'CURSEFORGE_TOKEN') if os.environ.get(name)}
+    path = Path.home() / '.config/gambling-items/tokens.env'
+    for line in (path.read_text().splitlines() if path.exists() else []):
         if '=' in line:
             key, value = line.split('=', 1)
-            values[key.strip()] = value.strip()
+            values.setdefault(key.strip(), value.strip())
     return values
 
 
@@ -61,8 +67,23 @@ def request(method, url, headers, body=None, kind=None):
 
 
 def changelog(version):
-    text = (ROOT / 'release/curseforge/changelog-en.md').read_text(encoding='utf-8')
+    specific = ROOT / f'release/curseforge/changelog-{version}.md'
+    text = (specific if specific.exists() else ROOT / 'release/curseforge/changelog-en.md').read_text(encoding='utf-8')
     return text
+
+
+def verified_targets(report, release):
+    ready = []
+    order = sorted(report, key=lambda key: (report[key]['loader'], version_key(report[key]['minecraft'])))
+    for key in order:
+        record = report[key]
+        if record['status'] != 'built' or record.get('server') != 'passed':
+            continue
+        jar = release / record['file']
+        if not jar.is_file() or hashlib.sha256(jar.read_bytes()).hexdigest() != record.get('sha256'):
+            raise SystemExit(f'{key}: release JAR is missing or its SHA-256 does not match the verified build')
+        ready.append(key)
+    return ready
 
 
 # ---------------------------------------------------------------- Modrinth
@@ -170,8 +191,7 @@ def main():
     receipts_file = release / 'receipts.json'
     receipts = json.loads(receipts_file.read_text()) if receipts_file.exists() else {'modrinth': {}, 'curseforge': {}}
     keys = tokens()
-    order = sorted(report, key=lambda key: (report[key]['loader'], version_key(report[key]['minecraft'])))
-    ready = [key for key in order if report[key]['status'] == 'built' and (release / report[key]['file']).exists()]
+    ready = verified_targets(report, release)
     print(f'{len(ready)} files ready out of {len(report)} targets')
     if args.only != 'curseforge':
         project = modrinth_project(keys['MODRINTH_TOKEN'], args.go)

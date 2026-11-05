@@ -123,7 +123,12 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
     }
 
     protected void send(int button) {
+        //#if MC == 1.20.1
+        //$ if (minecraft.getConnection() != null) minecraft.getConnection().send(
+        //$         dev.gamblingitems.fabric.platform.Platform.menuButtonPacket(menu.containerId, button));
+        //#else
         if (minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId, button);
+        //#endif
     }
 
     /** Takes a won item into the inventory, exactly as a shift-click on its slot would. */

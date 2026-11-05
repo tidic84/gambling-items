@@ -44,7 +44,7 @@ public final class SlotScreen extends CasinoScreen<SlotMenu> {
     }
 
     private void click(int button) {
-        if (minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId, button);
+        send(button);
     }
 
     @Override protected void containerTick() {

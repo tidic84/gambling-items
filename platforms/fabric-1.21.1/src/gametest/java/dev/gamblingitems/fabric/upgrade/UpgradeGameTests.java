@@ -22,6 +22,92 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 
 public class UpgradeGameTests implements FabricGameTest {
+    private ValueCatalog bookCatalog(GameTestHelper helper) {
+        return EnchantedBooks.add(setup().catalog(), com.google.gson.JsonParser.parseString("""
+                [{"enchantments":{"minecraft:mending":1},"value":80000},
+                 {"enchantments":{"minecraft:sharpness":5},"value":60000},
+                 {"enchantments":{"minecraft:sharpness":4},"value":30000},
+                 {"enchantments":{"minecraft:mending":1,"minecraft:unbreaking":3},"value":120000}]
+                """).getAsJsonArray(), helper.getLevel().registryAccess());
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void enchantedBooksKeepDistinctValuesAndExactComponents(GameTestHelper helper) {
+        var catalog = bookCatalog(helper);
+        var books = catalog.entries().stream().filter(entry -> entry.stack().is(Items.ENCHANTED_BOOK)).toList();
+        helper.assertTrue(books.size() == 4, "Different enchantments and combinations coexist");
+        for (var entry : books) {
+            helper.assertTrue(catalog.valueOf(entry.stack()) == entry.value(), "Each variant has its own price");
+            var renamed = entry.stack();
+            renamed.set(DataComponents.CUSTOM_NAME, Component.literal("Special book"));
+            helper.assertTrue(catalog.valueOf(renamed) == 0, "Extra components are not silently discarded");
+            var copy = entry.stack();
+            copy.set(DataComponents.CUSTOM_NAME, Component.literal("Mutated copy"));
+            helper.assertTrue(catalog.valueOf(entry.stack()) == entry.value(), "Returned stacks cannot mutate the catalogue");
+        }
+        helper.assertTrue(catalog.valueOf(new ItemStack(Items.ENCHANTED_BOOK)) == 0, "An empty book is not an enchanted target");
+        var owner = player(helper);
+        var vault = new SimpleContainer(2);
+        var stake = books.getFirst();
+        vault.setItem(0, stake.stack());
+        var menu = new UpgradeMenu(1, owner.getInventory(), new UpgradeSetup(catalog, 9000, 9000),
+                vault, ContainerLevelAccess.NULL, () -> 0);
+        helper.assertTrue(menu.getSlot(0).mayPlace(stake.stack()), "Configured book accepted as stake");
+        menu.clickMenuButton(owner, catalog.entries().size() - 1);
+        helper.assertTrue(Math.abs(menu.chance() - 0.9 * stake.value() / 120000) < 1e-12,
+                "Book stake uses its exact variant price");
+        helper.assertTrue(menu.clickMenuButton(owner, UpgradeMenu.SPIN_BUTTON), "Book can upgrade to a more valuable book");
+        helper.assertTrue(vault.getItem(0).isEmpty(), "Book stake consumed");
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void enchantedBookSetupSurvivesNetworkAndPaysTheSelectedBook(GameTestHelper helper) {
+        var setup = new UpgradeSetup(bookCatalog(helper), 9000, 9000);
+        var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),
+                helper.getLevel().registryAccess());
+        try {
+            UpgradeSetup.CODEC.encode(buffer, setup);
+            var decoded = UpgradeSetup.CODEC.decode(buffer);
+            helper.assertTrue(decoded.catalog().entries().equals(setup.catalog().entries()),
+                    "All book enchantments and prices reach the client");
+            var owner = player(helper);
+            var vault = new SimpleContainer(2);
+            vault.setItem(0, new ItemStack(Items.IRON_INGOT));
+            var menu = new UpgradeMenu(1, owner.getInventory(), setup, vault, ContainerLevelAccess.NULL, () -> 0);
+            int target = setup.catalog().entries().size() - 1;
+            menu.clickMenuButton(owner, target);
+            var expected = decoded.catalog().entries().get(target).stack();
+            helper.assertTrue(menu.clickMenuButton(owner, UpgradeMenu.SPIN_BUTTON), "Book target can be won");
+            helper.assertTrue(ItemStack.isSameItemSameComponents(vault.getItem(1), expected), "Reward keeps every enchantment");
+            helper.assertTrue(vault.getItem(0).isEmpty(), "Stake is consumed once");
+            helper.assertFalse(menu.clickMenuButton(owner, UpgradeMenu.SPIN_BUTTON), "Duplicate wager rejected");
+            var vaults = new PlayerVaults();
+            vaults.forPlayer(owner.getUUID(), VaultSection.UPGRADER).setItem(1, vault.getItem(1));
+            var registries = helper.getLevel().registryAccess();
+            var restored = PlayerVaults.load(vaults.save(new CompoundTag(), registries), registries);
+            helper.assertTrue(ItemStack.isSameItemSameComponents(expected,
+                    restored.forPlayer(owner.getUUID(), VaultSection.UPGRADER).getItem(1)), "Saved rewards retain enchantments");
+        } finally { buffer.release(); }
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void defaultBooksAreAvailableOnlyInTheUpgrader(GameTestHelper helper) {
+        var config = dev.gamblingitems.fabric.config.ModConfig.upgrader().catalog();
+        helper.assertTrue(config.entries().stream().anyMatch(entry -> entry.stack().is(Items.ENCHANTED_BOOK)
+                && !entry.displayName().getString().equals(entry.stack().getHoverName().getString())),
+                "Configured books have descriptive names");
+        for (var entry : config.entries()) {
+            if (!entry.stack().is(Items.ENCHANTED_BOOK)) continue;
+            if (config.valueOf(entry.stack()) <= 0) continue;
+            if (ItemStack.isSameItemSameComponents(entry.stack(), new ItemStack(Items.ENCHANTED_BOOK))) continue;
+            helper.assertTrue(dev.gamblingitems.fabric.config.ModConfig.values().valueOf(entry.stack()) == 0,
+                    "Book variants do not change other games' economy");
+        }
+        helper.succeed();
+    }
+
     @GameTest(template = EMPTY_STRUCTURE)
     public void largeCatalogSelectionCannotCollideWithSpin(GameTestHelper helper) {
         ServerPlayer player = player(helper);

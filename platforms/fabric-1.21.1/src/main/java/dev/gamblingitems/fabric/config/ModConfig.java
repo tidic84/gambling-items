@@ -44,7 +44,7 @@ import net.minecraft.world.item.Items;
 
 /** Server-side settings. Item values are shared by every game; each game keeps its own tuning. */
 public final class ModConfig {
-    public static final int SCHEMA_VERSION = 19;
+    public static final int SCHEMA_VERSION = 20;
     /** One displayed unit of currency, so every screen counts in the currency's own units. */
     public static final long CURRENCY_UNIT = 1_000;
     /** The casino games that can be switched to a currency. Upgrader, trade up, cases and battles never are. */
@@ -99,7 +99,7 @@ public final class ModConfig {
     }
 
     /** Brings an older file to the current schema. Custom tuning is kept; obsolete defaults can be migrated. */
-    private static boolean migrate(JsonObject json) {
+    static boolean migrate(JsonObject json) {
         int schema = json.get("schemaVersion").getAsInt();
         if (schema == SCHEMA_VERSION) return false;
         if (schema < 2 || schema > SCHEMA_VERSION) throw new IllegalArgumentException("Unknown config schema");
@@ -167,6 +167,8 @@ public final class ModConfig {
                 currency.add("items", items);
             }
         }
+        if (schema < 20 && !json.getAsJsonObject("upgrader").has("enchantedBooks"))
+            json.getAsJsonObject("upgrader").add("enchantedBooks", defaultEnchantedBooks());
         json.addProperty("schemaVersion", SCHEMA_VERSION);
         return true;
     }
@@ -196,7 +198,8 @@ public final class ModConfig {
         JsonObject slotsJson = json.getAsJsonObject("slotMachine");
         Map<String, ValueCatalog> casino = readCurrency(json.getAsJsonObject("currency"), catalog);
         values = catalog;
-        upgrader = new UpgradeSetup(catalog, upgraderJson.get("returnBasisPoints").getAsInt(),
+        upgrader = new UpgradeSetup(dev.gamblingitems.fabric.upgrade.EnchantedBooks.add(catalog,
+                upgraderJson.getAsJsonArray("enchantedBooks"), server.registryAccess()), upgraderJson.get("returnBasisPoints").getAsInt(),
                 upgraderJson.get("maximumChanceBasisPoints").getAsInt());
         tradeUp = new TradeUpSetup(catalog, new TradeUpSettings(
                 tradeUpJson.get("requiredUnits").getAsInt(),
@@ -371,6 +374,7 @@ public final class ModConfig {
         JsonObject upgraderJson = new JsonObject();
         upgraderJson.addProperty("returnBasisPoints", 9000);
         upgraderJson.addProperty("maximumChanceBasisPoints", 9000);
+        upgraderJson.add("enchantedBooks", defaultEnchantedBooks());
         final JsonObject values;
         if (Files.exists(legacy)) {
             JsonObject old = JsonParser.parseString(Files.readString(legacy)).getAsJsonObject();
@@ -401,6 +405,22 @@ public final class ModConfig {
         json.add("slotMachine", defaultSlots());
         json.add("currency", defaultCurrency());
         return json;
+    }
+
+    private static JsonArray defaultEnchantedBooks() {
+        JsonArray books = new JsonArray();
+        String[] ids = {"mending", "sharpness", "unbreaking", "efficiency", "fortune", "silk_touch", "looting", "protection"};
+        int[] levels = {1, 5, 3, 5, 3, 1, 3, 4};
+        long[] prices = {80_000, 60_000, 40_000, 60_000, 60_000, 50_000, 60_000, 50_000};
+        for (int i = 0; i < ids.length; i++) {
+            JsonObject book = new JsonObject();
+            JsonObject enchantments = new JsonObject();
+            enchantments.addProperty("minecraft:" + ids[i], levels[i]);
+            book.add("enchantments", enchantments);
+            book.addProperty("value", prices[i]);
+            books.add(book);
+        }
+        return books;
     }
 
     /** The smallest pull is one iron ingot, and the reels take two seconds to stop. */

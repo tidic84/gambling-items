@@ -35,6 +35,9 @@ public final class GamblingItemsFabric implements ModInitializer {
     @Override
     public void onInitialize() {
         ModContent.initialize();
+        //#if MC == 1.20.1
+        //$ dev.gamblingitems.fabric.platform.Platform.initializeMenuNetworking();
+        //#endif
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS)
                 .register(entries -> ModContent.creativeEntries().forEach(entries::accept));
         // Keys are found on mobs, so the cases have a price that is played for, not bought.

@@ -55,6 +55,36 @@ public class SlotGameTests implements FabricGameTest {
         return new SlotMenu(1, player.getInventory(), setup(), vault, cabinet(player), draw);
     }
 
+    private static boolean packet(ServerPlayer player, SlotMenu menu, int button) {
+        var buffer = new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+        try {
+            new dev.gamblingitems.fabric.menu.MenuButton(menu.containerId, button).write(buffer);
+            return dev.gamblingitems.fabric.menu.MenuButton.handle(player,
+                    dev.gamblingitems.fabric.menu.MenuButton.read(buffer));
+        } finally {
+            buffer.release();
+        }
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void diamondStakeSpinsAndCollectsThroughThePacketExactlyOnce(GameTestHelper helper) {
+        ServerPlayer player = player(helper);
+        SimpleContainer vault = new SimpleContainer(SlotSettings.VAULT_SIZE);
+        vault.setItem(SlotSettings.INPUT_SLOT, new ItemStack(Items.DIAMOND, 2));
+        SlotMenu menu = menu(helper, player, vault, bound -> 0);
+        player.containerMenu = menu;
+        helper.assertTrue(packet(player, menu, SlotMenu.SPIN_BUTTON), "Diamond stake starts the reels");
+        helper.assertTrue(menu.spinning(), "The client receives an active animation");
+        helper.assertTrue(menu.lastWin() == 80_000, "Two diamonds at four times pay eight");
+        helper.assertFalse(packet(player, menu, SlotMenu.SPIN_BUTTON), "A duplicate pull is rejected");
+        helper.assertTrue(packet(player, menu, SlotMenu.COLLECT_BUTTON), "The packet collects the profit");
+        helper.assertTrue(player.getInventory().countItem(Items.DIAMOND) == 6, "Six profit diamonds arrive");
+        helper.assertTrue(vault.getItem(SlotSettings.INPUT_SLOT).getCount() == 2, "The stake stays in place");
+        helper.assertFalse(packet(player, menu, SlotMenu.COLLECT_BUTTON), "Profit cannot be collected twice");
+        player.closeContainer();
+        helper.succeed();
+    }
+
     @GameTest(template = EMPTY_STRUCTURE)
     public void aLosingLineTakesTheCreditAndNothingElse(GameTestHelper helper) {
         ServerPlayer player = player(helper);

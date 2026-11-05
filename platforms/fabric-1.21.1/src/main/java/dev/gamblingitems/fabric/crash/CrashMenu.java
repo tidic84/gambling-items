@@ -114,11 +114,11 @@ public final class CrashMenu extends AbstractContainerMenu {
     public boolean canCashOut() { return isEngaged() && phase() == CrashGame.Phase.FLYING; }
 
     @Override public boolean clickMenuButton(Player player, int button) {
-        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
-            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) {
             return false;
         }
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (game == null) return false;
         boolean handled = switch (button) {
             case BET_BUTTON -> game.place(player.getUUID(), game.stagedValue(player.getUUID()));

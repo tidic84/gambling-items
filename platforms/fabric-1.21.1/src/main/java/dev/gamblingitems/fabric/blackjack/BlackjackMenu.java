@@ -125,11 +125,11 @@ public final class BlackjackMenu extends AbstractContainerMenu {
     }
 
     @Override public boolean clickMenuButton(Player player, int button) {
-        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
-            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) {
             return false;
         }
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (table == null) return false;
         boolean handled = switch (button) {
             case DEAL_BUTTON -> table.deal();

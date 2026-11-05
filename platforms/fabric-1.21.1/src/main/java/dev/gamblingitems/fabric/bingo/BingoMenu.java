@@ -140,11 +140,11 @@ public final class BingoMenu extends AbstractContainerMenu {
     }
 
     @Override public boolean clickMenuButton(Player player, int button) {
-        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
-            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator() || !stillValid(player)) {
             return false;
         }
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (game == null) return false;
         boolean handled = switch (button) {
             case BUY_BUTTON -> game.buy(player.getUUID(), player.getGameProfile().getName());

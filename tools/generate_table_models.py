@@ -146,8 +146,19 @@ def common(f):
     # Narrow rails up the sides, clear of the controls printed on the felt, and the dealer's straight back edge.
     for x1, x2 in ((0, .55), (47.45, 48)):
         f.box((x1, 13, 2.4), (x2, 14, 32), 'leather')
+        f.box((x1 - .1, 14, 2.4), (x2 + .1, 14.2, 32), 'brass')
     f.box((.55, 13, 31.45), (47.45, 13.9, 32), 'wood')
     f.box((.55, 13.9, 31.6), (47.45, 14.05, 31.9), 'brass')
+    # A stepped gold moulding round the slab, under the felt, and a gold kick at the foot of the apron.
+    f.box((-.3, 12.6, -.3), (48.3, 13, 32.3), 'brass')
+    f.box((-.15, 11.6, -.15), (48.15, 11.9, 32.15), 'brass')
+    f.box((.5, 8, .5), (47.5, 8.3, 31.5), 'brass')
+    # Studs along the apron's sides and back, matching the armrest's.
+    for x in range(2, 47, 3):
+        f.box((x, 9.7, 31.3), (x + .5, 10.2, 31.45), 'brass')
+    for z in range(3, 31, 3):
+        for x1 in (.55, 47.3):
+            f.box((x1, 9.7, z), (x1 + .15, 10.2, z + .5), 'brass')
 
 
 def blackjack(f):

@@ -1,6 +1,7 @@
 // Shared by every port project: the version, the generated sources and the Java toolchain of the target.
-// Builds live on the Linux file system: decompiling Minecraft on a Windows mount is several times slower.
-layout.buildDirectory = new File(System.getProperty('user.home'), ".cache/gambling-items-ports/${rootProject.name}")
+// Per-user build caches can be isolated for a release while a development client is running.
+layout.buildDirectory = providers.gradleProperty('releaseBuildDir').map { file(it) }.getOrElse(
+        new File(System.getProperty('user.home'), ".cache/gambling-items-ports/${rootProject.name}"))
 def shared = new Properties()
 file('../../gradle.properties').withInputStream { shared.load(it) }
 version = shared.getProperty('version')
@@ -10,6 +11,7 @@ project.ext.mc = providers.gradleProperty('minecraft_version').getOrElse('1.21.1
 project.ext.target = new groovy.json.JsonSlurper().parse(file('../versions.json')).find { it.minecraft == project.ext.mc }
 assert project.ext.target != null : "Minecraft ${project.ext.mc} is not in ports/versions.json"
 project.ext.javaVersion = project.ext.target.java as int
+project.ext.serverRunDir = providers.gradleProperty('releaseSmokeDir').getOrElse("run/${project.ext.mc}")
 
 base { archivesName = "gambling-items-${project.ext.mc}-${project.ext.loader}" }
 repositories { mavenCentral() }

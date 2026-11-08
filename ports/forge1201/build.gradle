@@ -20,7 +20,7 @@ legacyForge {
         }
         server {
             server()
-            gameDirectory = file("run/${mc}")
+            gameDirectory = file(project.serverRunDir)
             programArgument '--nogui'
             systemProperty 'gamblingitems.smoke', 'true'
             jvmArgument '-Xmx1500m'
@@ -34,6 +34,17 @@ mixin {
 }
 dependencies {
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Match Minecraft's Log4j SLF4J2 binding instead of Forge tooling's old beta API.
+    testRuntimeOnly 'org.slf4j:slf4j-api:2.0.9'
+}
+tasks.named('test') { useJUnitPlatform() }
+// Legacy ModDev adds Minecraft to main only; packet tests need the same libraries.
+sourceSets.test {
+    compileClasspath += sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.main.compileClasspath
 }
 tasks.named('jar') {
     manifest.attributes('MixinConfigs': 'gamblingitems.client.mixins.json')

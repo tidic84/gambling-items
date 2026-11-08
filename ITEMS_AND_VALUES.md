@@ -33,6 +33,26 @@ chance = min(plafond configuré, rendement × valeur de la mise / valeur de la c
 
 Avec un rendement de 90 %, une mise de valeur 1 visant une cible de valeur 10 donne **9 %**. La même mise visant une cible de valeur 20 donne **4,5 %**. Le nombre d'objets misés et leur usure comptent dans la valeur. Une chance très faible reste faible : aucun minimum artificiel n'est appliqué.
 
+## Livres enchantés dans l'Upgrader
+
+L'Upgrader propose par défaut des livres Raccommodage (Mending), Tranchant V (Sharpness V), Solidité III, Efficacité V, Fortune III, Toucher de soie, Butin III et Protection IV. Le nom des enchantements et leur niveau apparaissent dans la liste et au survol ; la recherche reconnaît leur nom dans la langue du jeu.
+
+Dans `config/gamblingitems/games.json`, la section `upgrader.enchantedBooks` définit chaque variante et sa valeur. Exemple à intégrer dans la section `upgrader` existante :
+
+```json
+"enchantedBooks": [
+  {"enchantments": {"minecraft:mending": 1}, "value": 80000},
+  {"enchantments": {"minecraft:sharpness": 5}, "value": 60000},
+  {"enchantments": {"minecraft:mending": 1, "minecraft:unbreaking": 3}, "value": 120000}
+]
+```
+
+Les valeurs utilisent les mêmes unités internes que les autres objets : `80000` correspond à une valeur affichée de 80. Les enchantements des mods installés sont acceptés, avec des niveaux compris entre 1 et leur maximum. Une combinaison de plusieurs enchantements peut être configurée comme une variante distincte. Les variantes identiques en double, identifiants inconnus, niveaux invalides et prix hors limites provoquent une erreur explicite au chargement.
+
+Chaque variante peut servir de cible ou de mise dans l'Upgrader. Un livre doit correspondre exactement aux enchantements et niveaux configurés ; un nom personnalisé ou d'autres données supplémentaires empêchent son utilisation comme mise. Les gains conservent tous les enchantements configurés. Ces variantes sont réservées à l'Upgrader et n'ajoutent pas de gains aux autres jeux.
+
+La migration ajoute les huit livres par défaut aux anciennes configurations et conserve les prix et réglages existants. Une liste vide (`"enchantedBooks": []`) désactive ces variantes. Après modification, utiliser `/reload` puis rouvrir l'interface.
+
 ## Catalogue automatique, y compris les mods
 
 Au démarrage du serveur et après `/reload`, le catalogue est reconstruit à partir des recettes chargées. Cela comprend les recettes des mods et des datapacks qui exposent leurs résultats et ingrédients, ainsi que les transformations de forge. Les nouveaux items de jeu et blocs craftables du mod figurent aussi dans le catalogue.

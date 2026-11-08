@@ -19,7 +19,7 @@ neoForge {
         }
         server {
             server()
-            gameDirectory = file("run/${mc}")
+            gameDirectory = file(project.serverRunDir)
             programArgument '--nogui'
             systemProperty 'gamblingitems.smoke', 'true'
             jvmArgument '-Xmx1500m'

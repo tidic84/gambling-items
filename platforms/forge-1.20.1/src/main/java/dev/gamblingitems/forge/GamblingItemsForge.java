@@ -76,6 +76,7 @@ public final class GamblingItemsForge {
     }
 
     public GamblingItemsForge() {
+        dev.gamblingitems.fabric.platform.Platform.initializeMenuNetworking();
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         // Every registry is open during the registration events, so the first one registers it all.
         modBus.addListener((RegisterEvent event) -> registerAll());

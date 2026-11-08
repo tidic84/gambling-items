@@ -31,7 +31,9 @@ import net.minecraft.world.item.ItemStack;
  * staked and adds the profit in change, and a losing line is the only thing that takes them.
  */
 public final class SlotMenu extends AbstractContainerMenu implements dev.gamblingitems.fabric.block.CabinetMenu {
-    public static final int SPIN_BUTTON = 1000, COLLECT_BUTTON = 1001;
+    // Minecraft 1.20.1 sends menu buttons as signed bytes. Keep both actions in
+    // 0..127: a larger ID plays the client click sound but is ignored by the server.
+    public static final int SPIN_BUTTON = 0, COLLECT_BUTTON = 1;
     public static final int STAKE_X = 20, INPUT_Y = 146;
     public static final int INVENTORY_START = SlotSettings.STAKE_SLOTS;
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -128,12 +130,12 @@ public final class SlotMenu extends AbstractContainerMenu implements dev.gamblin
     }
 
     @Override public boolean clickMenuButton(Player player, int button) {
-        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
-            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         if (!(player instanceof ServerPlayer) || player != owner || player.isSpectator()
                 || !stillValid(player)) {
             return false;
         }
+        if (dev.gamblingitems.fabric.menu.TerminalTabs.matches(button))
+            return dev.gamblingitems.fabric.menu.TerminalTabs.handle(player, button);
         boolean handled = switch (button) {
             case SPIN_BUTTON -> pull(player);
             case COLLECT_BUTTON -> collect(player);

@@ -50,7 +50,7 @@ final class OddsList {
             g.renderFakeItem(row.stack(), x + 1, top);
             int figureX = x + width - 7 - font.width(row.figure());
             g.drawString(font, row.figure(), figureX, top + 5, row.enabled() ? row.figureColour() : GameScreens.DIM, false);
-            GameScreens.fitted(g, font, row.stack().getHoverName(), x + 20, top + 5, figureX - x - 23,
+            GameScreens.fitted(g, font, dev.gamblingitems.fabric.upgrade.EnchantedBooks.displayName(row.stack()), x + 20, top + 5, figureX - x - 23,
                     row.marked() ? GameScreens.GREEN : row.enabled() ? GameScreens.TEXT : GameScreens.DIM);
         }
         if (rows.size() > count) {
@@ -64,6 +64,6 @@ final class OddsList {
 
     void tooltip(GuiGraphics g, Font font, List<Row> rows, int x, int y, int width, int height, int mouseX, int mouseY) {
         int index = at(rows.size(), x, y, width, height, mouseX, mouseY);
-        if (index >= 0) GuiPose.tooltip(g, font, List.of(rows.get(index).stack().getHoverName(), rows.get(index).tooltip()), mouseX, mouseY);
+        if (index >= 0) GuiPose.tooltip(g, font, List.of(dev.gamblingitems.fabric.upgrade.EnchantedBooks.displayName(rows.get(index).stack()), rows.get(index).tooltip()), mouseX, mouseY);
     }
 }

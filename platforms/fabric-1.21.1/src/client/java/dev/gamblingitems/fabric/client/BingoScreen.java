@@ -46,7 +46,7 @@ public final class BingoScreen extends CasinoScreen<BingoMenu> {
     }
 
     private void click(int button) {
-        if (minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId, button);
+        send(button);
     }
 
     @Override protected void containerTick() {

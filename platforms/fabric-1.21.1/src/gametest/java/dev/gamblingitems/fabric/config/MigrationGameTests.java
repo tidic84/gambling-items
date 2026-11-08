@@ -11,7 +11,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 /** A schema 19 file gains the prize machines without losing what its owner tuned. */
 public class MigrationGameTests implements FabricGameTest {
     private static JsonObject schema19(String games) {
-        return JsonParser.parseString("{\"schemaVersion\": 19, \"slotMachine\": {\"minimumStake\": 4242},"
+        return JsonParser.parseString("{\"schemaVersion\": 19, \"slotMachine\": {\"minimumStake\": 4242}, \"upgrader\": {},"
                 + " \"currency\": {\"enabled\": true, \"games\": " + games + "}}").getAsJsonObject();
     }
 
@@ -23,6 +23,7 @@ public class MigrationGameTests implements FabricGameTest {
         for (String key : ModConfig.MACHINE_KEYS.values()) {
             helper.assertTrue(json.getAsJsonObject("machines").has(key), "Every machine has its section: " + key);
         }
+        helper.assertTrue(json.getAsJsonObject("upgrader").has("enchantedBooks"), "The 0.2.2 enchanted books are added");
         helper.assertTrue(json.has("arcade") && json.getAsJsonObject("arcade").get("tickets").getAsBoolean(),
                 "The arcade tickets are added, on");
         JsonArray games = json.getAsJsonObject("currency").getAsJsonArray("games");
@@ -45,12 +46,12 @@ public class MigrationGameTests implements FabricGameTest {
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
-    public void schema21GainsTheTableGamesAndTheVipCardOnly(GameTestHelper helper) {
-        JsonObject json = JsonParser.parseString("{\"schemaVersion\": 21,"
+    public void schema22GainsTheTableGamesAndTheVipCardOnly(GameTestHelper helper) {
+        JsonObject json = JsonParser.parseString("{\"schemaVersion\": 22, \"upgrader\": {},"
                 + " \"machines\": {\"plinko\": {\"minimumStake\": 777}},"
                 + " \"arcade\": {\"prizes\": [{\"item\": \"minecraft:cake\", \"count\": 1, \"tickets\": 5}]},"
                 + " \"currency\": {\"enabled\": true, \"games\": [\"slotMachine\"]}}").getAsJsonObject();
-        helper.assertTrue(ModConfig.migrate(json), "A schema 21 file is migrated");
+        helper.assertTrue(ModConfig.migrate(json), "A schema 22 file is migrated");
         JsonObject machines = json.getAsJsonObject("machines");
         for (String key : new String[] {"craps", "baccarat", "keno", "scratchCard"}) {
             helper.assertTrue(machines.has(key), "The table game is added: " + key);

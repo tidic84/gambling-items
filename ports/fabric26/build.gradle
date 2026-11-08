@@ -22,7 +22,7 @@ loom {
             }
         }
         server {
-            runDir "run/${mc}"
+            runDir project.serverRunDir
             programArgs '--nogui'
             vmArg '-Dgamblingitems.smoke=true'
             vmArg '-Xmx1500m'

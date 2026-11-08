@@ -71,7 +71,9 @@ public class ArcadeGameTests implements FabricGameTest {
         helper.assertTrue(menu.chipValue() > 0 && menu.chipValue() + menu.itemValue() == value, "Into chips, and change, for the same value: " + value + " -> " + menu.chipValue() + " + " + menu.itemValue()
                 + " " + java.util.stream.IntStream.range(0, CashierMenu.TRAY_SLOTS).mapToObj(tray::getItem).filter(stack -> !stack.isEmpty()).toList());
         helper.assertTrue(menu.clickMenuButton(player, CashierMenu.TO_ITEMS), "The chips are changed back");
-        helper.assertTrue(menu.chipValue() == 0 && menu.itemValue() == value, "Into items of the same value");
+        long cheapest = ModConfig.values().entries().get(0).value();
+        helper.assertTrue(menu.chipValue() == 0 && menu.itemValue() <= value && value - menu.itemValue() < cheapest,
+                "Into items of the same value, give or take less than the cheapest item");
         helper.assertFalse(menu.clickMenuButton(player, CashierMenu.PRIZE), "A prize needs tickets");
         helper.succeed();
     }

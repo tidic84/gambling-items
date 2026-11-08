@@ -47,7 +47,7 @@ public final class RouletteScreen extends CasinoScreen<RouletteMenu> {
     }
 
     private void click(int button) {
-        if (minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId, button);
+        send(button);
     }
 
     @Override protected void containerTick() {

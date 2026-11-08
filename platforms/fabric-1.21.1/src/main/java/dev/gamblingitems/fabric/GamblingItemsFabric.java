@@ -33,6 +33,9 @@ public final class GamblingItemsFabric implements ModInitializer {
     @Override
     public void onInitialize() {
         ModContent.initialize();
+        //#if MC == 1.20.1
+        //$ dev.gamblingitems.fabric.platform.Platform.initializeMenuNetworking();
+        //#endif
         // Keys are found on mobs, so the cases have a price that is played for, not bought.
         //#if MC >= 1.21
         LootTableEvents.MODIFY.register((key, builder, source, registries) -> {

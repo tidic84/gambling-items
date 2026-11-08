@@ -13,8 +13,8 @@
   "experimental": false,
   "sourceUrl": "https://github.com/tidic84/gambling-items",
   "file": {
-    "path": "gambling-items-fabric-1.21.1-0.2.0-beta.7.jar",
-    "displayName": "Gambling Items 0.2.0-beta.7 - Fabric 1.21.1",
+    "path": "gambling-items-fabric-1.21.1-0.2.2.jar",
+    "displayName": "Gambling Items 0.2.2 - Fabric 1.21.1",
     "releaseType": "Release",
     "gameVersions": [
       "1.21.1"
@@ -23,7 +23,7 @@
       "Fabric"
     ],
     "javaVersion": "Java 21",
-    "changelogFile": "changelog-en.md",
+    "changelogFile": "changelog-0.2.2.md",
     "requiredDependencies": [
       {
         "slug": "fabric-api",

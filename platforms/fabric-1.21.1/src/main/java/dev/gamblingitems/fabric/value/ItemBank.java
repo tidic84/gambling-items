@@ -24,8 +24,10 @@ public final class ItemBank {
         List<Denomination> denominations = new ArrayList<>();
         long previous = -1;
         for (ValueCatalog.Entry entry : catalog.entries()) {
-            // Change is never made in casino chips: those only come from the cashier.
-            if (entry.value() == previous || entry.id().getNamespace().equals("gamblingitems")) continue;
+            // Change is never made in casino chips, which only come from the cashier, nor in the
+            // upgrader's priced enchanted books.
+            if (entry.value() == previous || entry.id().getNamespace().equals("gamblingitems")
+                    || entry.id().getPath().equals("enchanted_book")) continue;
             previous = entry.value();
             denominations.add(new Denomination(entry, entry.value()));
         }

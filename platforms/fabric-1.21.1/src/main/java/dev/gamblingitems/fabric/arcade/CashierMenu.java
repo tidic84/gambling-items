@@ -123,7 +123,10 @@ public final class CashierMenu extends AbstractContainerMenu {
                 && ItemBank.store(setup.catalog(), tray, 0, TRAY_SLOTS, rest) == 0;
     }
 
-    /** Every chip in the tray is changed back into items of the catalogue, dearest first. */
+    /**
+     * Every chip in the tray is changed back into items of the catalogue, dearest first. What is
+     * below the cheapest item is the rounding every game announces; refusing it would strand the chips.
+     */
     private boolean toItems() {
         long value = chipValue();
         if (value == 0) return false;
@@ -131,11 +134,12 @@ public final class CashierMenu extends AbstractContainerMenu {
         for (int slot = 0; slot < TRAY_SLOTS; slot++) {
             if (isChip(tray.getItem(slot))) tray.setItem(slot, ItemStack.EMPTY);
         }
-        if (!ItemBank.canStore(setup.catalog(), tray, 0, TRAY_SLOTS, value)
-                || ItemBank.store(setup.catalog(), tray, 0, TRAY_SLOTS, value) != 0) {
+        // canStore has checked the room, so store can only leave that rounding unpaid.
+        if (!ItemBank.canStore(setup.catalog(), tray, 0, TRAY_SLOTS, value)) {
             restore(before);
             return false;
         }
+        ItemBank.store(setup.catalog(), tray, 0, TRAY_SLOTS, value);
         tray.setChanged();
         return true;
     }

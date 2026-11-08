@@ -59,7 +59,7 @@ public final class UpgradeScreen extends CasinoScreen<UpgradeMenu> {
             ValueCatalog.Entry entry = menu.catalog().entries().get(i);
             boolean matches = query.startsWith("@") ? entry.id().getNamespace().contains(query.substring(1))
                     : entry.id().toString().contains(query)
-                    || entry.stack().getHoverName().getString().toLowerCase(Locale.ROOT).contains(query);
+                    || entry.displayName().getString().toLowerCase(Locale.ROOT).contains(query);
             if (matches) filtered.add(i);
         }
         // With a stake, reachable targets come first, best odds first. Without one, the prizes lead.

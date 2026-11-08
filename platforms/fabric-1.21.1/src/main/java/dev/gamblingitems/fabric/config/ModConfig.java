@@ -48,7 +48,7 @@ import net.minecraft.world.item.Items;
 
 /** Server-side settings. Item values are shared by every game; each game keeps its own tuning. */
 public final class ModConfig {
-    public static final int SCHEMA_VERSION = 22;
+    public static final int SCHEMA_VERSION = 23;
     /** One displayed unit of currency, so every screen counts in the currency's own units. */
     public static final long CURRENCY_UNIT = 1_000;
     /** The casino games that can be switched to a currency. Upgrader, trade up, cases and battles never are. */
@@ -198,18 +198,22 @@ public final class ModConfig {
                 currency.add("items", items);
             }
         }
-        // Schema 20 adds the prize machines. A currency that already pays the slot machine pays them
+        // Schema 20 (0.2.2) adds the enchanted books to the upgrader. Checked on every older file: unreleased
+        // builds numbered the machines 20 to 22 before 0.2.2 took 20.
+        if (!json.getAsJsonObject("upgrader").has("enchantedBooks"))
+            json.getAsJsonObject("upgrader").add("enchantedBooks", defaultEnchantedBooks());
+        // Schema 21 adds the prize machines. A currency that already pays the slot machine pays them
         // too, since they are played the same way; otherwise the games it was given are kept as they were.
-        if (schema < 20) {
+        if (schema < 21) {
             json.add("machines", defaultMachines());
             JsonArray games = json.getAsJsonObject("currency").getAsJsonArray("games");
             if (games != null && games.contains(new JsonPrimitive("slotMachine"))) {
                 for (String key : List.of("luckyWheel", "coinPusher", "prizeClaw", "pachinko", "capsuleGacha", "highStakes")) games.add(key);
             }
         }
-        // Schema 21 opens the arcade: tickets, chips and a prize counter, and four more machines.
+        // Schema 22 opens the arcade: tickets, chips and a prize counter, and four more machines.
         // The cabinets now pay in tickets; "arcade.tickets": false brings back the payouts in items.
-        if (schema < 21) {
+        if (schema < 22) {
             json.add("arcade", defaultArcade());
             JsonObject machines = json.getAsJsonObject("machines");
             JsonObject added = defaultMachines();
@@ -223,8 +227,8 @@ public final class ModConfig {
                 }
             }
         }
-        // Schema 22 adds the table games and the VIP card on the prize shelf; nothing configured is changed.
-        if (schema < 22) {
+        // Schema 23 adds the table games and the VIP card on the prize shelf; nothing configured is changed.
+        if (schema < 23) {
             JsonObject machines = json.getAsJsonObject("machines");
             JsonObject added = defaultMachines();
             List<String> tableGames = List.of("craps", "baccarat", "keno", "scratchCard");
@@ -279,7 +283,8 @@ public final class ModConfig {
                 new MachineSetup(casino.get(key), readMachine(machinesJson, mode, key), ticketValue)));
         values = catalog;
         arcade = arcadeSettings;
-        upgrader = new UpgradeSetup(catalog, upgraderJson.get("returnBasisPoints").getAsInt(),
+        upgrader = new UpgradeSetup(dev.gamblingitems.fabric.upgrade.EnchantedBooks.add(catalog,
+                upgraderJson.getAsJsonArray("enchantedBooks"), server.registryAccess()), upgraderJson.get("returnBasisPoints").getAsInt(),
                 upgraderJson.get("maximumChanceBasisPoints").getAsInt());
         tradeUp = new TradeUpSetup(catalog, new TradeUpSettings(
                 tradeUpJson.get("requiredUnits").getAsInt(),
@@ -523,6 +528,7 @@ public final class ModConfig {
         JsonObject upgraderJson = new JsonObject();
         upgraderJson.addProperty("returnBasisPoints", 9000);
         upgraderJson.addProperty("maximumChanceBasisPoints", 9000);
+        upgraderJson.add("enchantedBooks", defaultEnchantedBooks());
         final JsonObject values;
         if (Files.exists(legacy)) {
             JsonObject old = JsonParser.parseString(Files.readString(legacy)).getAsJsonObject();
@@ -731,6 +737,22 @@ public final class ModConfig {
                 {"20", "60"}, {"100", "5"}}));
         machines.add("scratchCard", scratch);
         return machines;
+    }
+
+    private static JsonArray defaultEnchantedBooks() {
+        JsonArray books = new JsonArray();
+        String[] ids = {"mending", "sharpness", "unbreaking", "efficiency", "fortune", "silk_touch", "looting", "protection"};
+        int[] levels = {1, 5, 3, 5, 3, 1, 3, 4};
+        long[] prices = {80_000, 60_000, 40_000, 60_000, 60_000, 50_000, 60_000, 50_000};
+        for (int i = 0; i < ids.length; i++) {
+            JsonObject book = new JsonObject();
+            JsonObject enchantments = new JsonObject();
+            enchantments.addProperty("minecraft:" + ids[i], levels[i]);
+            book.add("enchantments", enchantments);
+            book.addProperty("value", prices[i]);
+            books.add(book);
+        }
+        return books;
     }
 
     /** The smallest pull is one iron ingot, and the reels take two seconds to stop. */

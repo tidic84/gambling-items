@@ -22,6 +22,27 @@ public final class Platform {
 
     public static Path configDir() { return FMLPaths.CONFIGDIR.get(); }
 
+    private static final net.minecraftforge.network.simple.SimpleChannel MENU_CHANNEL =
+            net.minecraftforge.network.NetworkRegistry.newSimpleChannel(
+                    new net.minecraft.resources.ResourceLocation("gamblingitems", "menu_button"),
+                    () -> "1", "1"::equals, "1"::equals);
+
+    public static void initializeMenuNetworking() {
+        MENU_CHANNEL.messageBuilder(dev.gamblingitems.fabric.menu.MenuButton.class, 0,
+                        net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(dev.gamblingitems.fabric.menu.MenuButton::write)
+                .decoder(dev.gamblingitems.fabric.menu.MenuButton::read)
+                .consumerMainThread((action, context) -> {
+                    ServerPlayer player = context.get().getSender();
+                    if (player != null) dev.gamblingitems.fabric.menu.MenuButton.handle(player, action);
+                }).add();
+    }
+
+    public static net.minecraft.network.protocol.Packet<?> menuButtonPacket(int containerId, int button) {
+        return MENU_CHANNEL.toVanillaPacket(new dev.gamblingitems.fabric.menu.MenuButton(containerId, button),
+                net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER);
+    }
+
     /** A menu whose client side is built from data the server sends when it opens. */
     public static <M extends AbstractContainerMenu, D> MenuType<M> menuType(
             MenuFactory<M, D> factory, dev.gamblingitems.fabric.compat.StreamCodec<? super FriendlyByteBuf, D> codec) {

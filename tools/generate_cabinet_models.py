@@ -63,6 +63,16 @@ def panel(base, line, seed):
     for i in range(2, 14):
         image.putpixel((i, 2), clamp(mix(base, (0, 0, 0), .35)))
         image.putpixel((2, i), clamp(mix(base, (0, 0, 0), .35)))
+    # A raised diamond in the middle of the panel, lit from the top left, and a stud at each corner.
+    for y in range(3, 13):
+        for x in range(3, 13):
+            d = abs(x - 7.5) + abs(y - 7.5)
+            if 3.5 < d < 4.6:
+                image.putpixel((x, y), clamp(line if x + y < 15 else mix(line, (0, 0, 0), .45)))
+            elif d <= 3.5:
+                image.putpixel((x, y), clamp(mix(base, (255, 255, 255), .08 if x + y < 15 else 0)))
+    for x, y in ((1, 1), (14, 1), (1, 14), (14, 14)):
+        image.putpixel((x, y), clamp(mix(line, (255, 255, 255), .45)))
     return image
 
 
@@ -132,6 +142,47 @@ def screen():
             if x + y == 4 or x + y == 5:
                 base = (26, 34, 48)
             image.putpixel((x, y), base)
+    return image
+
+
+def quilt(base, seam, button, seed):
+    """Tufted leather: diamonds that swell in the middle, creased along the seams, a button where they meet."""
+    rng = random.Random(seed)
+    image = Image.new('RGB', (16, 16))
+    for y in range(16):
+        for x in range(16):
+            # Distance to the nearest seam of a diamond grid four pixels across.
+            a, b = (x + y) % 8, (x - y) % 8
+            d = min(a, 8 - a, b, 8 - b)
+            c = mix(mix(base, (0, 0, 0), .45), mix(base, (255, 255, 255), .12), min(1, d / 3))
+            if d == 0:
+                c = mix(base, seam, .5)
+            image.putpixel((x, y), clamp(tuple(v + rng.uniform(-3, 3) for v in c)))
+    for x, y in ((0, 0), (8, 0), (4, 4), (12, 4), (0, 8), (8, 8), (4, 12), (12, 12)):
+        image.putpixel((x, y), clamp(button))
+        image.putpixel(((x + 1) % 16, y), clamp(mix(button, (0, 0, 0), .4)))
+    return image
+
+
+GLYPH_7 = ('###', '..#', '.#.', '.#.', '.#.')
+
+
+def emblem(base, ink, rim):
+    """The belly plate of a slot machine: three gold sevens on lacquer, inside a thin gold line. The
+    plate shows pixels 2 to 14 across and 5 to 12 down of its block."""
+    image = lacquer(base, 48, sheen=14)
+    for x in range(2, 14):
+        image.putpixel((x, 5), clamp(rim))
+        image.putpixel((x, 11), clamp(rim))
+    for y in range(5, 12):
+        image.putpixel((2, y), clamp(rim))
+        image.putpixel((13, y), clamp(rim))
+    for index in range(3):
+        left = 3 + index * 4
+        for row, line in enumerate(GLYPH_7):
+            for column, cell in enumerate(line):
+                if cell == '#':
+                    image.putpixel((left + column, 6 + row), clamp(ink if row else mix(ink, (255, 255, 255), .35)))
     return image
 
 
@@ -245,6 +296,8 @@ TEXTURE_SET = {
     'cab_felt_blue': lambda: flat((20, 52, 110), 45, 4),
     'cab_walnut': lambda: lacquer((70, 38, 20), 46, sheen=18, grain=5),
     'cab_walnut_side': lambda: panel((62, 34, 18), (217, 178, 90), 47),
+    'cab_crimson_quilt': lambda: quilt((128, 18, 32), (60, 6, 14), (236, 196, 96), 49),
+    'cab_emblem_777': lambda: emblem((96, 12, 24), (246, 200, 84), (217, 178, 90)),
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -269,6 +322,42 @@ class Cabinet:
         self.box((u1, y1 + thick, z1), (u1 + thick, y2 - thick, z2), material)
         self.box((u2 - thick, y1 + thick, z1), (u2, y2 - thick, z2), material)
 
+    def chamfered(self, u1, y1, z1, u2, y2, z2, cut, material):
+        """A box whose two front vertical edges are bevelled by cut, in two steps, so it reads rounded."""
+        half = cut / 2
+        self.box((u1 + cut, y1, z1), (u2 - cut, y2, z2), material)
+        self.box((u1 + half, y1, z1 + half), (u2 - half, y2, z2), material)
+        self.box((u1, y1, z1 + cut), (u2, y2, z2), material)
+
+    def arch(self, cu, y0, radius, z1, z2, material, rim=None, rim_width=.6, bulbs=0, lens='cab_lamp_white'):
+        """A half disc standing on y0, built of strips half a pixel high; a rim of another material
+        along its curve, and as many bulbs set into that rim."""
+        steps = int(radius * 2)
+        for step in range(steps):
+            low, high = y0 + step * .5, y0 + (step + 1) * .5
+            half = math.sqrt(max(0, radius ** 2 - (low - y0) ** 2))
+            if half < .3:
+                break
+            if rim:
+                inner = math.sqrt(max(0, (radius - rim_width) ** 2 - (low - y0) ** 2))
+                self.box((cu - half, low, z1), (cu + half, high, z2), rim)
+                if inner > .2:
+                    self.box((cu - inner, low, z1 - .05), (cu + inner, high, z2 + .05), material)
+            else:
+                self.box((cu - half, low, z1), (cu + half, high, z2), material)
+        for index in range(bulbs):
+            angle = math.pi * (index + .5) / bulbs
+            u = cu + math.cos(angle) * (radius - rim_width / 2)
+            y = y0 + math.sin(angle) * (radius - rim_width / 2)
+            self.box((u - .35, y - .35, z1 - .25), (u + .35, y + .35, z1), lens)
+
+    def bulbs(self, u1, y1, u2, y2, z, count, lens='cab_lamp_white', size=.7):
+        """A row of bulbs standing proud of a face at z, from one point to another."""
+        for index in range(count):
+            t = index / max(1, count - 1)
+            u, y = u1 + (u2 - u1) * t, y1 + (y2 - y1) * t
+            self.box((u - size / 2, y - size / 2, z - .3), (u + size / 2, y + size / 2, z), lens)
+
     def disc(self, cu, cy, radius, z1, z2, material):
         """A sixteen-sided plate facing the player, its inner radius given: eight bands through the
         centre, each as long as the plate is wide and as thick as one side of it."""
@@ -285,7 +374,21 @@ def side_faces(body, side):
 
 
 def plinth(c, inset=0.5):
-    c.box((inset, 0, inset), (16 * c.width - inset, 1.5, 16 - inset), 'cab_rubber')
+    """A gold step on the floor and a black plinth on it, bevelled at the front."""
+    c.box((inset - .4, 0, inset - .3), (16 * c.width - inset + .4, .6, 16 - inset), 'cab_gold')
+    c.chamfered(inset, .6, inset, 16 * c.width - inset, 1.5, 16 - inset, .8, 'cab_rubber')
+
+
+def marquee_bulbs(c, u1, y1, u2, y2, z, spacing=1.6):
+    """Bulbs all round a marquee standing at z: along its top and bottom edges and up its sides."""
+    across = max(2, int((u2 - u1) / spacing) + 1)
+    up = max(2, int((y2 - y1) / spacing) + 1)
+    c.bulbs(u1, y2, u2, y2, z, across, size=.6)
+    c.bulbs(u1, y1, u2, y1, z, across, size=.6)
+    if up > 2:
+        step = (y2 - y1) / (up - 1)
+        c.bulbs(u1, y1 + step, u1, y2 - step, z, up - 2, size=.6)
+        c.bulbs(u2, y1 + step, u2, y2 - step, z, up - 2, size=.6)
 
 
 def tray(c, u1, u2, y, z_front, z_back, material='cab_chrome'):
@@ -304,34 +407,48 @@ def screen_panel(c, u1, y1, u2, y2, z, frame='cab_brass', thick=.5, depth=.5):
 
 
 def slot_machine():
+    """A Vegas upright: a stepped gold base, a bevelled crimson body tufted on its flanks, the three
+    sevens on its belly, a chrome reel window between columns of bulbs, and an arched crown ringed
+    with bulbs over the lit marquee."""
     c = Cabinet('cab_crimson')
-    body = side_faces('cab_crimson', 'cab_crimson_side')
-    plinth(c)
-    c.box((0, 1.5, 1.5), (16, 13, 16), body)
-    c.box((0, 1.5, 1.2), (16, 2.2, 1.5), 'cab_brass')
-    screen_panel(c, 2, 4, 14, 11, 1.4)                      # paytable
-    tray(c, 3, 13, 2.2, -.6, 1.5)
-    # The button deck, with its row of lit buttons and the big spin button.
-    c.box((.5, 13, -1.2), (15.5, 14.2, 1.5), 'cab_crimson')
-    c.box((.5, 12.6, -1.3), (15.5, 13, 1.5), 'cab_brass')
+    quilted = side_faces('cab_crimson', 'cab_crimson_quilt')
+    # The base: a gold step under a black plinth.
+    c.box((0, 0, .2), (16, .6, 16), 'cab_gold')
+    c.chamfered(.4, .6, .6, 15.6, 1.5, 16, 1, 'cab_rubber')
+    # The lower body, its front edges bevelled, a gold band at its foot.
+    c.chamfered(0, 1.5, 1.5, 16, 13, 16, 1.2, quilted)
+    c.chamfered(-.1, 1.5, 1.3, 16.1, 2.3, 16, 1.2, 'cab_gold')
+    # The belly: the sevens shown from afar, where the paytable lights up for a player close by.
+    c.box((2.5, 4.5, 1.4), (13.5, 10.5, 1.5), 'cab_emblem_777')
+    c.frame(2, 4, 14, 11, .9, 1.5, .5, 'cab_gold')
+    tray(c, 3, 13, 2.2, -.6, 1.5, 'cab_gold')
+    # The button deck, rounded at its edge, with its row of lit buttons and the big spin button.
+    c.chamfered(.5, 13, -1.2, 15.5, 14.2, 1.5, 1, 'cab_crimson')
+    c.chamfered(.4, 12.6, -1.35, 15.6, 13, 1.5, 1, 'cab_gold')
     for u, lens in ((2, 'cab_lamp_amber'), (4.6, 'cab_lamp_amber'), (7.2, 'cab_lamp_white')):
-        c.box((u, 14.2, -.6), (u + 2, 14.6, .9), lens)
-    c.box((10.5, 14.2, -.8), (14, 14.4, 1.1), 'cab_brass')
-    c.box((11, 14.4, -.5), (13.5, 15.1, .8), 'cab_lamp_red')
-    # The upper body, narrower, with brass pillars at its corners.
-    c.box((.5, 14.2, 2), (15.5, 32, 16), side_faces('cab_crimson', 'cab_crimson_side'))
-    c.box((0, 13, 1.4), (1, 32.6, 2.4), 'cab_brass')
-    c.box((15, 13, 1.4), (16, 32.6, 2.4), 'cab_brass')
-    screen_panel(c, 1.6, 19, 14.4, 29.6, 1.9, thick=.7, depth=.7)   # reels
-    screen_panel(c, 3, 15.4, 13, 18.4, 1.9)                         # status
-    c.box((1.2, 29.9, 1.6), (14.8, 30.5, 2), 'cab_brass')
-    # The marquee, standing out over the reels, and an arched crown.
+        c.box((u, 14.2, -.3), (u + 2, 14.3, 1.1), 'cab_gold')
+        c.box((u + .2, 14.3, -.1), (u + 1.8, 14.8, .9), lens)
+    c.box((10.5, 14.2, -.8), (14, 14.4, 1.1), 'cab_gold')
+    c.box((11, 14.4, -.5), (13.5, 15.2, .8), 'cab_lamp_red')
+    c.box((11.5, 15.2, -.1), (13, 15.5, .4), 'cab_lamp_red')
+    # The upper body, a little narrower, bevelled the same way.
+    c.chamfered(.5, 14.2, 2, 15.5, 32, 16, 1.2, quilted)
+    screen_panel(c, 1.6, 19, 14.4, 29.6, 1.9, frame='cab_chrome', thick=.7, depth=.7)   # reels
+    c.frame(1.2, 18.6, 14.8, 30, 1.5, 1.9, .4, 'cab_gold')
+    screen_panel(c, 3, 15.4, 13, 18.4, 1.9, frame='cab_gold')                           # status
+    c.box((1.2, 29.9, 1.6), (14.8, 30.5, 2), 'cab_gold')
+    # Gold columns of bulbs on either side of the window.
+    for u in (0, 15):
+        c.box((u, 14.2, 1.3), (u + 1, 32, 2.3), 'cab_gold')
+        c.bulbs(u + .5, 15.5, u + .5, 31, 1.3, 8)
+    # The marquee, standing out over the reels.
     c.box((0, 32, .5), (16, 37, 15), 'cab_crimson')
     c.box((.6, 32.6, .3), (15.4, 36.4, .5), 'cab_sign_warm')
-    c.frame(0, 32, 16, 37, 0, .5, .6, 'cab_brass')
-    c.box((1, 37, 1.5), (15, 38, 14), 'cab_brass')
-    c.box((3, 38, 2.5), (13, 39, 13), 'cab_crimson')
-    c.box((5.5, 39, 3.5), (10.5, 40, 12), 'cab_brass')
+    c.frame(0, 32, 16, 37, 0, .5, .6, 'cab_gold')
+    # The crown: a crimson arch in a gold rim set with bulbs, and a red jewel at its top.
+    c.arch(8, 37, 7.5, 1.5, 4.5, 'cab_crimson', rim='cab_gold', rim_width=1, bulbs=11)
+    c.box((2, 37, 4.5), (14, 38, 13), 'cab_crimson')
+    c.box((7.1, 44.2, 2.4), (8.9, 46, 4.2), 'cab_lamp_red', {'angle': 45, 'axis': 'z', 'origin': (8, 45.1, 3.3)})
     # A grille at the back, where the cabinet breathes.
     c.box((3, 4, 16), (13, 12, 16.2), 'cab_grille')
     c.box((3, 18, 16), (13, 30, 16.2), 'cab_vents')
@@ -341,9 +458,9 @@ def slot_machine():
 def lucky_wheel():
     c = Cabinet('cab_navy')
     plinth(c, 1)
-    c.box((.5, 1.5, 1.5), (15.5, 14, 15.5), side_faces('cab_navy', 'cab_navy_side'))
-    c.box((.5, 1.5, 1.2), (15.5, 2.2, 1.5), 'cab_brass')
-    screen_panel(c, 2, 3.4, 14, 9.6, 1.4)                   # odds
+    c.chamfered(.5, 1.5, 1.5, 15.5, 14, 15.5, 1.2, side_faces('cab_navy', 'cab_navy_side'))
+    c.chamfered(.4, 1.5, 1.3, 15.6, 2.2, 15.5, 1.2, 'cab_gold')
+    screen_panel(c, 2, 3.4, 14, 9.6, 1.4, frame='cab_gold')                   # odds
     screen_panel(c, 3, 10.2, 13, 13.2, 1.4)                 # status
     # The deck and its single push button.
     c.box((0, 14, .5), (16, 15, 15.5), 'cab_brass')
@@ -363,15 +480,17 @@ def lucky_wheel():
     c.box((7.2, 34.4, .6), (8.8, 36, 2.2), 'cab_brass', {'angle': 45, 'axis': 'z', 'origin': (8, 35.2, 1.4)})
     c.box((1, 35.5, 5), (15, 39.6, 12), 'cab_navy')
     c.box((1.3, 35.9, 4.8), (14.7, 39.2, 5), 'cab_sign_warm')
-    c.frame(1, 35.5, 15, 39.6, 4.6, 5, .4, 'cab_brass')
+    c.frame(1, 35.5, 15, 39.6, 4.6, 5, .4, 'cab_gold')
+    marquee_bulbs(c, 1.2, 35.7, 14.8, 39.4, 4.6)
+    c.arch(8, 39.6, 3.2, 6, 11, 'cab_navy', rim='cab_gold', rim_width=.7, bulbs=5)
     return c
 
 
 def coin_pusher():
     c = Cabinet('cab_green')
     plinth(c)
-    c.box((0, 1.5, 2), (16, 13, 16), side_faces('cab_green', 'cab_green_side'))
-    c.box((0, 1.5, 1.7), (16, 2.2, 2), 'cab_brass')
+    c.chamfered(0, 1.5, 2, 16, 13, 16, 1.2, side_faces('cab_green', 'cab_green_side'))
+    c.chamfered(-.1, 1.5, 1.7, 16.1, 2.2, 16, 1.2, 'cab_gold')
     tray(c, 2, 14, 2.2, -1, 2)
     # The chute the coins fall out of, then the odds.
     c.box((5, 4.6, 1.8), (11, 6.6, 2), 'cab_interior')
@@ -398,7 +517,8 @@ def coin_pusher():
     # The header and its beacon.
     c.box((0, 30, 0), (16, 35, 16), side_faces('cab_green', 'cab_green_side'))
     c.box((.6, 30.6, -.2), (15.4, 34.4, 0), 'cab_sign_warm')
-    c.frame(0, 30, 16, 35, -.4, 0, .6, 'cab_brass')
+    c.frame(0, 30, 16, 35, -.4, 0, .6, 'cab_gold')
+    marquee_bulbs(c, .3, 30.3, 15.7, 34.7, -.4)
     c.box((6, 35, 6), (10, 35.5, 10), 'cab_chrome')
     c.box((6.5, 35.5, 6.5), (9.5, 37.5, 9.5), 'cab_lamp_amber')
     return c
@@ -407,7 +527,7 @@ def coin_pusher():
 def prize_claw():
     c = Cabinet('cab_graphite')
     plinth(c)
-    c.box((0, 1.5, 1), (16, 12, 16), side_faces('cab_graphite', 'cab_graphite_side'))
+    c.chamfered(0, 1.5, 1, 16, 12, 16, 1.2, side_faces('cab_graphite', 'cab_graphite_side'))
     # The prize door, on the left, and the screen on the right.
     c.box((2, 3, .8), (6.5, 8, 1), 'cab_interior')
     c.frame(1.5, 2.5, 7, 8.5, .5, 1, .5, 'cab_chrome')
@@ -465,6 +585,8 @@ def pachinko():
     c.box((1, 37, 5), (15, 40, 11), 'cab_pearl')
     c.box((1.4, 37.4, 4.8), (14.6, 39.6, 5), 'cab_sign_warm')
     c.frame(1, 37, 15, 40, 4.5, 5, .4, 'cab_chrome')
+    marquee_bulbs(c, 1.2, 37.2, 14.8, 39.8, 4.5)
+    c.arch(8, 40, 3, 6, 10, 'cab_pearl', rim='cab_chrome', rim_width=.6, bulbs=5)
     return c
 
 
@@ -540,8 +662,8 @@ def plinko():
     c = Cabinet('cab_teal', width=2)
     plinth(c)
     body = side_faces('cab_teal', 'cab_teal_side')
-    c.box((0, 1.5, 2), (32, 12.5, 16), body)
-    c.box((0, 1.5, 1.7), (32, 2.2, 2), 'cab_chrome')
+    c.chamfered(0, 1.5, 2, 32, 12.5, 16, 1.4, body)
+    c.chamfered(-.1, 1.5, 1.7, 32.1, 2.2, 16, 1.4, 'cab_chrome')
     screen_panel(c, 8, 3, 24, 8.4, 1.9, frame='cab_chrome')            # odds
     screen_panel(c, 8, 8.6, 24, 11.8, 1.9, frame='cab_chrome')         # status
     tray(c, 1.5, 7, 2.2, -.8, 2)
@@ -562,6 +684,7 @@ def plinko():
     c.box((1.2, 35, .6), (30.8, 39.4, 4), 'cab_teal')
     c.box((1.6, 35.4, .4), (30.4, 39, .6), 'cab_sign_cyan')
     c.frame(1, 35, 31, 39.4, 0, .6, .5, 'cab_chrome')
+    marquee_bulbs(c, 1.25, 35.25, 30.75, 39.15, 0)
     c.box((14.6, 39.4, 1.4), (17.4, 39.8, 4.2), 'cab_chrome')
     return c
 
@@ -571,8 +694,8 @@ def big_six():
     c = Cabinet('cab_violet', width=2)
     plinth(c)
     body = side_faces('cab_violet', 'cab_violet_side')
-    c.box((0, 1.5, 2), (32, 9.5, 16), body)
-    c.box((0, 1.5, 1.7), (32, 2.2, 2), 'cab_brass')
+    c.chamfered(0, 1.5, 2, 32, 9.5, 16, 1.4, body)
+    c.chamfered(-.1, 1.5, 1.7, 32.1, 2.2, 16, 1.4, 'cab_gold')
     screen_panel(c, 3, 3, 29, 8.8, 1.9)                    # the prize of each symbol, and the status
     # The deck with one betting button per symbol, in the colours of the prizes.
     c.box((0, 9.5, -2.4), (32, 10.2, 4), 'cab_brass')
@@ -593,7 +716,9 @@ def big_six():
     c.box((15.4, 35.8, 1.4), (16.6, 37.4, 3.6), 'cab_brass')
     c.box((4, 37, 5), (28, 40, 10), 'cab_violet')
     c.box((4.6, 37.4, 4.8), (27.4, 39.6, 5), 'cab_sign_violet')
-    c.frame(4, 37, 28, 40, 4.4, 5, .4, 'cab_brass')
+    c.frame(4, 37, 28, 40, 4.4, 5, .4, 'cab_gold')
+    marquee_bulbs(c, 4.2, 37.2, 27.8, 39.8, 4.4)
+    c.arch(16, 40, 4, 6, 10, 'cab_violet', rim='cab_gold', rim_width=.8, bulbs=7)
     for u in (2.2, 28.2):
         c.box((u, 38, 4.2), (u + 1.6, 39.6, 5.8), 'cab_lamp_amber')
     return c
@@ -604,8 +729,8 @@ def video_poker():
     c = Cabinet('cab_navy')
     plinth(c)
     body = side_faces('cab_navy', 'cab_navy_side')
-    c.box((0, 1.5, 1.5), (16, 12.4, 16), body)
-    c.box((0, 1.5, 1.2), (16, 2.2, 1.5), 'cab_chrome')
+    c.chamfered(0, 1.5, 1.5, 16, 12.4, 16, 1.2, body)
+    c.chamfered(-.1, 1.5, 1.2, 16.1, 2.2, 16, 1.2, 'cab_chrome')
     screen_panel(c, 1.5, 2.8, 14.5, 11.8, 1.4, frame='cab_chrome')   # paytable
     # The deck: five amber hold keys and the red deal key.
     c.box((0, 12.4, -1.8), (16, 13, 3), 'cab_navy')
@@ -623,7 +748,9 @@ def video_poker():
     c.box((0, 32, 1), (16, 37, 15), 'cab_navy')
     c.box((.6, 32.6, .8), (15.4, 36.4, 1), 'cab_sign_warm')
     c.frame(0, 32, 16, 37, .5, 1, .5, 'cab_chrome')
+    marquee_bulbs(c, .25, 32.25, 15.75, 36.75, .5)
     c.box((2, 37, 3), (14, 37.6, 12), 'cab_chrome')
+    c.arch(8, 37.6, 4, 4, 9, 'cab_navy', rim='cab_chrome', rim_width=.6, bulbs=5)
     return c
 
 
@@ -633,8 +760,8 @@ def horse_race():
     c = Cabinet('cab_orange', width=2)
     plinth(c)
     body = side_faces('cab_orange', 'cab_orange_side')
-    c.box((0, 1.5, 2), (32, 11.4, 16), body)
-    c.box((0, 1.5, 1.7), (32, 2.2, 2), 'cab_brass')
+    c.chamfered(0, 1.5, 2, 32, 11.4, 16, 1.4, body)
+    c.chamfered(-.1, 1.5, 1.7, 32.1, 2.2, 16, 1.4, 'cab_gold')
     screen_panel(c, 4, 3, 28, 10.6, 1.9)                    # each horse's odds and the bets
     # The deck: one betting button in front of each lane, in the colour of its horse.
     c.box((0, 11.4, -2.4), (32, 12, 3.5), 'cab_brass')
@@ -660,7 +787,8 @@ def horse_race():
         c.box((u + .3, 14, .8), (u + 1.1, 35, 1), 'cab_lamp_amber')
     c.box((2, 36, 8), (30, 40, 15), 'cab_orange')
     c.box((2.6, 36.4, 7.8), (29.4, 39.6, 8), 'cab_sign_warm')
-    c.frame(2, 36, 30, 40, 7.4, 8, .4, 'cab_brass')
+    c.frame(2, 36, 30, 40, 7.4, 8, .4, 'cab_gold')
+    marquee_bulbs(c, 2.2, 36.2, 29.8, 39.8, 7.4)
     return c
 
 
@@ -671,8 +799,8 @@ def table_game(body, side, sign, trim, felt, bets, play=False):
     c = Cabinet(body)
     plinth(c)
     shell = side_faces(body, side)
-    c.box((0, 1.5, 1.5), (16, 12.4, 16), shell)
-    c.box((0, 1.5, 1.2), (16, 2.2, 1.5), trim)
+    c.chamfered(0, 1.5, 1.5, 16, 12.4, 16, 1.2, shell)
+    c.chamfered(-.1, 1.5, 1.2, 16.1, 2.2, 16, 1.2, trim)
     screen_panel(c, 1.5, 2.8, 14.5, 11.8, 1.4, frame=trim)            # paytable
     # The deck, lined with felt, and its rail.
     c.box((0, 12.4, -1.8), (16, 13, 3), body)
@@ -691,7 +819,9 @@ def table_game(body, side, sign, trim, felt, bets, play=False):
     c.box((0, 32, 1), (16, 37, 15), body)
     c.box((.6, 32.6, .8), (15.4, 36.4, 1), sign)
     c.frame(0, 32, 16, 37, .5, 1, .5, trim)
+    marquee_bulbs(c, .25, 32.25, 15.75, 36.75, .5)
     c.box((2, 37, 3), (14, 37.6, 12), trim)
+    c.arch(8, 37.6, 3.6, 4, 9, body, rim=trim, rim_width=.6, bulbs=5)
     for u in (.2, 14.6):
         c.box((u, 37, .6), (u + 1.2, 38.2, 1.8), 'cab_lamp_amber')
     c.box((3, 4, 16), (13, 11, 16.2), 'cab_grille')

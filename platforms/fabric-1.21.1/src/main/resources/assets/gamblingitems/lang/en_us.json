@@ -358,6 +358,8 @@
   "gui.gamblingitems.machine_result_back": "Part of the stake back",
   "gui.gamblingitems.machine_result_lost": "Nothing this time",
   "gui.gamblingitems.machine_odds": "Odds",
+  "gui.gamblingitems.machine_up_to": "Up to",
+  "gui.gamblingitems.slot_marquee": "JACKPOT",
   "gui.gamblingitems.machine_return": "Gives back %s",
   "gui.gamblingitems.machine_choice.prize_claw": "Position %s: %s, held %s of the time",
   "gui.gamblingitems.machine_choice.high_stakes": "Target %2$s, reached %3$s of the time",

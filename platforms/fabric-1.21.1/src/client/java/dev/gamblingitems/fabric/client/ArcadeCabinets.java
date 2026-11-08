@@ -171,6 +171,9 @@ final class ArcadeCabinets {
         double settled = -(target + 0.5) / count;
         double turn = shown ? settled - 3 * (1 - GameScreens.eased(progress)) : 0;
         boolean landed = shown && progress >= 1;
+        // From 0 at rest to 1 at full speed: a fast wheel trails a blur and its prizes smear.
+        double blur = shown && progress < 1 && !ClientOptions.reducedMotion()
+                ? Math.min(1, 3 * Math.abs(GameScreens.eased(Math.min(1, progress + 0.01)) - GameScreens.eased(progress)) / 0.01 / 7) : 0;
         surface(pose, 2f);
         sector(pose, buffers, SIX_X, SIX_Y, 0, SIX_RADIUS + 2, 0, 2 * Math.PI, DARK, 0);
         double nearestPeg = Math.PI;
@@ -185,6 +188,15 @@ final class ArcadeCabinets {
             float pegX = SIX_X + (float) Math.cos(from) * (SIX_RADIUS - 2), pegY = SIX_Y + (float) Math.sin(from) * (SIX_RADIUS - 2);
             quad(pose, buffers, pegX - 1.1f, pegY - 1.1f, pegX + 1.1f, pegY + 1.1f, CHROME, 0.3f);
             nearestPeg = Math.min(nearestPeg, Math.abs(Math.IEEEremainder(from + Math.PI / 2, 2 * Math.PI)));
+            if (blur > 0.25) {
+                for (int ghost = 1; ghost <= 2; ghost++) {
+                    double back = ghost * 0.07 * blur;
+                    int alpha = (int) ((ghost == 1 ? 0x70 : 0x38) * blur);
+                    sector(pose, buffers, SIX_X, SIX_Y, 18, SIX_RADIUS, from - back, from + width - back,
+                            alpha << 24 | (colour & 0xffffff), 0.16f + ghost * 0.01f);
+                }
+            }
+            if (blur >= 0.55) continue;
             pose.pushPose();
             pose.translate(SIX_X, SIX_Y, 0);
             pose.mulPose(Axis.ZP.rotation((float) (from + width / 2)));

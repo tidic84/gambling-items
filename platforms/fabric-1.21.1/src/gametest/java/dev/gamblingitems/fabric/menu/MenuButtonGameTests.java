@@ -16,6 +16,9 @@ import net.minecraft.world.level.GameType;
 
 /** Exercises the packet handler with real players and each of the nine real menus. */
 public class MenuButtonGameTests implements FabricGameTest {
+    // The prize machines are played on their cabinet, never from a portable menu.
+    private static final java.util.List<GameMode> GAMES = java.util.stream.Stream.concat(
+            GameMenus.TERMINAL.stream(), GameMenus.CASINO.stream()).toList();
     private static ServerPlayer player(GameTestHelper helper) {
         // Vanilla's mock hardcodes isSpectator() to false even after setGameMode.
         // Use a real ServerPlayer with the helper's embedded test connection.
@@ -42,7 +45,7 @@ public class MenuButtonGameTests implements FabricGameTest {
     @GameTest(template = EMPTY_STRUCTURE)
     public void everyGameCanSwitchTabsThroughThePacket(GameTestHelper helper) {
         ServerPlayer player = player(helper);
-        for (GameMode source : GameMode.values()) {
+        for (GameMode source : GAMES) {
             for (GameMode target : GameMenus.family(source)) {
                 helper.assertTrue(GameMenus.open(player, source, ContainerLevelAccess.NULL), source + " opens");
                 helper.assertTrue(send(player, player.containerMenu.containerId, TerminalTabs.button(target)),
@@ -58,7 +61,7 @@ public class MenuButtonGameTests implements FabricGameTest {
     @GameTest(template = EMPTY_STRUCTURE)
     public void everyGameRejectsStaleInvalidAndSpectatorPackets(GameTestHelper helper) {
         ServerPlayer player = player(helper);
-        for (GameMode mode : GameMode.values()) {
+        for (GameMode mode : GAMES) {
             GameMenus.open(player, mode, ContainerLevelAccess.NULL);
             int container = player.containerMenu.containerId;
             int tab = TerminalTabs.button(mode);
@@ -77,7 +80,7 @@ public class MenuButtonGameTests implements FabricGameTest {
     @GameTest(template = EMPTY_STRUCTURE)
     public void everyGameRejectsLostAccessAndForeignPlayers(GameTestHelper helper) {
         ServerPlayer owner = player(helper), other = player(helper);
-        for (GameMode mode : GameMode.values()) {
+        for (GameMode mode : GAMES) {
             GameMenus.open(owner, mode, ContainerLevelAccess.NULL);
             var menu = owner.containerMenu;
             int tab = TerminalTabs.button(mode);

@@ -10,7 +10,24 @@ public enum GameMode {
     CASE_BATTLE("case_battle"),
     BLACKJACK("blackjack"),
     BINGO("bingo"),
-    SLOT_MACHINE("slot_machine");
+    SLOT_MACHINE("slot_machine"),
+    // The prize machines; new modes are only ever appended, the tabs of a window count on the order.
+    LUCKY_WHEEL("lucky_wheel"),
+    COIN_PUSHER("coin_pusher"),
+    PRIZE_CLAW("prize_claw"),
+    PACHINKO("pachinko"),
+    CAPSULE_GACHA("capsule_gacha"),
+    HIGH_STAKES("high_stakes"),
+    // The arcade: a giant plinko board, a big six wheel, video poker and a horse race.
+    PLINKO("plinko"),
+    BIG_SIX("big_six"),
+    VIDEO_POKER("video_poker"),
+    HORSE_RACE("horse_race"),
+    // The table games played on a cabinet: craps with real dice, punto banco, keno and scratch cards.
+    CRAPS("craps"),
+    BACCARAT("baccarat"),
+    KENO("keno"),
+    SCRATCH_CARD("scratch_card");
 
     private final String id;
 

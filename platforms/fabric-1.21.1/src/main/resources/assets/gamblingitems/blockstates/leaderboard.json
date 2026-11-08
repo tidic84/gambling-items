@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "gamblingitems:block/leaderboard",
+      "y": 0
+    },
+    "facing=east": {
+      "model": "gamblingitems:block/leaderboard",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "gamblingitems:block/leaderboard",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "gamblingitems:block/leaderboard",
+      "y": 270
+    }
+  }
+}

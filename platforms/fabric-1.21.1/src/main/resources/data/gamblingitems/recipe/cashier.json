@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BBB",
+    "PTP",
+    "PPP"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:iron_bars"
+    },
+    "P": {
+      "item": "minecraft:oak_planks"
+    },
+    "T": {
+      "item": "gamblingitems:terminal"
+    }
+  },
+  "result": {
+    "id": "gamblingitems:cashier",
+    "count": 1
+  }
+}

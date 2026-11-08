@@ -4,7 +4,7 @@
   "pattern": [
     "WWW",
     "WTW",
-    "L L"
+    "LXL"
   ],
   "key": {
     "W": {
@@ -15,6 +15,9 @@
     },
     "L": {
       "item": "minecraft:dark_oak_log"
+    },
+    "X": {
+      "item": "minecraft:clock"
     }
   },
   "result": {

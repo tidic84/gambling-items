@@ -9,6 +9,22 @@
     "gamblingitems:blackjack_station",
     "gamblingitems:battle_station",
     "gamblingitems:bingo_station",
-    "gamblingitems:slot_machine"
+    "gamblingitems:slot_machine",
+    "gamblingitems:lucky_wheel",
+    "gamblingitems:coin_pusher",
+    "gamblingitems:prize_claw",
+    "gamblingitems:pachinko",
+    "gamblingitems:capsule_gacha",
+    "gamblingitems:high_stakes",
+    "gamblingitems:plinko",
+    "gamblingitems:big_six",
+    "gamblingitems:video_poker",
+    "gamblingitems:horse_race",
+    "gamblingitems:craps",
+    "gamblingitems:baccarat",
+    "gamblingitems:keno",
+    "gamblingitems:scratch_card",
+    "gamblingitems:leaderboard",
+    "gamblingitems:casino_stool"
   ]
 }

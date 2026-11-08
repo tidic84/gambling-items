@@ -64,6 +64,51 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
     //#endif
 
     private void draw(GameStationEntity station, float partialTick, PoseStack pose, WorldCanvas buffers) {
+        long start = SmokeBench.ENABLED ? System.nanoTime() : 0;
+        if (inView(station)) {
+            drawStation(station, partialTick, pose, buffers);
+            buffers.flush();
+        }
+        if (SmokeBench.ENABLED) SmokeBench.furniture(System.nanoTime() - start);
+    }
+
+    /** How far the furniture reaches from the middle of its block, in blocks, glows and confetti included. */
+    private static final double REACH = 3.5;
+    /** The view widens with sprinting and speed; this much more than the set field of view stays drawn. */
+    private static final double FOV_MARGIN = 1.5;
+
+    /**
+     * Furniture is drawn off screen, so that a tall cabinet never vanishes with the section its base
+     * stands in, but not once it is wholly behind the view. The cone's tip is set four blocks behind the
+     * eyes, where the camera stands in third person; a camera looking back at the player culls nothing.
+     * Also sets how much detail the piece is drawn with, from how far it stands.
+     */
+    private static boolean inView(GameStationEntity station) {
+        var minecraft = net.minecraft.client.Minecraft.getInstance();
+        var viewer = minecraft.getCameraEntity();
+        WorldCanvas.focus(0);
+        if (viewer == null) return true;
+        var eye = viewer.getEyePosition();
+        var pos = station.getBlockPos();
+        // Measured from the eyes to the near side of the piece: what it shows is never drawn too coarse.
+        WorldCanvas.focus(Math.sqrt(pos.getCenter().distanceToSqr(eye)) - 1.5);
+        if (minecraft.options.getCameraType().isMirrored()) return true;
+        var look = viewer.getViewVector(1);
+        double dx = pos.getX() + .5 - (eye.x - look.x * 4), dy = pos.getY() + 1.5 - (eye.y - look.y * 4),
+                dz = pos.getZ() + .5 - (eye.z - look.z * 4);
+        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (distance <= REACH) return true;
+        double aspect = (double) minecraft.getWindow().getWidth() / Math.max(1, minecraft.getWindow().getHeight());
+        double half = Math.toRadians(minecraft.options.fov().get() * FOV_MARGIN) / 2;
+        double reach = Math.atan(Math.tan(Math.min(half, 1.5)) * Math.sqrt(1 + aspect * aspect)) + Math.asin(REACH / distance);
+        return reach >= Math.PI || (dx * look.x + dy * look.y + dz * look.z) / distance >= Math.cos(reach);
+    }
+
+    private void drawStation(GameStationEntity station, float partialTick, PoseStack pose, WorldCanvas buffers) {
+        if (station.getBlockState().getBlock() instanceof dev.gamblingitems.fabric.arcade.DecorBlock decor) {
+            ArcadeDecor.render(station, decor, partialTick, pose, buffers, font);
+            return;
+        }
         if (SlotCabinet.isCabinet(station)) {
             // A cabinet has no monitor: its reels are drawn on its own front.
             SlotCabinet.render(station, partialTick, pose, buffers, font);
@@ -79,14 +124,21 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
         pose.mulPose(Axis.YP.rotationDegrees(-station.getBlockState().getValue(GameStationBlock.FACING).toYRot()));
         pose.translate(0, 0, 0.515);
         pose.scale(1f / 128, -1f / 128, 1f / 128);
-        rectangle(pose, buffers, -188, -188, 188, 60, 0xff304358, 0);
-        rectangle(pose, buffers, -186, -186, 186, 58, 0xff0d131c, 1);
-        rectangle(pose, buffers, -186, -186, 186, -183, GOLD, 2);
-        rectangle(pose, buffers, -180, -146, 180, -49, 0xff172231, 2);
-        line(pose, buffers, Component.translatable("gui.gamblingitems.station." + station.mode().id()).getString(), -177, GOLD);
+        int accent = accent(station.mode());
+        // The glass: night blue, darker towards the foot, under a header in the colour of the game.
+        for (int band = 0; band < 8; band++) {
+            int top = -190 + band * 31;
+            rectangle(pose, buffers, -190, top, 190, Math.min(62, top + 31), shade(0xff111b2a, 1 - band * 0.06f), 0);
+        }
+        rectangle(pose, buffers, -190, -190, 190, -160, shade(accent, 0.45f), 1);
+        rectangle(pose, buffers, -190, -190, 190, -186, accent, 1.5f);
+        rectangle(pose, buffers, -190, -161, 190, -160, GOLD, 1.5f);
+        line(pose, buffers, Component.translatable("gui.gamblingitems.station." + station.mode().id()).getString(), -181, GOLD, 1.7f);
+        rectangle(pose, buffers, -182, -148, 182, -50, 0xff22344a, 1.6f);
+        rectangle(pose, buffers, -181, -147, 181, -51, 0xff0c141f, 1.8f);
         boolean rolling = station.animating();
         String owner = station.idle() ? station.previewPlayer : station.playerName;
-        line(pose, buffers, owner.isEmpty() ? Component.translatable("gui.gamblingitems.station_ready").getString() : owner, -162, TEXT);
+        line(pose, buffers, owner.isEmpty() ? WorldCanvas.translate("gui.gamblingitems.station_ready") : owner, -157, TEXT, 0.9f);
         String status = station.idle() ? station.previewText : rolling ? station.rollingText : result(station);
         marquee(pose, buffers, status, -43, station.highlight && !rolling ? GREEN : GOLD, station.getLevel().getGameTime());
         String detail = station.publicBets.isEmpty() ? station.previewPlayer + " : " + station.previewText : station.publicBets;
@@ -120,13 +172,16 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
             if (locked) color = 0xff1c2631;
             if (hovered == button && !locked) {
                 rectangle(pose, buffers, x - 1, y - 1, x + control.width() + 1, y + control.height() + 1, GOLD);
-                color = 0xff41607a;
+                color = shade(color, 1.35f);
             }
+            // A raised key: lighter along the top, a shadow along the bottom.
             rectangle(pose, buffers, x, y, x + control.width(), y + control.height(), color, 4);
-            String text = Component.translatable("gui.gamblingitems.panel." + key).getString();
+            rectangle(pose, buffers, x, y, x + control.width(), y + 3, shade(color, 1.4f), 4.2f);
+            rectangle(pose, buffers, x, y + control.height() - 3, x + control.width(), y + control.height(), shade(color, 0.6f), 4.2f);
+            String text = WorldCanvas.translate("gui.gamblingitems.panel." + key);
             pose.pushPose();
             pose.translate(x + control.width() / 2f, y + (control.height() - 8) / 2f, 0.02);
-            float scale = Math.min(1f, (control.width() - 10f) / Math.max(1, font.width(text)));
+            float scale = Math.min(1f, (control.width() - 10f) / Math.max(1, WorldCanvas.width(font, text)));
             pose.scale(scale, scale, scale);
             line(pose, buffers, text, 0, TEXT);
             pose.popPose();
@@ -164,7 +219,7 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
                 line(pose, buffers, station.phase == 1 ? countdown(station, now) : station.phase == 2 ? "..." : station.rollingText,
                         -102, GOLD);
                 label(pose, buffers, "ROULETTE", -170, -137, GOLD);
-                label(pose, buffers, Component.translatable("gui.gamblingitems.panel.bet").getString(), 90, -137, TEXT);
+                label(pose, buffers, WorldCanvas.translate("gui.gamblingitems.panel.bet"), 90, -137, TEXT);
                 label(pose, buffers, station.playerName, 90, -122, GOLD);
             }
             case CRASH -> {
@@ -254,7 +309,7 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
     }
 
     private void marquee(PoseStack pose, WorldCanvas buffers, String text, int y, int color, long ticks) {
-        if (font.width(text) > 348) {
+        if (WorldCanvas.width(font, text) > 348) {
             String padded = text + "   |   ";
             int offset = (int) (ticks / 5 % padded.length());
             text = padded.substring(offset) + padded.substring(0, offset);
@@ -278,7 +333,7 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
 
     private String result(GameStationEntity station) {
         if (station.resultItem.isEmpty()) {
-            return Component.translatable("gui.gamblingitems." + station.resultKey).getString();
+            return WorldCanvas.translate("gui.gamblingitems." + station.resultKey);
         }
         ResourceLocation id = ResourceLocation.tryParse(station.resultItem);
         if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) return station.resultItem;
@@ -289,7 +344,36 @@ public final class GameStationRenderer implements BlockEntityRenderer<GameStatio
         text = font.plainSubstrByWidth(text, 348);
         pose.pushPose();
         pose.translate(0, 0, 8);
-        buffers.text(pose, font, text, -font.width(text) / 2f, y, color, 0xF000F0);
+        buffers.text(pose, font, text, -WorldCanvas.width(font, text) / 2f, y, color, 0xF000F0);
         pose.popPose();
+    }
+
+    /** A centred line at a size, shrunk to fit the width of the screen. */
+    private void line(PoseStack pose, WorldCanvas buffers, String text, int y, int color, float scale) {
+        float fitted = Math.min(scale, 348f / Math.max(1, WorldCanvas.width(font, text)));
+        pose.pushPose();
+        pose.translate(0, y, 8);
+        pose.scale(fitted, fitted, fitted);
+        buffers.text(pose, font, text, -WorldCanvas.width(font, text) / 2f, -4, color, 0xF000F0);
+        pose.popPose();
+    }
+
+    /** The colour a station wears in its header, one per game. */
+    private static int accent(dev.gamblingitems.core.GameMode mode) {
+        return switch (mode) {
+            case UPGRADER -> 0xff2fbf7a;
+            case TRADE_UP -> 0xff4cc3d9;
+            case CASE_OPENING -> 0xffd9b25a;
+            case CRASH -> 0xffd2434f;
+            case ROULETTE -> 0xffb8323f;
+            case BLACKJACK -> 0xff17784a;
+            case CASE_BATTLE -> 0xff8a5cd0;
+            case BINGO -> 0xff3a72d8;
+            default -> GOLD;
+        };
+    }
+
+    private static int shade(int colour, float factor) {
+        return SlotCabinet.shade(colour, factor);
     }
 }

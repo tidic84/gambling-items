@@ -3,6 +3,7 @@ package dev.gamblingitems.fabric.slots;
 import dev.gamblingitems.core.GameMode;
 import dev.gamblingitems.core.slots.SlotRules;
 import dev.gamblingitems.fabric.ModContent;
+import dev.gamblingitems.fabric.arcade.Arcade;
 import dev.gamblingitems.fabric.block.GameStationEntity;
 import dev.gamblingitems.fabric.block.GameSurface;
 import dev.gamblingitems.fabric.menu.ValueSync;
@@ -29,7 +30,7 @@ import net.minecraft.world.item.ItemStack;
  * <p>The items played stay where they are: a winning line hands back the very items that were
  * staked and adds the profit in change, and a losing line is the only thing that takes them.
  */
-public final class SlotMenu extends AbstractContainerMenu {
+public final class SlotMenu extends AbstractContainerMenu implements dev.gamblingitems.fabric.block.CabinetMenu {
     // Minecraft 1.20.1 sends menu buttons as signed bytes. Keep both actions in
     // 0..127: a larger ID plays the client click sound but is ignored by the server.
     public static final int SPIN_BUTTON = 0, COLLECT_BUTTON = 1;
@@ -122,9 +123,10 @@ public final class SlotMenu extends AbstractContainerMenu {
                 SlotSettings.VAULT_SIZE, settings().maximumPayout(stake));
     }
 
+    /** A cabinet paying tickets needs no room for its prize: tickets are never handed over as items. */
     public boolean canSpin() {
         long credit = credit();
-        return !spinning() && credit >= settings().minimumStake() && isPayable(credit);
+        return !spinning() && credit >= settings().minimumStake() && (setup.paysTickets() || isPayable(credit));
     }
 
     @Override public boolean clickMenuButton(Player player, int button) {
@@ -150,7 +152,13 @@ public final class SlotMenu extends AbstractContainerMenu {
         int[] reels = SlotRules.spin(draw);
         int multiplier = SlotRules.multiplier(reels);
         long paid = multiplier == 0 ? 0 : SlotRules.payout(stake, multiplier, settings().returnRate());
-        if (multiplier == 0) {
+        long tickets = 0;
+        if (setup.paysTickets()) {
+            // The arcade keeps what was played and pays the whole win in tickets, counted once the reels stop.
+            Arcade.keepStake(vault, SlotSettings.INPUT_SLOT, SlotSettings.FIRST_PAYOUT_SLOT);
+            tickets = Arcade.pay(player, GameMode.SLOT_MACHINE.id(), stake, multiplier, paid, setup.ticketValue(),
+                    player.level().getGameTime() + settings().spinTicks());
+        } else if (multiplier == 0) {
             for (int slot = SlotSettings.INPUT_SLOT; slot < SlotSettings.FIRST_PAYOUT_SLOT; slot++) {
                 vault.setItem(slot, ItemStack.EMPTY);
             }
@@ -169,12 +177,12 @@ public final class SlotMenu extends AbstractContainerMenu {
         ValueSync.write(data, WON, paid);
         animationEnd = player.level().getGameTime() + settings().spinTicks();
         data.set(TICKS, settings().spinTicks());
-        showOnCabinet(player, reels, multiplier, paid);
+        showOnCabinet(player, reels, multiplier, tickets);
         return true;
     }
 
     /** The cabinet plays the same line to everyone standing in front of it. */
-    private void showOnCabinet(Player player, int[] reels, int multiplier, long paid) {
+    private void showOnCabinet(Player player, int[] reels, int multiplier, long tickets) {
         StringBuilder line = new StringBuilder();
         for (int reel : reels) {
             if (line.length() > 0) line.append(',');
@@ -185,6 +193,7 @@ public final class SlotMenu extends AbstractContainerMenu {
             cabinet.reels = line.toString();
             cabinet.animationTicks = settings().spinTicks();
             cabinet.multiplier = Math.max(0, multiplier);
+            cabinet.tickets = tickets;
             cabinet.show(player.getName().getString(),
                     java.math.BigDecimal.valueOf(multiplier, 2).stripTrailingZeros().toPlainString() + "x",
                     multiplier == 0 ? "slot_lost" : "slot_won",
@@ -216,6 +225,41 @@ public final class SlotMenu extends AbstractContainerMenu {
             if (!spinning()) ValueSync.write(data, STAKE, credit());
         }
         super.broadcastChanges();
+    }
+
+    @Override public boolean accepts(ItemStack stack) { return catalog().valueOf(stack) > 0; }
+    @Override public long valueOf(ItemStack stack) { return catalog().valueOf(stack); }
+    @Override public int choices() { return 1; }
+    @Override public long minimumStake() { return settings().minimumStake(); }
+
+    @Override public boolean playFromHand(ItemStack hand, int choice) {
+        if (owner.isSpectator() || !stillValid(owner) || spinning() || !returnCredit()) return false;
+        int count = dev.gamblingitems.fabric.block.CabinetPlay.stage(hand, vault, SlotSettings.INPUT_SLOT, this::canSpin);
+        if (count == 0) return false;
+        hand.shrink(count);
+        return pull(owner);
+    }
+
+    @Override public boolean collectAll() {
+        if (owner.isSpectator() || !stillValid(owner)) return false;
+        long before = credit();
+        returnCredit();
+        boolean moved = credit() < before;
+        return collect(owner) | moved;
+    }
+
+    /** Moves the credit left in front of the cabinet back to the inventory; false if some of it did not fit. */
+    private boolean returnCredit() {
+        boolean all = true;
+        for (int index = 0; index < SlotSettings.STAKE_SLOTS; index++) {
+            int slot = SlotSettings.INPUT_SLOT + index;
+            ItemStack staged = vault.getItem(slot).copy();
+            if (staged.isEmpty()) continue;
+            moveItemStackTo(staged, INVENTORY_START, slots.size(), false);
+            vault.setItem(slot, staged);
+            all &= staged.isEmpty();
+        }
+        return all;
     }
 
     @Override public boolean stillValid(Player player) {
@@ -255,14 +299,6 @@ public final class SlotMenu extends AbstractContainerMenu {
     @Override public void removed(Player player) {
         super.removed(player);
         // Winnings stay in the saved vault; the credit left in front of the machine comes back.
-        if (player instanceof ServerPlayer && player.isAlive()) {
-            for (int index = 0; index < SlotSettings.STAKE_SLOTS; index++) {
-                int slot = SlotSettings.INPUT_SLOT + index;
-                ItemStack staged = vault.getItem(slot).copy();
-                if (staged.isEmpty()) continue;
-                moveItemStackTo(staged, INVENTORY_START, slots.size(), false);
-                vault.setItem(slot, staged);
-            }
-        }
+        if (player instanceof ServerPlayer && player.isAlive()) returnCredit();
     }
 }

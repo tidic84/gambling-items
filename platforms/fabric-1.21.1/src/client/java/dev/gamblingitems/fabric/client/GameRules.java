@@ -16,7 +16,7 @@ import java.util.List;
  */
 public final class GameRules {
     private static final int PANEL_WIDTH = 320, PADDING = 12, LINE = 11;
-    private static final int SHADE = 0xc0050d14;
+    private static final int SHADE = 0xc0070b11;
     private final String mode;
     private boolean open;
 

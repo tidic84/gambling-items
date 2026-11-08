@@ -16,6 +16,7 @@ public final class GamblingItemsClient implements ClientModInitializer {
         MenuScreens.register(ModContent.BATTLE_MENU, BattleScreen::new);
         MenuScreens.register(ModContent.BINGO_MENU, BingoScreen::new);
         MenuScreens.register(ModContent.SLOT_MENU, SlotScreen::new);
+        MenuScreens.register(ModContent.CASHIER_MENU, CashierScreen::new);
         //#if MC >= 1.21.9
         //$ net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry.register(ModContent.STATION_ENTITY, GameStationRenderer::new);
         //#else

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/carpet",
+  "textures": {
+    "wool": "gamblingitems:block/casino_carpet_blue"
+  }
+}

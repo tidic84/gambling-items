@@ -48,6 +48,15 @@ public final class Nbt {
         //#endif
     }
 
+    /** A compound saved under a key, empty when there is none. */
+    public static CompoundTag child(CompoundTag tag, String key) {
+        //#if MC >= 1.21.5
+        //$ return tag.getCompoundOrEmpty(key);
+        //#else
+        return tag.getCompound(key);
+        //#endif
+    }
+
     public static CompoundTag compound(ListTag list, int index) {
         //#if MC >= 1.21.5
         //$ return list.getCompoundOrEmpty(index);

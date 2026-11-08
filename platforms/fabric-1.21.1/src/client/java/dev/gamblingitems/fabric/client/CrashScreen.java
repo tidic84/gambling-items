@@ -113,7 +113,7 @@ public final class CrashScreen extends CasinoScreen<CrashMenu> {
         int left = x + GX + 6 + shake, right = x + GX + GW - 6 + shake;
         int top = y + GY + 6, bottom = y + GY + GH - 18;
         GameScreens.rounded(g, left, top, right - left, bottom - top, GameScreens.HOLE);
-        for (int row = 1; row <= 3; row++) g.fill(left + 4, top + row * 21, right - 4, top + row * 21 + 1, 0xff12283a);
+        for (int row = 1; row <= 3; row++) g.fill(left + 4, top + row * 21, right - 4, top + row * 21 + 1, 0xff1a2330);
         boolean live = phase == CrashGame.Phase.FLYING || phase == CrashGame.Phase.CRASHED;
         int colour = switch (phase) {
             case FLYING -> GameScreens.GREEN;

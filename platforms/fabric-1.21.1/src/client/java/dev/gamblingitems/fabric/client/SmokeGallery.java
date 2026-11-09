@@ -46,6 +46,17 @@ final class SmokeGallery {
     private static final net.minecraft.world.item.DyeColor[] THEMES = {net.minecraft.world.item.DyeColor.RED,
             net.minecraft.world.item.DyeColor.CYAN, net.minecraft.world.item.DyeColor.WHITE, null};
     private static final int THEME_SHOT = 300, THEME_Z = 5;
+    /** A roulette caught mid-spin; the shot's ahead is how far into the spin it is, in hundredths. */
+    private static final int SPIN_SHOT = 400, SPIN_TICKS = 100, DEAL_SHOT = 401;
+
+    /** Lays a hand on the blackjack table: the player's ace and king against the dealer's seven and hole card. */
+    private static void dealBlackjack(ServerLevel level) {
+        BlockPos pos = origin.offset(16, 0, -6);
+        if (!(level.getBlockEntity(pos) instanceof dev.gamblingitems.fabric.block.GameStationEntity station)) return;
+        // Cards are numbered rank + 13 * suit: the ace of spades, the king of hearts, the seven of clubs.
+        station.cards = (39) + "," + (12) + "|" + (6 + 26) + ",?";
+        level.sendBlockUpdated(pos, station.getBlockState(), station.getBlockState(), 3);
+    }
     private static final List<Shot> SHOTS = new ArrayList<>();
     private static BlockPos origin;
 
@@ -87,7 +98,9 @@ final class SmokeGallery {
             // Night shots show what is lit; everything else is photographed at noon.
             player.serverLevel().setDayTime(shot.name().startsWith("night") ? 18000 : 6000);
             player.connection.teleport(shot.x(), shot.y(), shot.z(), shot.yaw(), shot.pitch());
-            if (shot.cabinet() >= THEME_SHOT) bigWin(player.serverLevel(), shot.cabinet() - THEME_SHOT);
+            if (shot.cabinet() == SPIN_SHOT) spinRoulette(player.serverLevel(), shot.ahead());
+            else if (shot.cabinet() == DEAL_SHOT) dealBlackjack(player.serverLevel());
+            else if (shot.cabinet() >= THEME_SHOT) bigWin(player.serverLevel(), shot.cabinet() - THEME_SHOT);
             else if (shot.cabinet() >= TABLE_SHOT) {
                 int index = shot.cabinet() - TABLE_SHOT;
                 playAt(player, origin.offset(-14 + 2 * index, 0, TABLE_Z), TABLE_GAMES[index], TABLE_CONTROLS[index], shot.ahead());
@@ -184,6 +197,18 @@ final class SmokeGallery {
         }
     }
 
+    /** Shows the roulette table's wheel spinning towards 17, as far into the spin as asked, and holds it there. */
+    private static void spinRoulette(ServerLevel level, int hundredths) {
+        BlockPos pos = origin.offset(16, 0, -1);
+        if (!(level.getBlockEntity(pos) instanceof dev.gamblingitems.fabric.block.GameStationEntity station)) return;
+        station.phase = 2;
+        station.targetSlot = 17;
+        station.animationTicks = SPIN_TICKS * 50;
+        // The settle phase of a shot lasts 40 ticks: start far enough back that the camera catches the asked moment.
+        station.phaseEnd = level.getGameTime() + (long) (station.animationTicks * (1 - hundredths / 100.0)) + SETTLE;
+        level.sendBlockUpdated(pos, station.getBlockState(), station.getBlockState(), 3);
+    }
+
     /** A jackpot shown on a dyed slot machine, caught while it is celebrated: lit, beacon turning, confetti falling. */
     private static void bigWin(ServerLevel level, int index) {
         BlockPos pos = origin.offset(-14 + 2 * index, 0, THEME_Z);
@@ -275,6 +300,12 @@ final class SmokeGallery {
         for (int i = 0; i < tables.length; i++) {
             SHOTS.add(new Shot("table_close_" + tables[i], x + 13.6, y + 1.2, z - 6 + 5 * i + 1.4, -120, 34));
         }
+        // The roulette wheel caught with the ball on the track, then dropping over the frets.
+        // The roulette table faces west from x + 16: the camera stands at the players' side, over the felt.
+        SHOTS.add(new Shot("table_spin_track", x + 14.6, y + 1.2, z - 2.2, -90, 72, SPIN_SHOT, 40));
+        SHOTS.add(new Shot("table_spin_drop", x + 14.6, y + 1.2, z - 2.2, -90, 72, SPIN_SHOT, 78));
+        SHOTS.add(new Shot("table_spin_blackjack", x + 15.2, y + 0.9, z - 6 - 1.6, -40, 60, DEAL_SHOT, 0));
+        SHOTS.add(new Shot("table_spin_wheel", x + 15.6, y + 0.6, z - 1.4, -60, 70, SPIN_SHOT, 30));
         SHOTS.add(new Shot("floor_tables", x - 10.5, y + 2.2, z + TABLE_Z + 6, 180, 18));
         String[] games = {"craps", "baccarat", "keno", "scratch_card"};
         for (int i = 0; i < games.length; i++) {

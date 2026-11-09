@@ -75,10 +75,17 @@ public final class StationTables {
         quad(pose, buffers, -HALF_WIDTH, -HALF_DEPTH, HALF_WIDTH, HALF_DEPTH, FELT_EDGE, 1);
         quad(pose, buffers, -HALF_WIDTH + 3, -HALF_DEPTH + 3, HALF_WIDTH - 3, HALF_DEPTH - 14, FELT, 2);
         if (!detailed) return;
-        // Fine woven stripes, clear of all hit areas.
-        for (int y = -120; y < 110; y += 4) {
-            quad(pose, buffers, -187, y, 187, y + 0.3f, 0xff174b30, 2.1f);
+        // The cloth darkens towards its edges, as under the lamp over a real table, inside a gold pinstripe.
+        for (int ring = 0; ring < 4; ring++) {
+            float inset = 6 + ring * 7;
+            int shade = shade(FELT, 1.04f + ring * 0.05f);
+            quad(pose, buffers, -HALF_WIDTH + inset, -HALF_DEPTH + inset, HALF_WIDTH - inset, HALF_DEPTH - 14 - inset,
+                    shade, 2.02f + ring * 0.01f);
         }
+        float pin = 4.5f;
+        quad(pose, buffers, -HALF_WIDTH + pin, -HALF_DEPTH + pin, HALF_WIDTH - pin, -HALF_DEPTH + pin + 0.8f, GOLD, 2.1f);
+        quad(pose, buffers, -HALF_WIDTH + pin, -HALF_DEPTH + pin, -HALF_WIDTH + pin + 0.8f, HALF_DEPTH - 18, GOLD, 2.1f);
+        quad(pose, buffers, HALF_WIDTH - pin - 0.8f, -HALF_DEPTH + pin, HALF_WIDTH - pin, HALF_DEPTH - 18, GOLD, 2.1f);
     }
 
     // ---------------------------------------------------------------- blackjack
@@ -86,23 +93,29 @@ public final class StationTables {
     private static void blackjack(GameStationEntity station, float partialTick, PoseStack pose,
                                   WorldCanvas buffers, Font font) {
         // The arc of a real mat, between the dealer and the seats.
-        for (int step = 0; step <= 80; step++) {
-            double angle = Math.PI * step / 80;
-            float x = (float) (Math.cos(angle) * 150);
-            float y = (float) (-30 - Math.sin(angle) * 48);
-            quad(pose, buffers, x - 2, y - 2, x + 2, y + 2, LINE, 3);
+        // Two gold arcs printed between the dealer and the seats, the rules written between them.
+        for (int step = 0; step <= 120; step++) {
+            double angle = Math.PI * step / 120;
+            for (float radius : new float[] {150, 138}) {
+                float x = (float) (Math.cos(angle) * radius);
+                float y = (float) (-30 - Math.sin(angle) * radius * 0.32f);
+                quad(pose, buffers, x - 1.3f, y - 0.7f, x + 1.3f, y + 0.7f, GOLD, 3);
+            }
         }
-        label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.blackjack_pays"),
+        label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.blackjack_pays").toUpperCase(java.util.Locale.ROOT),
                 0, -26, GOLD, 0.6f, 3);
         label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.blackjack_stands"),
-                0, -14, SILVER, 0.5f, 3);
+                0, -14, 0xffe9e4d6, 0.5f, 3);
         shoe(pose, buffers);
         discardTray(pose, buffers);
         chipRack(pose, buffers, -176, 0);
-        // The betting circles printed along the front of the mat.
+        dealerTray(pose, buffers);
+        // The betting boxes printed along the front of the mat: a gold ring round each.
         for (int seat = -2; seat <= 2; seat++) {
-            circle(pose, buffers, seat * 62, TableLayout.STAKE_Y, 22, LINE, 3);
-            circle(pose, buffers, seat * 62, TableLayout.STAKE_Y, 19, FELT, 4);
+            circle(pose, buffers, seat * 62, TableLayout.STAKE_Y, 21, GOLD, 3);
+            circle(pose, buffers, seat * 62, TableLayout.STAKE_Y, 19.6f, FELT, 3.1f);
+            circle(pose, buffers, seat * 62, TableLayout.STAKE_Y, 16, 0xff1e5a39, 3.2f);
+            circle(pose, buffers, seat * 62, TableLayout.STAKE_Y, 15.2f, FELT, 3.3f);
         }
         // A card that has just appeared slides in, the same way the screen deals it.
         if (!station.cards.equals(station.seenCards)) {
@@ -118,7 +131,8 @@ public final class StationTables {
         // Both hands are counted on the felt, so nobody has to add up the cards themselves.
         String dealerLine = WorldCanvas.translate("gui.gamblingitems.dealer")
                 + score(dealer, dealer.contains("?"));
-        label(pose, buffers, font, dealerLine, 0, -118, GOLD, 0.7f, 3);
+        // Under the dealer's cards, the chip tray taking the edge behind them.
+        label(pose, buffers, font, dealerLine, 0, -52, GOLD, 0.7f, 3);
         cards(pose, buffers, font, dealer, -104, landing);
         cards(pose, buffers, font, hand, 8, landing);
         String name = station.previewPlayer.isEmpty() ? station.playerName : station.previewPlayer;
@@ -153,6 +167,22 @@ public final class StationTables {
         quad(pose, buffers, -164, -107, -132, -86, CARD_BACK, 7.1f);
     }
 
+    /** The dealer's chip tray, set into the far edge of the table: rows of chips lying in their grooves. */
+    private static void dealerTray(PoseStack pose, WorldCanvas buffers) {
+        solidBox(pose, buffers, -70, -126, 70, -106, 1, 5, MAHOGANY);
+        quad(pose, buffers, -68, -124, 68, -108, 0xff1a0f0b, 5.05f);
+        int[] colours = {0xffe8e4dc, RED, BLUE, GREEN, 0xff1c1c22, GOLD, RED, 0xffe8e4dc};
+        for (int column = 0; column < colours.length; column++) {
+            float x = -60 + column * 17;
+            // Chips lying on their side down the groove: a row of short cylinders seen edge on.
+            solidBox(pose, buffers, x - 6.5f, -122, x + 6.5f, -110, 5, 9, colours[column]);
+            for (float y = -121; y < -110; y += 2.2f) {
+                quad(pose, buffers, x - 6.5f, y, x + 6.5f, y + 0.5f, shade(colours[column], .6f), 9.05f);
+            }
+            quad(pose, buffers, x - 1.5f, -121, x + 1.5f, -111, 0xfff3eee2, 9.06f);
+        }
+    }
+
     /** A rack of chips: four colours, each a short stack. */
     private static void chipRack(PoseStack pose, WorldCanvas buffers, float x, float y) {
         solidBox(pose, buffers, x - 9, y - 10, x + 9, y + 74, 2, 4, WOOD);
@@ -179,6 +209,8 @@ public final class StationTables {
             // Only the newest card of the row is still travelling.
             int slide = index == parts.length - 1 ? (int) (landing * 70) : 0;
             int left = x + slide;
+            // The shadow a card casts on the cloth.
+            quad(pose, buffers, left + 2, y + 3, left + width + 3, y + 39, 0x55000000, 4.5f);
             if (part.equals("?")) {
                 quad(pose, buffers, left - 2, y - 2, left + width + 2, y + 38, CARD_EDGE, 5);
                 quad(pose, buffers, left, y, left + width, y + 36, CARD_BACK, 6);
@@ -244,6 +276,8 @@ public final class StationTables {
 
     // ---------------------------------------------------------------- roulette
 
+    private static final int MAHOGANY = 0xff3b1d12, MAHOGANY_LIGHT = 0xff6a3520, TRACK = 0xff8a5a34, BRASS = 0xffc9a04a;
+
     private static void roulette(GameStationEntity station, float partialTick, PoseStack pose,
                                  WorldCanvas buffers, Font font) {
         double now = station.getLevel().getGameTime() + partialTick;
@@ -256,43 +290,126 @@ public final class StationTables {
         int result = station.targetSlot;
         pose.pushPose();
         pose.translate(-124, -18, 0);
-        // The bowl: an apron, a wooden rim, the pockets, and the turret in the middle.
-        cylinder(pose, buffers, 0, 0, 64, 2, 7, WOOD);
-        cylinder(pose, buffers, 0, 0, 62, 7, 9, GOLD);
-        cylinder(pose, buffers, 0, 0, 60, 9, 11, WOOD_LIGHT);
-        circle(pose, buffers, 0, 0, 57, 0xff211c19, 11.1f);
-        circle(pose, buffers, 0, 0, 54, GOLD, 11.2f);
+        bowl(pose, buffers);
+        // The wheel head turns: its pockets with their frets, the numbers round them and the cone in the middle.
+        double step = 2 * Math.PI / RouletteWheel.POCKETS;
+        cylinder(pose, buffers, 0, 0, 51, 4, 9.5f, MAHOGANY);
         for (int pocket = 0; pocket < RouletteWheel.POCKETS; pocket++) {
             int number = RouletteWheel.numberAtPocket(pocket);
-            double angle = wheelAngle + pocket * 2 * Math.PI / RouletteWheel.POCKETS;
-            blade(pose, buffers, angle, colourOf(number), 53, 28, 11.4f);
-            // A blade is centred on its own angle, so its number is written on that same line.
+            double angle = wheelAngle + pocket * step;
+            // The number ring, sloping up to the track, and the pocket the ball falls into below it.
+            blade(pose, buffers, angle, colourOf(number), 51, 40, 9.6f);
+            blade(pose, buffers, angle, shade(colourOf(number), .55f), 40, 30, 9.55f);
             label(pose, buffers, font, String.valueOf(number),
-                    (float) (Math.cos(angle) * 43), (float) (Math.sin(angle) * 43), TEXT, 0.5f, 11.6f);
+                    (float) (Math.cos(angle) * 45.5), (float) (Math.sin(angle) * 45.5), TEXT, 0.42f, 9.7f);
+            // The brass fret between two pockets, standing proud so the ball can rattle over it.
+            double edge = angle + step / 2;
+            float c = (float) Math.cos(edge), s = (float) Math.sin(edge);
+            wall(pose, buffers, c * 30, s * 30, c * 40, s * 40, 9.5f, 12.5f, BRASS);
+            quad(pose, buffers, c * 35 - 0.8f, s * 35 - 0.8f, c * 35 + 0.8f, s * 35 + 0.8f, GOLD, 12.6f);
         }
+        circle(pose, buffers, 0, 0, 40.4f, BRASS, 9.58f);
+        circle(pose, buffers, 0, 0, 39.6f, 0xff1a1210, 9.59f);
+        cone(pose, buffers, 0, 0, 30, 9.6f, 18, 15, MAHOGANY_LIGHT);
         turret(pose, buffers, wheelAngle);
-        if (result >= 0 && station.phase > 0) {
-            double pocketAngle = RouletteWheel.pocketOf(result) * 2 * Math.PI / RouletteWheel.POCKETS;
-            double ballAngle = wheelAngle + pocketAngle - (1 - eased) * 6 * Math.PI * 2;
-            double radius = 55 - 20 * eased;
-            cylinder(pose, buffers, (float) (Math.cos(ballAngle) * radius),
-                    (float) (Math.sin(ballAngle) * radius), 2.8f, 11.5f, 15, CARD);
-        }
+        if (result >= 0 && station.phase > 0) ball(pose, buffers, wheelAngle, result, spin, eased);
         pose.popPose();
         layout(pose, buffers, font, result, station.phase == 3);
     }
 
-    /** The turret in the middle of the bowl: stacked discs, narrowing as they rise. */
+    /**
+     * The fixed bowl the wheel turns in: a mahogany cabinet with a gold rim, and the ball track sloping
+     * down from the rim towards the wheel head, with the brass diamonds that knock the ball about.
+     */
+    private static void bowl(PoseStack pose, WorldCanvas buffers) {
+        // The outside of the bowl, open at the top, and its rim: a gold band, then the mahogany lip.
+        tube(pose, buffers, 0, 0, 68, 1, 17, MAHOGANY);
+        annulus(pose, buffers, 0, 0, 66.5f, 68, GOLD, 17.05f);
+        annulus(pose, buffers, 0, 0, 65, 66.5f, MAHOGANY_LIGHT, 17.05f);
+        cone(pose, buffers, 0, 0, 65, 17, 52, 12.5f, TRACK);
+        tube(pose, buffers, 0, 0, 52, 4, 12.5f, 0xff2a1a12);
+        circle(pose, buffers, 0, 0, 52.2f, 0xff241612, 4.1f);
+        for (int diamond = 0; diamond < 8; diamond++) {
+            double angle = diamond * Math.PI / 4 + Math.PI / 8;
+            pose.pushPose();
+            pose.translate((float) (Math.cos(angle) * 58), (float) (Math.sin(angle) * 58), 0);
+            pose.mulPose(Axis.ZP.rotation((float) angle + (float) (Math.PI / 4)));
+            solidBox(pose, buffers, -2.2f, -2.2f, 2.2f, 2.2f, 14, 16.5f, BRASS);
+            pose.popPose();
+        }
+    }
+
+    /**
+     * The ball: it runs round the track against the wheel, loses speed and drops off the track, rattles over
+     * a few frets and settles in the pocket of the number that came out, then turns with the wheel.
+     */
+    private static void ball(PoseStack pose, WorldCanvas buffers, double wheelAngle, int result, double spin, double eased) {
+        double pocketAngle = RouletteWheel.pocketOf(result) * 2 * Math.PI / RouletteWheel.POCKETS;
+        double angle = wheelAngle + pocketAngle - (1 - eased) * 6 * Math.PI * 2;
+        double radius, height;
+        if (spin < 0.62) {
+            radius = 61;
+            height = 15.5;
+        } else if (spin < 0.86) {
+            double t = (spin - 0.62) / 0.24;
+            radius = 61 - 26 * t * t;
+            // Down the slope, then over the frets: one hop for each fret it crosses, smaller and smaller.
+            height = 15.5 - 4 * t + (t > 0.55 ? Math.abs(Math.sin((t - 0.55) * Math.PI * 4)) * 3.5 * (1 - t) : 0);
+        } else {
+            radius = 35;
+            height = 11.4;
+        }
+        float x = (float) (Math.cos(angle) * radius), y = (float) (Math.sin(angle) * radius), h = (float) height;
+        // A white sphere: a short cylinder, a rounder top and a glint where the light catches it.
+        circle(pose, buffers, x, y, 3.3f, 0x50000000, (float) Math.min(h - 3, 9.62));
+        cylinder(pose, buffers, x, y, 3, h - 2.6f, h + 0.4f, 0xfff4f4f0);
+        cylinder(pose, buffers, x, y, 2.2f, h + 0.4f, h + 1.4f, 0xffffffff);
+        circle(pose, buffers, x - 0.8f, y - 0.8f, 0.8f, 0xffffffff, h + 1.45f);
+    }
+
+    /** The upright wall of a cylinder without its top, seen from both sides. */
+    private static void tube(PoseStack pose, WorldCanvas buffers, float x, float y, float radius, float bottom, float top, int colour) {
+        cone(pose, buffers, x, y, radius, bottom, radius, top, colour);
+    }
+
+    /** A flat ring between two radii. */
+    private static void annulus(PoseStack pose, WorldCanvas buffers, float x, float y, float inner, float outer, int colour, float lift) {
+        cone(pose, buffers, x, y, outer, lift, inner, lift, colour);
+    }
+
+    /** A sloping ring, as a cone from radius r1 at height h1 to radius r2 at height h2. */
+    private static void cone(PoseStack pose, WorldCanvas buffers, float x, float y, float r1, float h1, float r2, float h2,
+                             int colour) {
+        int steps = WorldCanvas.segments(pose, Math.max(r1, r2), 48);
+        for (int step = 0; step < steps; step++) {
+            double a = step * 2 * Math.PI / steps, b = (step + 1) * 2 * Math.PI / steps;
+            int lit = shade(colour, .82f + .18f * (float) Math.cos(a - .8));
+            float ca = (float) Math.cos(a), sa = (float) Math.sin(a), cb = (float) Math.cos(b), sb = (float) Math.sin(b);
+            buffers.quads(pose, (m, v) -> {
+                WorldCanvas.vertex(v, m, x + ca * r1, y + sa * r1, h1, lit);
+                WorldCanvas.vertex(v, m, x + cb * r1, y + sb * r1, h1, lit);
+                WorldCanvas.vertex(v, m, x + cb * r2, y + sb * r2, h2, lit);
+                WorldCanvas.vertex(v, m, x + ca * r2, y + sa * r2, h2, lit);
+                WorldCanvas.vertex(v, m, x + ca * r2, y + sa * r2, h2, lit);
+                WorldCanvas.vertex(v, m, x + cb * r2, y + sb * r2, h2, lit);
+                WorldCanvas.vertex(v, m, x + cb * r1, y + sb * r1, h1, lit);
+                WorldCanvas.vertex(v, m, x + ca * r1, y + sa * r1, h1, lit);
+            });
+        }
+    }
+
+    /** The turret in the middle of the wheel: a gold dome, a spindle and four arms ending in knobs. */
     private static void turret(PoseStack pose, WorldCanvas buffers, double angle) {
-        cylinder(pose, buffers, 0, 0, 27, 11.5f, 13, WOOD);
-        cylinder(pose, buffers, 0, 0, 20, 13, 15, WOOD_LIGHT);
-        cylinder(pose, buffers, 0, 0, 12, 15, 18, GOLD);
-        cylinder(pose, buffers, 0, 0, 5, 18, 26, SILVER);
+        cylinder(pose, buffers, 0, 0, 18, 15, 16.5f, GOLD);
+        cone(pose, buffers, 0, 0, 16, 16.5f, 8, 20, BRASS);
+        cylinder(pose, buffers, 0, 0, 3.5f, 20, 30, GOLD);
+        cylinder(pose, buffers, 0, 0, 5, 29, 31, BRASS);
         for (int arm = 0; arm < 4; arm++) {
             double armAngle = angle + arm * Math.PI / 2;
             pose.pushPose();
             pose.mulPose(Axis.ZP.rotation((float) armAngle));
-            solidBox(pose, buffers, 3, -1.8f, 19, 1.8f, 23, 25, GOLD);
+            solidBox(pose, buffers, 3, -1.4f, 17, 1.4f, 26, 28, GOLD);
+            cylinder(pose, buffers, 18, 0, 2.6f, 25.5f, 29, BRASS);
             pose.popPose();
         }
     }
@@ -302,8 +419,11 @@ public final class StationTables {
                                int result, boolean settled) {
         float left = TableLayout.LAYOUT_LEFT, top = TableLayout.LAYOUT_TOP;
         float width = TableLayout.ZERO_WIDTH + 12 * TableLayout.CELL_WIDTH;
-        quad(pose, buffers, left - 5, top - 5, left + width + 5,
-                TableLayout.OUTSIDE_TOP + TableLayout.OUTSIDE_HEIGHT + 5, WOOD, 3);
+        float bottom = TableLayout.OUTSIDE_TOP + TableLayout.OUTSIDE_HEIGHT;
+        // Printed on the cloth as at a real table: a gold border, white lines between the boxes.
+        quad(pose, buffers, left - 4, top - 4, left + width + 3, bottom + 3, GOLD, 2.6f);
+        quad(pose, buffers, left - 2.5f, top - 2.5f, left + width + 1.5f, bottom + 1.5f, FELT, 2.7f);
+        quad(pose, buffers, left - 1, top - 1, left + width, bottom + 0.5f, 0xffe9e4d6, 2.8f);
         // Every printed number is drawn from the same box the server reads a click in.
         for (int number = 0; number < RouletteWheel.POCKETS; number++) {
             float[] box = TableLayout.numberBox(number);
@@ -312,15 +432,28 @@ public final class StationTables {
         String[] outside = {"1-18", "EVEN", "RED", "BLACK", "ODD", "19-36"};
         for (int index = 0; index < outside.length; index++) {
             float[] box = TableLayout.outsideBox(index);
-            int colour = switch (outside[index]) {
-                case "RED" -> RED;
-                case "BLACK" -> BLACK;
-                default -> LINE;
-            };
-            quad(pose, buffers, box[0], box[1], box[0] + box[2], box[1] + box[3], colour, 4);
-            label(pose, buffers, font, outsideLabel(outside[index]), box[0] + box[2] / 2 - 0.5f,
-                    box[1] + box[3] / 2, TEXT, 0.42f, 5);
+            float cx = box[0] + box[2] / 2, cy = box[1] + box[3] / 2;
+            quad(pose, buffers, box[0], box[1], box[0] + box[2], box[1] + box[3], FELT, 3);
+            if (outside[index].equals("RED") || outside[index].equals("BLACK")) {
+                // The red and black diamonds of the layout, in place of the words.
+                int colour = outside[index].equals("RED") ? RED : BLACK;
+                diamond(pose, buffers, cx, cy, box[2] * 0.36f, box[3] * 0.4f, 0xffe9e4d6, 3.5f);
+                diamond(pose, buffers, cx, cy, box[2] * 0.36f - 1.6f, box[3] * 0.4f - 1.6f, colour, 3.6f);
+            } else {
+                label(pose, buffers, font, outsideLabel(outside[index]), cx - 0.5f, cy, 0xffe9e4d6, 0.5f, 3.5f);
+            }
         }
+    }
+
+    /** A lozenge lying on the felt, its half width and half height given. */
+    private static void diamond(PoseStack pose, WorldCanvas buffers, float x, float y, float halfWidth, float halfHeight,
+                                int colour, float lift) {
+        buffers.quads(pose, (m, v) -> {
+            WorldCanvas.vertex(v, m, x - halfWidth, y, lift, colour);
+            WorldCanvas.vertex(v, m, x, y + halfHeight, lift, colour);
+            WorldCanvas.vertex(v, m, x + halfWidth, y, lift, colour);
+            WorldCanvas.vertex(v, m, x, y - halfHeight, lift, colour);
+        });
     }
 
     /** The even money bets read in the language of the player, not in the code. */
@@ -336,13 +469,22 @@ public final class StationTables {
 
     private static void cellOf(PoseStack pose, WorldCanvas buffers, Font font, float x, float y,
                                float width, float height, int number, int result, boolean settled) {
-        quad(pose, buffers, x, y, x + width, y + height, colourOf(number), 4);
-        label(pose, buffers, font, String.valueOf(number), x + width / 2, y + height / 2, TEXT, 0.5f, 5);
+        // The box is felt inside its white line; the number is printed on a red, black or green oval in it.
+        quad(pose, buffers, x, y, x + width, y + height, FELT, 3);
+        float cx = x + width / 2, cy = y + height / 2;
+        float rx = Math.min(width * 0.42f, 7), ry = Math.min(height * 0.36f, 10);
+        pose.pushPose();
+        pose.translate(cx, cy, 0);
+        pose.scale(rx / ry, 1, 1);
+        circle(pose, buffers, 0, 0, ry, colourOf(number), 3.4f);
+        pose.popPose();
+        label(pose, buffers, font, String.valueOf(number), cx, cy, 0xfff3eee2, 0.55f, 3.5f);
         if (!settled || number != result) return;
-        // The marker a croupier stands on the winning number.
-        circle(pose, buffers, x + width / 2, y + height / 2, Math.min(width, height) / 2 - 1, GOLD, 5);
-        circle(pose, buffers, x + width / 2, y + height / 2, Math.min(width, height) / 2 - 3, 0xff8a6b1f, 6);
-        circle(pose, buffers, x + width / 2, y + height / 2, Math.min(width, height) / 2 - 5, GOLD, 7);
+        // The dolly a croupier stands on the winning number: a white base, a gold crown.
+        cylinder(pose, buffers, cx, cy, 6, 4, 9, 0xfff3eee2);
+        cylinder(pose, buffers, cx, cy, 4.2f, 9, 11, GOLD);
+        cylinder(pose, buffers, cx, cy, 2.2f, 11, 18, 0xfff3eee2);
+        cylinder(pose, buffers, cx, cy, 3.4f, 18, 21, GOLD);
     }
 
     private static int colourOf(int number) {
@@ -412,24 +554,33 @@ public final class StationTables {
     private static void controls(GameStationEntity station, PoseStack pose, WorldCanvas buffers,
                                  Font font) {
         int hovered = hovered(station);
+        // A mahogany rail along the edge the player leans on, the controls set in it as engraved brass plates.
+        quad(pose, buffers, -HALF_WIDTH + 1, TableLayout.CONTROL_TOP - 4, HALF_WIDTH - 1,
+                TableLayout.CONTROL_TOP + TableLayout.CONTROL_HEIGHT + 4, MAHOGANY, 2.5f);
+        quad(pose, buffers, -HALF_WIDTH + 1, TableLayout.CONTROL_TOP - 4.5f, HALF_WIDTH - 1, TableLayout.CONTROL_TOP - 3.5f,
+                GOLD, 2.6f);
         for (StationPanel.Control control : TableLayout.controls(station.mode(), station.phase)) {
-            int colour = switch (control.label()) {
-                case "red" -> 0xff943d4b;
-                case "black" -> 0xff303542;
-                case "green", "play", "cash_out" -> 0xff216e5b;
-                default -> 0xff293d52;
+            // The plate's inlay: the colour of the bet it places, or a dark leather for every other move.
+            int inlay = switch (control.label()) {
+                case "red" -> 0xff8e1f28;
+                case "black" -> 0xff17181d;
+                case "green", "play", "cash_out" -> 0xff17603d;
+                default -> 0xff2a1712;
             };
-            if (hovered == control.action()) {
-                quad(pose, buffers, control.x() - 1, control.y() - 1,
-                        control.x() + control.width() + 1, control.y() + control.height() + 1, GOLD, 5);
-                colour = 0xff41607a;
+            boolean lit = hovered == control.action();
+            float x1 = control.x() + 1.5f, y1 = control.y() + 1.5f;
+            float x2 = control.x() + control.width() - 1.5f, y2 = control.y() + control.height() - 1.5f;
+            // A pressed-in plate sinks a little under the hand that points at it.
+            float top = lit ? 4.2f : 5.4f;
+            solidBox(pose, buffers, x1, y1, x2, y2, 2.5f, top, lit ? 0xffffe08a : BRASS);
+            quad(pose, buffers, x1 + 2.2f, y1 + 2.2f, x2 - 2.2f, y2 - 2.2f, lit ? shade(inlay, 1.5f) : inlay, top + 0.05f);
+            for (float[] corner : new float[][] {{x1 + 1.1f, y1 + 1.1f}, {x2 - 1.1f, y1 + 1.1f}, {x1 + 1.1f, y2 - 1.1f}, {x2 - 1.1f, y2 - 1.1f}}) {
+                quad(pose, buffers, corner[0] - 0.5f, corner[1] - 0.5f, corner[0] + 0.5f, corner[1] + 0.5f, 0xff6b4f1f, top + 0.06f);
             }
-            quad(pose, buffers, control.x(), control.y(), control.x() + control.width(),
-                    control.y() + control.height(), colour, 6);
-            String text = Component.translatable("gui.gamblingitems.panel." + control.label()).getString();
-            float scale = Math.min(0.55f, (control.width() - 6f) / Math.max(1, WorldCanvas.width(font, text)));
+            String text = Component.translatable("gui.gamblingitems.panel." + control.label()).getString().toUpperCase(java.util.Locale.ROOT);
+            float scale = Math.min(0.5f, (control.width() - 10f) / Math.max(1, WorldCanvas.width(font, text)));
             label(pose, buffers, font, text, control.x() + control.width() / 2f,
-                    control.y() + control.height() / 2f, TEXT, scale, 7);
+                    control.y() + control.height() / 2f, lit ? 0xfffff4d0 : GOLD, scale, top + 0.1f);
         }
     }
 

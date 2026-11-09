@@ -17,6 +17,9 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * The felt of a table, drawn across the six blocks it occupies: the mat of a blackjack, the wheel
  * and layout of a roulette, or the board of a bingo. Raised pieces — the rail, the chip racks, the
@@ -476,6 +479,7 @@ public final class StationTables {
         float tip = 10, middle = (y1 + y2) / 2;
         pointed(pose, buffers, x1, y1, x2, y2, tip, middle, INK, 3);
         pointed(pose, buffers, x1 + 1.4f, y1 + 0.9f, x2 - 0.9f, y2 - 0.9f, tip - 0.6f, middle, GREEN, 3.1f);
+        dyed(pose, buffers, x1 + tip + 0.8f, y1 + 0.9f, x2 - 0.9f, y2 - 0.9f, 3.2f, 0);
         float cx = (x1 + tip + x2) / 2;
         label(pose, buffers, font, "0", cx, middle, 0xfff3eee2, 0.9f, 3.4f);
         if (settled && result == 0) dolly(pose, buffers, cx, middle);
@@ -521,9 +525,76 @@ public final class StationTables {
         frame(pose, buffers, box);
         float x = box[0], y = box[1], width = box[2], height = box[3];
         quad(pose, buffers, x + 1.4f, y + 1.4f, x + width - 1.4f, y + height - 1.4f, colourOf(number), 3.1f);
+        dyed(pose, buffers, x + 1.4f, y + 1.4f, x + width - 1.4f, y + height - 1.4f, 3.2f, number);
         float cx = x + width / 2, cy = y + height / 2;
         label(pose, buffers, font, String.valueOf(number), cx, cy, 0xfff3eee2, 0.62f, 3.4f);
         if (settled && number == result) dolly(pose, buffers, cx, cy);
+    }
+
+    /**
+     * The weave of the cloth showing through the dye of a printed area: the diagonal ribs of the
+     * twill, on the same pitch as the baize round it so they run on from the felt, a soft patch where
+     * the nap lies the other way, and a few loose fibres catching the light.
+     */
+    private static void dyed(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2,
+                             float lift, int seed) {
+        float pitch = 3;
+        int first = (int) Math.floor((x1 + y1) / pitch), last = (int) Math.ceil((x2 + y2) / pitch);
+        for (int rib = first; rib <= last; rib++) {
+            float from = rib * pitch;
+            band(pose, buffers, x1, y1, x2, y2, from, from + pitch * 0.45f, 0x3a000000, lift);
+            band(pose, buffers, x1, y1, x2, y2, from + pitch * 0.55f, from + pitch * 0.7f, 0x22ffffff, lift + 0.01f);
+        }
+        // The nap: the dye lies a shade deeper towards one end of the area, fading out across it.
+        int h = hash(seed * 7919 + 11);
+        int deep = 0x26000000, clear = 0x00000000;
+        boolean down = (h & 1) == 0;
+        buffers.quads(pose, (m, v) -> {
+            WorldCanvas.vertex(v, m, x1, y1, lift + 0.02f, down ? deep : clear);
+            WorldCanvas.vertex(v, m, x1, y2, lift + 0.02f, down ? clear : deep);
+            WorldCanvas.vertex(v, m, x2, y2, lift + 0.02f, down ? clear : deep);
+            WorldCanvas.vertex(v, m, x2, y1, lift + 0.02f, down ? deep : clear);
+        });
+        for (int fibre = 0; fibre < 3; fibre++) {
+            int f = hash(seed * 31 + fibre);
+            float fx = x1 + 0.5f + (f & 255) / 255f * (x2 - x1 - 2), fy = y1 + 0.5f + (f >> 8 & 255) / 255f * (y2 - y1 - 1);
+            quad(pose, buffers, fx, fy, fx + 0.9f + (f >> 16 & 3) * 0.3f, fy + 0.22f, 0x40ffffff, lift + 0.03f);
+        }
+    }
+
+    /** The part of a rectangle lying between two diagonals x + y = from and x + y = to, as one flat piece. */
+    private static void band(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2,
+                             float from, float to, int colour, float lift) {
+        // Wound as quad() winds its corners, or the face would turn its back to the player.
+        float[][] polygon = {{x1, y1}, {x1, y2}, {x2, y2}, {x2, y1}};
+        polygon = clip(polygon, from, 1);
+        polygon = clip(polygon, to, -1);
+        if (polygon.length < 3) return;
+        float[][] shape = polygon;
+        buffers.quads(pose, (m, v) -> {
+            // A fan of quads, each closing on itself, as the pointed zero is drawn.
+            for (int corner = 1; corner + 1 < shape.length; corner++) {
+                WorldCanvas.vertex(v, m, shape[0][0], shape[0][1], lift, colour);
+                WorldCanvas.vertex(v, m, shape[corner][0], shape[corner][1], lift, colour);
+                WorldCanvas.vertex(v, m, shape[corner + 1][0], shape[corner + 1][1], lift, colour);
+                WorldCanvas.vertex(v, m, shape[corner + 1][0], shape[corner + 1][1], lift, colour);
+            }
+        });
+    }
+
+    /** What of a convex polygon lies on one side of the diagonal x + y = at: above it for side 1, below for -1. */
+    private static float[][] clip(float[][] polygon, float at, int side) {
+        List<float[]> kept = new ArrayList<>();
+        for (int index = 0; index < polygon.length; index++) {
+            float[] a = polygon[index], b = polygon[(index + 1) % polygon.length];
+            float da = (a[0] + a[1] - at) * side, db = (b[0] + b[1] - at) * side;
+            if (da >= 0) kept.add(a);
+            if ((da >= 0) != (db >= 0)) {
+                float t = da / (da - db);
+                kept.add(new float[] {a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t});
+            }
+        }
+        return kept.toArray(new float[0][]);
     }
 
     /** The dolly a croupier stands on the winning number: a white base, a gold crown. */

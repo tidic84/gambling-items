@@ -38,20 +38,20 @@ TOP = 13.28                  # the felt StationTables draws on, 0.83 of a block
 # --- Textures ---------------------------------------------------------------------------------
 
 def leather(seed):
-    """Tufted oxblood leather: diamond creases between deep buttons, a soft sheen on each cushion."""
+    """Padded oxblood leather: a fine pebbled grain, a soft sheen drifting across the hide, and a
+    saddle stitch running along it. Every term repeats over the tile, so a long rail shows no seam."""
     rng = random.Random(seed)
     image = Image.new('RGB', (16, 16))
     for y in range(16):
         for x in range(16):
-            dx, dy = (x + .5) % 8 - 4, (y + .5) % 8 - 4
-            cushion = 1 - (abs(dx) + abs(dy)) / 8
-            c = mix((46, 12, 14), (118, 34, 38), cushion)
-            if abs(abs(dx) + abs(dy) - 4) < .7:
-                c = (30, 8, 10)
-            image.putpixel((x, y), clamp(tuple(v + rng.uniform(-3, 3) for v in c)))
-    for bx, by in ((0, 0), (8, 0), (0, 8), (8, 8), (4, 4), (12, 4), (4, 12), (12, 12)):
-        if (bx + by) % 8 == 0:
-            image.putpixel((bx, by), (196, 156, 80))
+            sheen = math.sin(math.tau * (x + 2 * y) / 16) * 5 + math.sin(math.tau * (3 * x - y) / 16) * 3
+            pebble = rng.uniform(-6, 6) if (x * 7 + y * 3) % 5 else -9
+            c = tuple(v + sheen + pebble for v in (104, 28, 32))
+            if y == 13 and x % 3 != 2:
+                c = (150, 96, 70)
+            elif y in (12, 14):
+                c = tuple(v - 10 for v in c)
+            image.putpixel((x, y), clamp(c))
     return image
 
 
@@ -147,7 +147,7 @@ def common(f):
     f.box((.7, 8.6, .7), (47.3, 11.2, 31.3), ('wood', {'north': 'panel', 'south': 'panel', 'west': 'panel', 'east': 'panel'}))
     f.box((.6, 10.9, .6), (47.4, 11.2, 31.4), 'dark')
     f.box((1, 8.3, 1), (47, 8.6, 31), 'dark')
-    # The armrest along the players' edge: a rounded cushion of tufted leather, brass studs along its face.
+    # The armrest along the players' edge: a rounded cushion of padded leather, brass studs along its face.
     f.box((0, 13, -.6), (48, 13.7, 2.4), 'leather')
     f.box((.15, 13.7, -.45), (47.85, 14.4, 2.2), 'leather')
     f.box((.4, 14.4, -.1), (47.6, 14.75, 1.7), 'leather')
@@ -242,12 +242,40 @@ def bingo(f):
 GAMES = {'blackjack': blackjack, 'roulette': roulette, 'bingo': bingo}
 
 
-def element(a, b, material, rotation=None, offset=(0, 0, 0)):
+# Faces that carry a whole picture (a moulded panel) keep it entire; every other material is cut to
+# the size of the face, so a thin rail shows a strip of leather rather than the whole hide squeezed flat.
+PICTURES = {'panel'}
+
+
+def window(lo, hi, scale):
+    """The stretch of a 16 pixel texture a face from lo to hi shows, at the texture's own scale."""
+    size = min((hi - lo) * scale, 16)
+    start = (lo * scale) % 16
+    if start + size > 16:
+        start = 16 - size
+    return round(start, 4), round(start + size, 4)
+
+
+def face_uv(side, lo, hi, texture, scale):
+    if texture in PICTURES:
+        return [0, 0, 16, 16]
+    # Each face reads the two axes lying in its plane; the vertical runs down the texture.
+    axes = {'down': (0, 2), 'up': (0, 2), 'north': (0, 1), 'south': (0, 1), 'west': (2, 1), 'east': (2, 1)}[side]
+    u1, u2 = window(lo[axes[0]], hi[axes[0]], scale)
+    if axes[1] == 1:
+        v1, v2 = window(16 - hi[1], 16 - lo[1], scale)
+    else:
+        v1, v2 = window(lo[2], hi[2], scale)
+    return [u1, v1, u2, v2]
+
+
+def element(a, b, material, rotation=None, offset=(0, 0, 0), scale=1):
     base, faces = material if isinstance(material, tuple) else (material, {})
     lo = [a[i] - offset[i] for i in range(3)]
     hi = [b[i] - offset[i] for i in range(3)]
     result = {'from': [round(v, 4) for v in lo], 'to': [round(v, 4) for v in hi],
-              'faces': {side: {'texture': '#' + faces.get(side, base), 'uv': [0, 0, 16, 16]} for side in SIDES}}
+              'faces': {side: {'texture': '#' + faces.get(side, base),
+                               'uv': face_uv(side, lo, hi, faces.get(side, base), scale)} for side in SIDES}}
     if rotation:
         origin = [rotation['origin'][i] - offset[i] for i in range(3)]
         result['rotation'] = {'angle': rotation['angle'], 'axis': rotation['axis'], 'origin': [round(v, 4) for v in origin]}
@@ -303,7 +331,7 @@ def generate():
             turned = None
             if rotation:
                 turned = dict(rotation, origin=small(rotation['origin']))
-            miniature.append(element(small(a), small(b), material, turned))
+            miniature.append(element(small(a), small(b), material, turned, scale=3))
         save(f'models/block/{game}_table.json', model(miniature, game))
         count = sum(len(json.loads((ASSETS / f'models/block/{game}_table_part{p}.json').read_text())['elements']) for p in range(6))
         print(f'{game}: six joined parts, {count} elements')

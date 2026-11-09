@@ -96,8 +96,19 @@ public class TableGameTests implements FabricGameTest {
             helper.assertTrue(bet != null && bet.equals(TableLayout.outsideBet(index)),
                     "Clicking an even money area backs it");
         }
+        for (int index = 0; index < 3; index++) {
+            float[] dozen = TableLayout.dozenBox(index), column = TableLayout.columnBox(index);
+            var bet = TableLayout.betAt(dozen[0] + dozen[2] / 2, dozen[1] + dozen[3] / 2);
+            helper.assertTrue(bet != null && bet.type() == RouletteWheel.BetType.DOZEN && bet.choice() == index,
+                    "Clicking a dozen backs it");
+            bet = TableLayout.betAt(column[0] + column[2] / 2, column[1] + column[3] / 2);
+            helper.assertTrue(bet != null && bet.type() == RouletteWheel.BetType.COLUMN && bet.choice() == index,
+                    "Clicking a 2 to 1 backs its column");
+            helper.assertTrue(RouletteWheel.wins(bet, 1 + index) && !RouletteWheel.wins(bet, 1 + (index + 1) % 3),
+                    "A 2 to 1 box covers the row it is printed at the end of");
+        }
         // The side of the felt the wheel stands on is not a bet.
-        helper.assertTrue(TableLayout.betAt(-124, -18) == null, "The wheel itself takes no chips");
+        helper.assertTrue(TableLayout.betAt(-122, -42) == null, "The wheel itself takes no chips");
         helper.succeed();
     }
 

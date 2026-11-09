@@ -14,45 +14,58 @@ import net.minecraft.world.phys.BlockHitResult;
  * middle of the block a player stands at: the felt runs from -192 to 192 across, and from -128
  * at the far edge to 128 at the edge the player leans on.
  *
- * <p>A table is played on directly: the controls are printed along the near edge, and on a
- * roulette every area of the layout is a bet of its own. Nothing here decides anything; it only
+ * <p>A table is played on directly: the things standing along the near edge answer a click, and
+ * on a roulette every area of the layout is a bet of its own. Nothing here decides anything; it only
  * says where things are, so what is drawn and what answers a click can never drift apart.
  */
 public final class TableLayout {
     /** The surface: three blocks across, two deep, the anchor block at the front middle. */
     public static final float HALF_WIDTH = 190, HALF_DEPTH = 126;
-    /** The row of controls printed along the edge the player stands at. */
-    public static final float CONTROL_TOP = 80, CONTROL_HEIGHT = 28;
-    public static final float CONTROL_LEFT = -188, CONTROL_WIDTH = 53, CONTROL_GAP = 1;
-    /** The printed layout of a roulette: the zero, then twelve columns of three numbers. */
-    public static final float LAYOUT_LEFT = -48, LAYOUT_TOP = -100, ZERO_WIDTH = 28;
-    public static final float CELL_WIDTH = 17, CELL_HEIGHT = 32;
-    /** The even money areas, printed underneath the numbers. */
-    public static final float OUTSIDE_TOP = LAYOUT_TOP + CELL_HEIGHT * 3 + 2, OUTSIDE_HEIGHT = 26;
-    public static final float OUTSIDE_WIDTH = (ZERO_WIDTH + 12 * CELL_WIDTH) / 6;
+    /** The printed layout of a roulette: the zero, twelve columns of three numbers, then the column bets. */
+    public static final float LAYOUT_LEFT = -50, LAYOUT_TOP = -110, ZERO_WIDTH = 26;
+    public static final float CELL_WIDTH = 15, CELL_HEIGHT = 30, COLUMN_WIDTH = 22;
+    /** The dozens, then the even money areas, printed underneath the numbers as on a real layout. */
+    public static final float DOZEN_TOP = LAYOUT_TOP + CELL_HEIGHT * 3, DOZEN_HEIGHT = 20;
+    public static final float OUTSIDE_TOP = DOZEN_TOP + DOZEN_HEIGHT, OUTSIDE_HEIGHT = 22;
+    public static final float OUTSIDE_WIDTH = CELL_WIDTH * 2;
     /** Where the items staked on this table are laid out, one game at a time. */
     public static final float STAKE_Y = 62;
 
     private TableLayout() {}
 
     /**
-     * The controls of a table: the three moves of the game, then the four things every game
-     * shares. They are the same actions as the panel of a station, read from the same names.
+     * The controls of a table: the moves of the game, then the four things every game shares. They
+     * are the same actions as the panel of a station, read from the same names, but each one is a
+     * thing standing on the table rather than a printed button: the drop box the stake goes into,
+     * the player's chip tray, the payout cup, the sign giving the table's rules, and on a blackjack
+     * or a bingo the domed buttons set in the rail. A roulette has no move of its own: every bet
+     * is a printed area of its layout.
      */
     public static List<StationPanel.Control> controls(GameMode mode, int phase) {
         List<StationPanel.Control> controls = new ArrayList<>();
-        int[] actions = {StationPanel.FIRST_MOVE, StationPanel.FIRST_MOVE + 1, StationPanel.FIRST_MOVE + 2,
-                StationPanel.DEPOSIT, StationPanel.RETURN, StationPanel.COLLECT, StationPanel.OPEN};
-        for (int index = 0; index < actions.length; index++) {
-            int action = actions[index];
-            // A move is named for the phase the table is in; the shared tools always read the same.
-            String label = action >= StationPanel.FIRST_MOVE && action <= StationPanel.FIRST_MOVE + 2
-                    ? StationPanel.move(mode, action, phase) : StationPanel.label(mode, action);
-            controls.add(new StationPanel.Control(action,
-                    (int) (CONTROL_LEFT + index * (CONTROL_WIDTH + CONTROL_GAP)), (int) CONTROL_TOP,
-                    (int) CONTROL_WIDTH, (int) CONTROL_HEIGHT, label));
+        if (mode == GameMode.ROULETTE) {
+            add(controls, mode, phase, StationPanel.DEPOSIT, -44, 62, 40, 46);
+            add(controls, mode, phase, StationPanel.RETURN, 6, 74, 74, 34);
+            add(controls, mode, phase, StationPanel.COLLECT, 92, 66, 48, 44);
+            add(controls, mode, phase, StationPanel.OPEN, 148, 50, 40, 62);
+            return controls;
         }
+        add(controls, mode, phase, StationPanel.DEPOSIT, -186, 84, 38, 38);
+        add(controls, mode, phase, StationPanel.RETURN, -144, 90, 62, 30);
+        for (int move = 0; move < 3; move++) {
+            add(controls, mode, phase, StationPanel.FIRST_MOVE + move, -62 + move * 44, 92, 36, 30);
+        }
+        add(controls, mode, phase, StationPanel.COLLECT, 92, 84, 48, 38);
+        add(controls, mode, phase, StationPanel.OPEN, 148, 62, 40, 60);
         return controls;
+    }
+
+    private static void add(List<StationPanel.Control> controls, GameMode mode, int phase, int action,
+                            int x, int y, int width, int height) {
+        // A move is named for the phase the table is in; the shared tools always read the same.
+        String label = action >= StationPanel.FIRST_MOVE && action <= StationPanel.FIRST_MOVE + 2
+                ? StationPanel.move(mode, action, phase) : StationPanel.label(mode, action);
+        controls.add(new StationPanel.Control(action, x, y, width, height, label));
     }
 
     /** True when this control lies on the felt, where a hand can reach it. */
@@ -114,10 +127,25 @@ public final class TableLayout {
                 CELL_WIDTH - 1, CELL_HEIGHT - 1};
     }
 
+    /** Where one "2 to 1" box sits, at the end of its row: 0 is the row of 1, 4, 7, nearest the player. */
+    public static float[] columnBox(int column) {
+        if (column < 0 || column >= 3) throw new IllegalArgumentException("No such column: " + column);
+        return new float[] {LAYOUT_LEFT + ZERO_WIDTH + 12 * CELL_WIDTH, LAYOUT_TOP + (2 - column) * CELL_HEIGHT,
+                COLUMN_WIDTH - 1, CELL_HEIGHT - 1};
+    }
+
+    /** Where one dozen sits, under the four columns of numbers it covers. */
+    public static float[] dozenBox(int dozen) {
+        if (dozen < 0 || dozen >= 3) throw new IllegalArgumentException("No such dozen: " + dozen);
+        return new float[] {LAYOUT_LEFT + ZERO_WIDTH + dozen * 4 * CELL_WIDTH, DOZEN_TOP,
+                4 * CELL_WIDTH - 1, DOZEN_HEIGHT - 1};
+    }
+
     /** Where one even money area sits, in the order they are printed. */
     public static float[] outsideBox(int index) {
         if (index < 0 || index >= 6) throw new IllegalArgumentException("No such area: " + index);
-        return new float[] {LAYOUT_LEFT + index * OUTSIDE_WIDTH, OUTSIDE_TOP, OUTSIDE_WIDTH - 1, OUTSIDE_HEIGHT};
+        return new float[] {LAYOUT_LEFT + ZERO_WIDTH + index * OUTSIDE_WIDTH, OUTSIDE_TOP, OUTSIDE_WIDTH - 1,
+                OUTSIDE_HEIGHT};
     }
 
     /** The even money areas, in the order they are printed along the felt. */
@@ -132,12 +160,31 @@ public final class TableLayout {
         };
     }
 
+    /** Where the area of a bet is printed, or null for a bet the layout does not print. */
+    public static float[] boxOf(RouletteWheel.Bet bet) {
+        return switch (bet.type()) {
+            case STRAIGHT -> numberBox(bet.choice());
+            case DOZEN -> dozenBox(bet.choice());
+            case COLUMN -> columnBox(bet.choice());
+            default -> {
+                for (int index = 0; index < 6; index++) {
+                    if (outsideBet(index).equals(bet)) yield outsideBox(index);
+                }
+                yield null;
+            }
+        };
+    }
+
     /** The bet printed where a click landed on a roulette felt, or null if it landed elsewhere. */
     public static RouletteWheel.Bet betAt(float x, float y) {
         for (int number = 0; number < RouletteWheel.POCKETS; number++) {
             if (inside(numberBox(number), x, y)) {
                 return new RouletteWheel.Bet(RouletteWheel.BetType.STRAIGHT, number);
             }
+        }
+        for (int index = 0; index < 3; index++) {
+            if (inside(columnBox(index), x, y)) return new RouletteWheel.Bet(RouletteWheel.BetType.COLUMN, index);
+            if (inside(dozenBox(index), x, y)) return new RouletteWheel.Bet(RouletteWheel.BetType.DOZEN, index);
         }
         for (int index = 0; index < 6; index++) {
             if (inside(outsideBox(index), x, y)) return outsideBet(index);

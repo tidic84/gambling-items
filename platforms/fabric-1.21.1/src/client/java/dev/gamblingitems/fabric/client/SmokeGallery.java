@@ -206,6 +206,8 @@ final class SmokeGallery {
         station.animationTicks = SPIN_TICKS * 50;
         // The settle phase of a shot lasts 40 ticks: start far enough back that the camera catches the asked moment.
         station.phaseEnd = level.getGameTime() + (long) (station.animationTicks * (1 - hundredths / 100.0)) + SETTLE;
+        // Two players' chips on the layout, each in their own colour.
+        station.publicBets = "Steve : 17 4, red 2, dozen2 1, 0 1\nAlex : column1 3, 23 2, odd 1, 8 1";
         level.sendBlockUpdated(pos, station.getBlockState(), station.getBlockState(), 3);
     }
 

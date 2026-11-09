@@ -30,7 +30,6 @@ TEXTURES = dict(wood='gamblingitems:block/table_wood', panel='gamblingitems:bloc
 FELT = {'roulette': 'gamblingitems:block/table_felt_green', 'blackjack': 'gamblingitems:block/table_felt_green',
         'bingo': 'gamblingitems:block/table_felt_blue'}
 # Where the game draws its pieces on the felt, in model space (see the canvas mapping above).
-WHEEL = (39.5, 18.25)        # the roulette wheel, canvas (-124, -18), radius 8
 CUP = (41.5, 11.75)          # the bingo cup, canvas (-140, 34), radius 3.75
 TOP = 13.28                  # the felt StationTables draws on, 0.83 of a block
 
@@ -121,12 +120,6 @@ class Furniture:
         self.box((cx - along / 2, y1, cz - across / 2), (cx + along / 2, y2, cz + across / 2), material,
                  {'angle': angle, 'axis': 'y', 'origin': (cx, (y1 + y2) / 2, cz)} if angle else None)
 
-    def disc(self, centre, radius, y1, y2, material):
-        """A sixteen-sided plate lying flat: eight bands through the centre, each as thick as one side."""
-        half = radius * math.tan(math.pi / 16)
-        for angle in (0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5):
-            self.turned(centre, 2 * radius, 2 * half, y1, y2, angle, material)
-
     def ring(self, centre, radius, width, y1, y2, material, sides=16):
         """A flat ring of straight segments round a centre, as a bowl's rim or a cage's hoop."""
         side = 2 * (radius + width / 2) * math.tan(math.pi / sides) + .05
@@ -200,9 +193,7 @@ def roulette(f):
     for z in (4, 28):
         f.box((5, 3, z - .5), (43, 3.8, z + .5), 'wood')
     f.box((23.5, 3.1, 4.5), (24.5, 3.7, 27.5), 'wood')
-    # The bowl: StationTables draws the wheel inside radius 8; the rim stands round it.
-    f.disc(WHEEL, 8.4, 13, 14, 'wood')
-    f.ring(WHEEL, 8.45, .3, 13.9, 14.15, 'brass')
+    # The bowl and the wheel are StationTables' voxels, standing straight on the felt.
     # A brass chip rake laid along the dealer's edge.
     f.box((14, 13.95, 29.4), (30, 14.2, 29.8), 'brass')
     f.box((12.8, 13.95, 28.8), (14, 14.3, 30.4), 'dark')

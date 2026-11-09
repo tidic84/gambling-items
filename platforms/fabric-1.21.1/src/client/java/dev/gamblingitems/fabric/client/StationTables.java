@@ -60,15 +60,21 @@ public final class StationTables {
         // Lay the panel flat, keeping the handedness the station screen already uses.
         pose.mulPose(Axis.XP.rotationDegrees(-90));
         pose.scale(1f / 128, -1f / 128, 1f / 128);
-        cloth(pose, buffers, station.mode() != dev.gamblingitems.core.GameMode.BINGO);
-        switch (station.mode()) {
-            case BLACKJACK -> blackjack(station, partialTick, pose, buffers, font);
-            case ROULETTE -> roulette(station, partialTick, pose, buffers, font);
-            case BINGO -> bingo(station, pose, buffers, font);
-            default -> { }
+        // The roulette is built of voxels, a sixty-fourth of a block each; the other tables are not yet.
+        voxels = station.mode() == dev.gamblingitems.core.GameMode.ROULETTE;
+        try {
+            cloth(pose, buffers, station.mode() != dev.gamblingitems.core.GameMode.BINGO);
+            switch (station.mode()) {
+                case BLACKJACK -> blackjack(station, partialTick, pose, buffers, font);
+                case ROULETTE -> roulette(station, partialTick, pose, buffers, font);
+                case BINGO -> bingo(station, pose, buffers, font);
+                default -> { }
+            }
+            stakes(station, pose, buffers);
+            controls(station, pose, buffers, font);
+        } finally {
+            voxels = false;
         }
-        stakes(station, pose, buffers);
-        controls(station, pose, buffers, font);
         pose.popPose();
     }
 
@@ -295,27 +301,12 @@ public final class StationTables {
         pose.pushPose();
         pose.translate(WHEEL_X, WHEEL_Y, 0);
         bowl(pose, buffers);
-        // The wheel head turns: its pockets with their frets, the numbers round them and the cone in the middle.
-        double step = 2 * Math.PI / RouletteWheel.POCKETS;
-        cylinder(pose, buffers, 0, 0, 51, 4, 9.5f, MAHOGANY);
-        for (int pocket = 0; pocket < RouletteWheel.POCKETS; pocket++) {
-            int number = RouletteWheel.numberAtPocket(pocket);
-            double angle = wheelAngle + pocket * step;
-            // The number ring, sloping up to the track, and the pocket the ball falls into below it.
-            blade(pose, buffers, angle, colourOf(number), 51, 40, 9.6f);
-            blade(pose, buffers, angle, shade(colourOf(number), .55f), 40, 30, 9.55f);
-            label(pose, buffers, font, String.valueOf(number),
-                    (float) (Math.cos(angle) * 45.5), (float) (Math.sin(angle) * 45.5), TEXT, 0.42f, 9.7f);
-            // The brass fret between two pockets, standing proud so the ball can rattle over it.
-            double edge = angle + step / 2;
-            float c = (float) Math.cos(edge), s = (float) Math.sin(edge);
-            wall(pose, buffers, c * 30, s * 30, c * 40, s * 40, 9.5f, 12.5f, BRASS);
-            quad(pose, buffers, c * 35 - 0.8f, s * 35 - 0.8f, c * 35 + 0.8f, s * 35 + 0.8f, GOLD, 12.6f);
-        }
-        circle(pose, buffers, 0, 0, 40.4f, BRASS, 9.58f);
-        circle(pose, buffers, 0, 0, 39.6f, 0xff1a1210, 9.59f);
-        cone(pose, buffers, 0, 0, 30, 9.6f, 18, 15, MAHOGANY_LIGHT);
-        turret(pose, buffers, wheelAngle);
+        // The wheel head turns as one piece: its pockets with their frets, the numbers round them, the turret.
+        pose.pushPose();
+        pose.mulPose(Axis.ZP.rotation((float) wheelAngle));
+        head(pose, buffers, font);
+        turret(pose, buffers);
+        pose.popPose();
         if (result >= 0 && station.phase > 0) ball(pose, buffers, wheelAngle, result, spin, eased);
         pose.popPose();
         layout(pose, buffers, font, result, station.phase == 3);
@@ -323,24 +314,56 @@ public final class StationTables {
     }
 
     /**
-     * The fixed bowl the wheel turns in: a mahogany cabinet with a gold rim, and the ball track sloping
-     * down from the rim towards the wheel head, with the brass diamonds that knock the ball about.
+     * The fixed bowl the wheel turns in, built of voxels: a mahogany cabinet with a gold rim, the ball
+     * track stepping down from the rim towards the wheel head, and the brass diamonds standing on it.
      */
     private static void bowl(PoseStack pose, WorldCanvas buffers) {
-        // The outside of the bowl, open at the top, and its rim: a gold band, then the mahogany lip.
-        tube(pose, buffers, 0, 0, 68, 1, 17, MAHOGANY);
-        annulus(pose, buffers, 0, 0, 66.5f, 68, GOLD, 17.05f);
-        annulus(pose, buffers, 0, 0, 65, 66.5f, MAHOGANY_LIGHT, 17.05f);
-        cone(pose, buffers, 0, 0, 65, 17, 52, 12.5f, TRACK);
-        tube(pose, buffers, 0, 0, 52, 4, 12.5f, 0xff2a1a12);
-        circle(pose, buffers, 0, 0, 52.2f, 0xff241612, 4.1f);
+        float[][] diamonds = new float[8][];
         for (int diamond = 0; diamond < 8; diamond++) {
             double angle = diamond * Math.PI / 4 + Math.PI / 8;
-            pose.pushPose();
-            pose.translate((float) (Math.cos(angle) * 58), (float) (Math.sin(angle) * 58), 0);
-            pose.mulPose(Axis.ZP.rotation((float) angle + (float) (Math.PI / 4)));
-            solidBox(pose, buffers, -2.2f, -2.2f, 2.2f, 2.2f, 14, 16.5f, BRASS);
-            pose.popPose();
+            diamonds[diamond] = new float[] {(float) Math.cos(angle) * 58, (float) Math.sin(angle) * 58};
+        }
+        field(pose, buffers, -70, -70, 70, 70, 0.5f, MAHOGANY, (x, y) -> {
+            float r = (float) Math.hypot(x, y);
+            if (r >= 68 || r < 52) return NONE;
+            if (r >= 66) return cell(16.5f, GOLD);
+            if (r >= 64) return cell(16.5f, MAHOGANY_LIGHT);
+            for (float[] diamond : diamonds) {
+                if (Math.abs(x - diamond[0]) < 2.5f && Math.abs(y - diamond[1]) < 2.5f) return cell(16.5f, BRASS);
+            }
+            return cell(level(12.5f + (r - 52) / 12 * 4), TRACK);
+        });
+    }
+
+    /**
+     * The wheel head, at rest: the number ring in red and black, a brass ring inside it, the pockets
+     * a step lower with a brass fret standing between each two, and the mahogany cone rising in steps
+     * to the gold dome. The numbers are printed round the ring, turning with it.
+     */
+    private static void head(PoseStack pose, WorldCanvas buffers, Font font) {
+        double step = 2 * Math.PI / RouletteWheel.POCKETS;
+        field(pose, buffers, -52, -52, 52, 52, 4.5f, MAHOGANY, (x, y) -> {
+            float r = (float) Math.hypot(x, y);
+            if (r >= 52) return NONE;
+            double at = Math.atan2(y, x) / step;
+            if (at < 0) at += RouletteWheel.POCKETS;
+            int pocket = (int) Math.round(at) % RouletteWheel.POCKETS;
+            int colour = colourOf(RouletteWheel.numberAtPocket(pocket));
+            if (r >= 41) return cell(10.5f, colour);
+            if (r >= 39) return cell(10.5f, BRASS);
+            if (r >= 30) {
+                // How far this column lies from the fret between its pocket and the next, along the ring.
+                double fret = (0.5 - Math.abs(at - Math.round(at))) * step * r;
+                return fret < 1.1 ? cell(12.5f, BRASS) : cell(8.5f, shade(colour, .55f));
+            }
+            if (r >= 15) return cell(level(10.5f + (30 - r) / 15 * 8), MAHOGANY_LIGHT);
+            if (r >= 8) return cell(level(18.5f + (15 - r) / 7 * 2), BRASS);
+            return cell(20.5f, GOLD);
+        });
+        for (int pocket = 0; pocket < RouletteWheel.POCKETS; pocket++) {
+            double angle = pocket * step;
+            label(pose, buffers, font, String.valueOf(RouletteWheel.numberAtPocket(pocket)),
+                    (float) (Math.cos(angle) * 46.5), (float) (Math.sin(angle) * 46.5), TEXT, 0.42f, 10.6f);
         }
     }
 
@@ -354,22 +377,22 @@ public final class StationTables {
         double radius, height;
         if (spin < 0.62) {
             radius = 61;
-            height = 15.5;
+            height = 16.5;
         } else if (spin < 0.86) {
             double t = (spin - 0.62) / 0.24;
             radius = 61 - 26 * t * t;
             // Down the slope, then over the frets: one hop for each fret it crosses, smaller and smaller.
-            height = 15.5 - 4 * t + (t > 0.55 ? Math.abs(Math.sin((t - 0.55) * Math.PI * 4)) * 3.5 * (1 - t) : 0);
+            height = 16.5 - 5 * t + (t > 0.55 ? Math.abs(Math.sin((t - 0.55) * Math.PI * 4)) * 3.5 * (1 - t) : 0);
         } else {
             radius = 35;
-            height = 11.4;
+            height = 11.5;
         }
         float x = (float) (Math.cos(angle) * radius), y = (float) (Math.sin(angle) * radius), h = (float) height;
-        // A white sphere: a short cylinder, a rounder top and a glint where the light catches it.
-        circle(pose, buffers, x, y, 3.3f, 0x50000000, (float) Math.min(h - 3, 9.62));
-        cylinder(pose, buffers, x, y, 3, h - 2.6f, h + 0.4f, 0xfff4f4f0);
-        cylinder(pose, buffers, x, y, 2.2f, h + 0.4f, h + 1.4f, 0xffffffff);
-        circle(pose, buffers, x - 0.8f, y - 0.8f, 0.8f, 0xffffffff, h + 1.45f);
+        // A ball of voxels, three across: a full middle layer, a cross above it, a glint on top.
+        rawBox(pose, buffers, x - 3, y - 3, x + 3, y + 3, h - 2, h, 0xfff4f4f0);
+        rawBox(pose, buffers, x - 3, y - 1, x + 3, y + 1, h, h + 2, 0xffffffff);
+        rawBox(pose, buffers, x - 1, y - 3, x + 1, y + 3, h, h + 2, 0xffffffff);
+        rawQuad(pose, buffers, x - 1, y - 1, x + 1, y + 1, 0xffffffff, h + 2.02f);
     }
 
     /** The upright wall of a cylinder without its top, seen from both sides. */
@@ -385,6 +408,17 @@ public final class StationTables {
     /** A sloping ring, as a cone from radius r1 at height h1 to radius r2 at height h2. */
     private static void cone(PoseStack pose, WorldCanvas buffers, float x, float y, float r1, float h1, float r2, float h2,
                              int colour) {
+        if (voxels) {
+            float inner = Math.min(r1, r2), outer = Math.max(r1, r2), low = Math.min(h1, h2), high = Math.max(h1, h2);
+            field(pose, buffers, x - outer - VOXEL, y - outer - VOXEL, x + outer + VOXEL, y + outer + VOXEL, low, 0, (cx, cy) -> {
+                float r = (float) Math.hypot(cx - x, cy - y);
+                if (r1 == r2) return r <= r1 && r > r1 - VOXEL ? cell(high, colour) : NONE;
+                if (r < inner || r > outer) return NONE;
+                float h = h1 + (r - r1) / (r2 - r1) * (h2 - h1);
+                return cell(low + Math.round((h - low) / VOXEL) * VOXEL, colour);
+            });
+            return;
+        }
         int steps = WorldCanvas.segments(pose, Math.max(r1, r2), 48);
         for (int step = 0; step < steps; step++) {
             double a = step * 2 * Math.PI / steps, b = (step + 1) * 2 * Math.PI / steps;
@@ -403,18 +437,16 @@ public final class StationTables {
         }
     }
 
-    /** The turret in the middle of the wheel: a gold dome, a spindle and four arms ending in knobs. */
-    private static void turret(PoseStack pose, WorldCanvas buffers, double angle) {
-        cylinder(pose, buffers, 0, 0, 18, 15, 16.5f, GOLD);
-        cone(pose, buffers, 0, 0, 16, 16.5f, 8, 20, BRASS);
-        cylinder(pose, buffers, 0, 0, 3.5f, 20, 30, GOLD);
-        cylinder(pose, buffers, 0, 0, 5, 29, 31, BRASS);
+    /** The turret in the middle of the wheel: a gold spindle under a brass cap, and four arms ending in knobs. */
+    private static void turret(PoseStack pose, WorldCanvas buffers) {
+        field(pose, buffers, -4, -4, 4, 4, 20.5f, GOLD, (x, y) -> Math.hypot(x, y) < 3.5 ? cell(28.5f, GOLD) : NONE);
+        field(pose, buffers, -6, -6, 6, 6, 28.5f, BRASS, (x, y) -> Math.hypot(x, y) < 5 ? cell(30.5f, BRASS) : NONE);
         for (int arm = 0; arm < 4; arm++) {
-            double armAngle = angle + arm * Math.PI / 2;
             pose.pushPose();
-            pose.mulPose(Axis.ZP.rotation((float) armAngle));
-            solidBox(pose, buffers, 3, -1.4f, 17, 1.4f, 26, 28, GOLD);
-            cylinder(pose, buffers, 18, 0, 2.6f, 25.5f, 29, BRASS);
+            // A quarter turn maps the grid onto itself, so every arm stays on the voxels of the head.
+            pose.mulPose(Axis.ZP.rotation((float) (arm * Math.PI / 2)));
+            rawBox(pose, buffers, 4, -2, 16, 2, 26.5f, 28.5f, GOLD);
+            rawBox(pose, buffers, 16, -2, 20, 2, 24.5f, 30.5f, BRASS);
             pose.popPose();
         }
     }
@@ -488,6 +520,12 @@ public final class StationTables {
     /** A box whose left side comes to a point, as the zero of a layout does. */
     private static void pointed(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2,
                                 float tip, float middle, int colour, float lift) {
+        if (voxels) {
+            float half = (y2 - y1) / 2;
+            field(pose, buffers, x1, y1, x2, y2, lift, 0, (x, y) ->
+                    x >= x1 + tip * Math.abs(y - middle) / half && x <= x2 && y >= y1 && y <= y2 ? cell(lift, colour) : NONE);
+            return;
+        }
         quad(pose, buffers, x1 + tip, y1, x2, y2, colour, lift);
         buffers.quads(pose, (m, v) -> {
             WorldCanvas.vertex(v, m, x1 + tip, y1, lift, colour);
@@ -500,6 +538,11 @@ public final class StationTables {
     /** A lozenge lying on the felt, its half width and half height given. */
     private static void diamond(PoseStack pose, WorldCanvas buffers, float x, float y, float halfWidth, float halfHeight,
                                 int colour, float lift) {
+        if (voxels) {
+            field(pose, buffers, x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight, lift, 0, (cx, cy) ->
+                    Math.abs(cx - x) / halfWidth + Math.abs(cy - y) / halfHeight <= 1 ? cell(lift, colour) : NONE);
+            return;
+        }
         buffers.quads(pose, (m, v) -> {
             WorldCanvas.vertex(v, m, x - halfWidth, y, lift, colour);
             WorldCanvas.vertex(v, m, x, y + halfHeight, lift, colour);
@@ -538,6 +581,19 @@ public final class StationTables {
      */
     private static void dyed(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2,
                              float lift, int seed) {
+        if (voxels) {
+            // On voxels the twill is a pixel pattern: two voxels dark, two clear, a step along each row.
+            float[] across = span(x1, x2), deep = span(y1, y2);
+            if (across == null || deep == null) return;
+            for (float y = deep[0]; y < deep[1] - 0.01f; y += VOXEL) {
+                for (float x = across[0]; x < across[1] - 0.01f; x += VOXEL) {
+                    int i = Math.round(x / VOXEL), j = Math.round(y / VOXEL);
+                    if (Math.floorMod(i + j, 4) < 2) rawQuad(pose, buffers, x, y, x + VOXEL, y + VOXEL, 0x2a000000, lift);
+                    else if (hash(seed * 59 + i * 7 + j * 131) % 9 == 0) rawQuad(pose, buffers, x, y, x + VOXEL, y + VOXEL, 0x26ffffff, lift + 0.01f);
+                }
+            }
+            return;
+        }
         float pitch = 3;
         int first = (int) Math.floor((x1 + y1) / pitch), last = (int) Math.ceil((x2 + y2) / pitch);
         for (int rib = first; rib <= last; rib++) {
@@ -670,6 +726,22 @@ public final class StationTables {
             float bottom = base + chip * thickness, top = bottom + thickness - 0.15f;
             // Stacked by hand: each chip a hair off the one under it.
             float ox = (float) Math.sin(chip * 2.3) * 0.35f, oy = (float) Math.cos(chip * 1.7) * 0.35f;
+            if (voxels) {
+                int turn = chip;
+                field(pose, buffers, x - radius - VOXEL, y - radius - VOXEL, x + radius + VOXEL, y + radius + VOXEL, bottom - 0.35f, 0,
+                        (cx, cy) -> {
+                            double r = Math.hypot(cx - x, cy - y);
+                            if (r > radius) return NONE;
+                            double a = Math.atan2(cy - y, cx - x) + Math.PI + turn * 0.5;
+                            boolean insert = r > radius - VOXEL && (int) (a / (Math.PI / 4)) % 2 == 0;
+                            return cell(top + 0.35f, insert ? 0xfff3eee2 : colour);
+                        });
+                if (chip == chips - 1) {
+                    circle(pose, buffers, x, y, radius * 0.55f, 0xfff3eee2, top + 0.4f);
+                    circle(pose, buffers, x, y, radius * 0.3f, shade(colour, 1.15f), top + 0.45f);
+                }
+                continue;
+            }
             cylinder(pose, buffers, x + ox, y + oy, radius, bottom, top, colour);
             for (int insert = 0; insert < 6; insert++) {
                 double a = insert * Math.PI / 3 + chip * 0.4, b = a + 0.28;
@@ -851,11 +923,28 @@ public final class StationTables {
     /** The payout cup: a brass bowl on a short foot, the winnings stacked in gold chips inside it. */
     private static void payoutCup(PoseStack pose, WorldCanvas buffers, float x, float y, float radius, boolean lit) {
         int brass = lit ? 0xffffe08a : BRASS;
+        if (voxels) {
+            // A bowl of voxels: a gold lip, the brass inside stepping down to the bottom, the chips in it.
+            int lip = lit ? 0xfffff4d0 : GOLD;
+            field(pose, buffers, x - radius - VOXEL, y - radius - VOXEL, x + radius + VOXEL, y + radius + VOXEL, 2.5f, shade(brass, .85f),
+                    (cx, cy) -> {
+                        float r = (float) Math.hypot(cx - x, cy - y) / radius;
+                        if (r > 1) return NONE;
+                        if (r > 1 - VOXEL / radius) return cell(12.5f, lip);
+                        return cell(level(4.5f + 8 * r * r), r < 0.6f ? 0xff3a2a12 : brass);
+                    });
+            for (int stack = 0; stack < 3; stack++) {
+                double angle = stack * 2 * Math.PI / 3 + 0.5;
+                float sx = x + (float) Math.cos(angle) * radius * 0.3f, sy = y + (float) Math.sin(angle) * radius * 0.3f;
+                cylinder(pose, buffers, sx, sy, radius * 0.22f, 4.5f, 6.5f + stack * 2, stack % 2 == 0 ? GOLD : 0xffd9a83a);
+            }
+            return;
+        }
         circle(pose, buffers, x + 1.5f, y + 1.5f, radius, 0x50000000, 2.55f);
         cylinder(pose, buffers, x, y, radius * 0.55f, 2.5f, 4.5f, shade(brass, .85f));
         cone(pose, buffers, x, y, radius * 0.6f, 4.5f, radius, 12, brass);
         // Spun brass: fine rings turned into the bowl, a shade darker or lighter, inside and out.
-        for (int ring = 1; ring < 7; ring++) {
+        for (int ring = 1; ring < 7 && !voxels; ring++) {
             float t = ring / 7f, t2 = t + 0.03f;
             float r1 = radius * (0.6f + 0.4f * t), r2 = radius * (0.6f + 0.4f * t2);
             cone(pose, buffers, x, y, r1 + 0.06f, 4.5f + 7.5f * t, r2 + 0.06f, 4.5f + 7.5f * t2,
@@ -1055,21 +1144,15 @@ public final class StationTables {
 
     // ---------------------------------------------------------------- drawing
 
-    /** A true annular sector; the narrow gap reveals the brass pocket separators. */
-    private static void blade(PoseStack pose, WorldCanvas buffers, double angle, int colour,
-                              float outer, float inner, float lift) {
-        double half = Math.PI / RouletteWheel.POCKETS * .92;
-        buffers.quads(pose, (m, v) -> {
-        WorldCanvas.vertex(v, m, (float) (inner * Math.cos(angle-half)), (float) (inner * Math.sin(angle-half)), lift, colour);
-        WorldCanvas.vertex(v, m, (float) (inner * Math.cos(angle+half)), (float) (inner * Math.sin(angle+half)), lift, colour);
-        WorldCanvas.vertex(v, m, (float) (outer * Math.cos(angle+half)), (float) (outer * Math.sin(angle+half)), lift, colour);
-        WorldCanvas.vertex(v, m, (float) (outer * Math.cos(angle-half)), (float) (outer * Math.sin(angle-half)), lift, colour);
-        });
-    }
-
     /** A coplanar triangle fan, with no overlapping blades or depth drift. */
     private static void circle(PoseStack pose, WorldCanvas buffers, float centreX, float centreY,
                                float radius, int colour, float lift) {
+        if (voxels) {
+            field(pose, buffers, centreX - radius - VOXEL, centreY - radius - VOXEL, centreX + radius + VOXEL,
+                    centreY + radius + VOXEL, lift, 0,
+                    (x, y) -> Math.hypot(x - centreX, y - centreY) <= radius ? cell(lift, colour) : NONE);
+            return;
+        }
         int steps = WorldCanvas.segments(pose, radius, 40);
         buffers.quads(pose, (matrix, vertices) -> {
         for (int step = 0; step < steps; step++) {
@@ -1089,6 +1172,16 @@ public final class StationTables {
 
     private static void wall(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                              float x2, float y2, float bottom, float top, int colour) {
+        if (voxels) {
+            float a = snap(x1), b = snap(y1), c = snap(x2), d = snap(y2);
+            if (a != c || b != d) rawWall(pose, buffers, a, b, c, d, bottom, top, colour);
+            return;
+        }
+        rawWall(pose, buffers, x1, y1, x2, y2, bottom, top, colour);
+    }
+
+    private static void rawWall(PoseStack pose, WorldCanvas buffers, float x1, float y1,
+                                float x2, float y2, float bottom, float top, int colour) {
         buffers.quads(pose, (m, v) -> {
         WorldCanvas.vertex(v, m, x1, y1, bottom, colour);
         WorldCanvas.vertex(v, m, x2, y2, bottom, colour);
@@ -1099,15 +1192,150 @@ public final class StationTables {
 
     private static void solidBox(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                                  float x2, float y2, float bottom, float top, int colour) {
-        quad(pose, buffers, x1, y1, x2, y2, colour, top);
-        wall(pose, buffers, x1, y1, x2, y1, bottom, top, shade(colour, .65f));
-        wall(pose, buffers, x2, y1, x2, y2, bottom, top, shade(colour, .8f));
-        wall(pose, buffers, x2, y2, x1, y2, bottom, top, shade(colour, .75f));
-        wall(pose, buffers, x1, y2, x1, y1, bottom, top, shade(colour, .6f));
+        if (voxels) {
+            float[] across = span(x1, x2), deep = span(y1, y2);
+            if (across != null && deep != null) rawBox(pose, buffers, across[0], deep[0], across[1], deep[1], bottom, top, colour);
+            return;
+        }
+        rawBox(pose, buffers, x1, y1, x2, y2, bottom, top, colour);
+    }
+
+    private static void rawBox(PoseStack pose, WorldCanvas buffers, float x1, float y1,
+                               float x2, float y2, float bottom, float top, int colour) {
+        rawQuad(pose, buffers, x1, y1, x2, y2, colour, top);
+        // Each side faces outwards; the canvas is mirrored, so it is wound clockwise seen from outside.
+        rawWall(pose, buffers, x2, y1, x1, y1, bottom, top, shade(colour, .65f));
+        rawWall(pose, buffers, x2, y2, x2, y1, bottom, top, shade(colour, .8f));
+        rawWall(pose, buffers, x1, y2, x2, y2, bottom, top, shade(colour, .75f));
+        rawWall(pose, buffers, x1, y1, x1, y2, bottom, top, shade(colour, .6f));
+    }
+
+    // ---------------------------------------------------------------- voxels
+
+    /** The side of a voxel on a table built of them: a sixty-fourth of a block. */
+    private static final float VOXEL = 2;
+    /** Heights of the voxel layers are counted from here, so the first layer sits on the felt's things. */
+    private static final float LAYER = 0.5f;
+    /** True while a table built of voxels is drawn: every shape is then laid on the voxel grid. */
+    private static boolean voxels;
+    private static final long NONE = 0;
+
+    /** What one column of a voxel field holds: its height and the colour of its top, or NONE. */
+    @FunctionalInterface
+    private interface Column { long at(float x, float y); }
+
+    private static long cell(float height, int colour) {
+        return (long) Float.floatToIntBits(height) << 32 | (colour & 0xffffffffL);
+    }
+
+    private static float snap(float value) {
+        return Math.round(value / VOXEL) * VOXEL;
+    }
+
+    /** A height brought to the top of the voxel layer nearest it. */
+    private static float level(float height) {
+        return LAYER + Math.round((height - LAYER) / VOXEL) * VOXEL;
+    }
+
+    /**
+     * Where a stretch from lo to hi lies on the grid. One thinner than a voxel still takes a whole
+     * voxel when it is nearly one wide, as a line of ink does; anything finer is left out.
+     */
+    private static float[] span(float lo, float hi) {
+        float a = snap(lo), b = snap(hi);
+        if (a == b) {
+            if (hi - lo < 0.75f) return null;
+            a = (float) Math.floor(lo / VOXEL) * VOXEL;
+            b = a + VOXEL;
+        }
+        return new float[] {a, b};
+    }
+
+    /**
+     * A piece built of voxel columns over a rectangle of the grid: each column asked for its height and
+     * colour, the tops of a row drawn as one strip where they match, and a wall wherever a column stands
+     * above its neighbour, down to the base where there is none. The top voxel of a wall is in the
+     * colour of the top; the rest of it is the body, when one is given.
+     */
+    private static void field(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2,
+                              float base, int body, Column column) {
+        int i1 = (int) Math.floor(x1 / VOXEL), i2 = (int) Math.ceil(x2 / VOXEL);
+        int j1 = (int) Math.floor(y1 / VOXEL), j2 = (int) Math.ceil(y2 / VOXEL);
+        int width = i2 - i1, depth = j2 - j1;
+        if (width <= 0 || depth <= 0) return;
+        float[] heights = new float[width * depth];
+        int[] colours = new int[width * depth];
+        for (int j = 0; j < depth; j++) {
+            for (int i = 0; i < width; i++) {
+                long value = column.at((i1 + i + 0.5f) * VOXEL, (j1 + j + 0.5f) * VOXEL);
+                colours[j * width + i] = (int) value;
+                heights[j * width + i] = Float.intBitsToFloat((int) (value >>> 32));
+            }
+        }
+        for (int j = 0; j < depth; j++) {
+            float y = (j1 + j) * VOXEL;
+            for (int i = 0; i < width; ) {
+                int at = j * width + i, colour = colours[at];
+                if (colour == 0) {
+                    i++;
+                    continue;
+                }
+                int end = i + 1;
+                while (end < width && colours[at + end - i] == colour && heights[at + end - i] == heights[at]) end++;
+                rawQuad(pose, buffers, (i1 + i) * VOXEL, y, (i1 + end) * VOXEL, y + VOXEL, colour, heights[at]);
+                i = end;
+            }
+        }
+        int[][] sides = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+        float[] light = {.65f, .8f, .75f, .6f};
+        for (int j = 0; j < depth; j++) {
+            for (int i = 0; i < width; i++) {
+                int colour = colours[j * width + i];
+                if (colour == 0) continue;
+                float h = heights[j * width + i];
+                float xa = (i1 + i) * VOXEL, ya = (j1 + j) * VOXEL, xb = xa + VOXEL, yb = ya + VOXEL;
+                for (int side = 0; side < 4; side++) {
+                    int ni = i + sides[side][0], nj = j + sides[side][1];
+                    boolean inside = ni >= 0 && nj >= 0 && ni < width && nj < depth && colours[nj * width + ni] != 0;
+                    float under = inside ? heights[nj * width + ni] : base;
+                    if (under >= h) continue;
+                    float split = body == 0 ? under : Math.max(under, h - VOXEL);
+                    int topShade = shade(colour, light[side]), bodyShade = shade(body == 0 ? colour : body, light[side]);
+                    // Wound so each wall faces out of its column: the canvas is mirrored, so outward is clockwise.
+                    float[] edge = switch (side) {
+                        case 0 -> new float[] {xb, ya, xa, ya};
+                        case 1 -> new float[] {xb, yb, xb, ya};
+                        case 2 -> new float[] {xa, yb, xb, yb};
+                        default -> new float[] {xa, ya, xa, yb};
+                    };
+                    rawWall(pose, buffers, edge[0], edge[1], edge[2], edge[3], split, h, topShade);
+                    if (split > under) rawWall(pose, buffers, edge[0], edge[1], edge[2], edge[3], under, split, bodyShade);
+                }
+            }
+        }
+    }
+
+    /** The texture of a voxel face: one voxel in three a shade darker, one in six a shade lighter. */
+    private static void speckle(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2,
+                                float lift, int seed) {
+        float[] across = span(x1, x2), deep = span(y1, y2);
+        if (across == null || deep == null) return;
+        for (float y = deep[0]; y < deep[1] - 0.01f; y += VOXEL) {
+            for (float x = across[0]; x < across[1] - 0.01f; x += VOXEL) {
+                int h = hash(seed * 7907 + Math.round(x) * 131 + Math.round(y) * 31337) % 6;
+                if (h < 2) rawQuad(pose, buffers, x, y, x + VOXEL, y + VOXEL, 0x22000000, lift);
+                else if (h == 2) rawQuad(pose, buffers, x, y, x + VOXEL, y + VOXEL, 0x18ffffff, lift);
+            }
+        }
     }
 
     private static void cylinder(PoseStack pose, WorldCanvas buffers, float x, float y,
                                  float radius, float bottom, float top, int colour) {
+        if (voxels) {
+            field(pose, buffers, x - radius - VOXEL, y - radius - VOXEL, x + radius + VOXEL, y + radius + VOXEL, bottom, 0,
+                    (cx, cy) -> Math.hypot(cx - x, cy - y) <= radius ? cell(top, colour) : NONE);
+            return;
+        }
         circle(pose, buffers, x, y, radius, colour, top);
         int steps = WorldCanvas.segments(pose, radius, 40);
         for (int step = 0; step < steps; step++) {
@@ -1124,6 +1352,10 @@ public final class StationTables {
      */
     private static void grain(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2,
                               int colour, float lift, int seed) {
+        if (voxels) {
+            speckle(pose, buffers, x1, y1, x2, y2, lift, seed);
+            return;
+        }
         float length = x2 - x1, depth = y2 - y1;
         int lines = Math.max(2, (int) (depth / 1.1f));
         for (int line = 0; line < lines; line++) {
@@ -1143,6 +1375,10 @@ public final class StationTables {
     /** Brushed metal: fine scratches all one way, barely lighter or darker than the metal. */
     private static void brushed(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2,
                                 int colour, float lift, int seed) {
+        if (voxels) {
+            speckle(pose, buffers, x1, y1, x2, y2, lift, seed);
+            return;
+        }
         int lines = Math.max(1, (int) ((y2 - y1) / 0.55f));
         for (int line = 0; line < lines; line++) {
             int h = hash(seed * 977 + line);
@@ -1180,6 +1416,16 @@ public final class StationTables {
     /** A flat coloured rectangle, wound the way the station screen winds its own. */
     private static void quad(PoseStack pose, WorldCanvas buffers, float x1, float y1,
                              float x2, float y2, int colour, float lift) {
+        if (voxels) {
+            float[] across = span(x1, x2), deep = span(y1, y2);
+            if (across != null && deep != null) rawQuad(pose, buffers, across[0], deep[0], across[1], deep[1], colour, lift);
+            return;
+        }
+        rawQuad(pose, buffers, x1, y1, x2, y2, colour, lift);
+    }
+
+    private static void rawQuad(PoseStack pose, WorldCanvas buffers, float x1, float y1,
+                                float x2, float y2, int colour, float lift) {
         if (WorldCanvas.tiny(pose, x2 - x1, y2 - y1)) return;
         buffers.quads(pose, (matrix, vertices) -> {
         WorldCanvas.vertex(vertices, matrix, x1, y1, lift, colour);

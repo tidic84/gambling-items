@@ -27,7 +27,6 @@ import net.minecraft.network.chat.Component;
  * 128 deep, the player standing at the bottom edge.
  */
 public final class StationTables {
-    private static final int FELT = 0xff14472c, FELT_EDGE = 0xff0d2e1d, LINE = 0xff2d6b46;
     private static final int WOOD = 0xff4a3524, WOOD_LIGHT = 0xff6b4b32;
     private static final int CARD = 0xfff3f6fb, CARD_BACK = 0xff7a2130, CARD_EDGE = 0xff20262f;
     private static final int RED = 0xffc0392b, BLACK = 0xff1b1f27, GREEN = 0xff1e8f52;
@@ -70,18 +69,17 @@ public final class StationTables {
         pose.popPose();
     }
 
-    /** The felt itself; the padded armrest round it is part of the table's model. */
+    /**
+     * The shading of the felt. The baize itself is the table's model, woven in its texture; this only
+     * darkens it towards the edges, as under the lamp over a real table, inside a gold pinstripe.
+     */
     private static void cloth(PoseStack pose, WorldCanvas buffers, boolean detailed) {
-        quad(pose, buffers, -HALF_WIDTH, -HALF_DEPTH, HALF_WIDTH, HALF_DEPTH, FELT_EDGE, 1);
-        quad(pose, buffers, -HALF_WIDTH + 3, -HALF_DEPTH + 3, HALF_WIDTH - 3, HALF_DEPTH - 14, FELT, 2);
-        if (!detailed) return;
-        // The cloth darkens towards its edges, as under the lamp over a real table, inside a gold pinstripe.
-        for (int ring = 0; ring < 4; ring++) {
-            float inset = 6 + ring * 7;
-            int shade = shade(FELT, 1.04f + ring * 0.05f);
-            quad(pose, buffers, -HALF_WIDTH + inset, -HALF_DEPTH + inset, HALF_WIDTH - inset, HALF_DEPTH - 14 - inset,
-                    shade, 2.02f + ring * 0.01f);
+        for (int ring = 0; ring < 5; ring++) {
+            float inset = ring * 6;
+            quad(pose, buffers, -HALF_WIDTH + inset, -HALF_DEPTH + inset, HALF_WIDTH - inset, HALF_DEPTH - inset,
+                    0x14000000, 1 + ring * 0.01f);
         }
+        if (!detailed) return;
         float pin = 4.5f;
         quad(pose, buffers, -HALF_WIDTH + pin, -HALF_DEPTH + pin, HALF_WIDTH - pin, -HALF_DEPTH + pin + 0.8f, GOLD, 2.1f);
         quad(pose, buffers, -HALF_WIDTH + pin, -HALF_DEPTH + pin, -HALF_WIDTH + pin + 0.8f, HALF_DEPTH - 18, GOLD, 2.1f);
@@ -112,10 +110,8 @@ public final class StationTables {
         dealerTray(pose, buffers);
         // The betting boxes printed along the front of the mat: a gold ring round each.
         for (int seat = -2; seat <= 2; seat++) {
-            circle(pose, buffers, seat * 62, TableLayout.STAKE_Y, 21, GOLD, 3);
-            circle(pose, buffers, seat * 62, TableLayout.STAKE_Y, 19.6f, FELT, 3.1f);
-            circle(pose, buffers, seat * 62, TableLayout.STAKE_Y, 16, 0xff1e5a39, 3.2f);
-            circle(pose, buffers, seat * 62, TableLayout.STAKE_Y, 15.2f, FELT, 3.3f);
+            annulus(pose, buffers, seat * 62, TableLayout.STAKE_Y, 19.6f, 21, GOLD, 3);
+            annulus(pose, buffers, seat * 62, TableLayout.STAKE_Y, 15.2f, 16, 0x50000000, 3);
         }
         // A card that has just appeared slides in, the same way the screen deals it.
         if (!station.cards.equals(station.seenCards)) {

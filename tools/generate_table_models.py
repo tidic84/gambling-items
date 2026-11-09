@@ -65,14 +65,24 @@ def lacquer():
     return image
 
 
-def cloth(base, seed):
-    """Casino baize: a fine twill, a little lighter along every other diagonal."""
+def cloth(base, seed, size=64):
+    """Casino baize, four times finer than a block texture: a tight twill, loose fibres catching the
+    light, and a soft mottling where the nap lies one way or the other. Every term repeats over the
+    tile, so the cloth runs on from one block of the table to the next without a seam."""
     rng = random.Random(seed)
-    image = Image.new('RGB', (16, 16))
-    for y in range(16):
-        for x in range(16):
-            twill = 5 if (x + y) % 4 < 2 else -3
-            image.putpixel((x, y), clamp(tuple(v + twill + rng.uniform(-3, 3) for v in base)))
+    waves = [(rng.randint(1, 3), rng.randint(-3, 3), rng.uniform(0, math.tau), rng.uniform(1.5, 3)) for _ in range(5)]
+    image = Image.new('RGB', (size, size))
+    for y in range(size):
+        for x in range(size):
+            # The weave: a diagonal rib every other thread, and a fainter cross thread under it.
+            twill = 3.5 if (x + y) % 4 < 2 else -2.5
+            cross = 1 if (x - y) % 8 == 0 else 0
+            # The nap: broad soft patches, lighter and darker.
+            nap = sum(amp * math.sin(math.tau * (kx * x + ky * y) / size + phase) for kx, ky, phase, amp in waves)
+            # A few stray fibres, lighter than the cloth.
+            fibre = rng.uniform(5, 9) if rng.random() < .025 else 0
+            grain = rng.uniform(-2.5, 2.5)
+            image.putpixel((x, y), clamp(tuple(v + twill + cross + nap + fibre + grain for v in base)))
     return image
 
 

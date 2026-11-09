@@ -50,13 +50,13 @@ public final class TableLayout {
             add(controls, mode, phase, StationPanel.OPEN, 148, 50, 40, 62);
             return controls;
         }
-        add(controls, mode, phase, StationPanel.DEPOSIT, -186, 84, 38, 38);
-        add(controls, mode, phase, StationPanel.RETURN, -144, 90, 62, 30);
+        add(controls, mode, phase, StationPanel.DEPOSIT, -186, 78, 38, 38);
+        add(controls, mode, phase, StationPanel.RETURN, -144, 84, 62, 30);
         for (int move = 0; move < 3; move++) {
-            add(controls, mode, phase, StationPanel.FIRST_MOVE + move, -62 + move * 44, 92, 36, 30);
+            add(controls, mode, phase, StationPanel.FIRST_MOVE + move, -62 + move * 44, 86, 36, 30);
         }
-        add(controls, mode, phase, StationPanel.COLLECT, 92, 84, 48, 38);
-        add(controls, mode, phase, StationPanel.OPEN, 148, 62, 40, 60);
+        add(controls, mode, phase, StationPanel.COLLECT, 92, 78, 48, 38);
+        add(controls, mode, phase, StationPanel.OPEN, 148, 56, 40, 60);
         return controls;
     }
 

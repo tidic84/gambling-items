@@ -308,6 +308,9 @@ final class SmokeGallery {
         SHOTS.add(new Shot("table_spin_drop", x + 14.6, y + 1.2, z - 2.2, -90, 72, SPIN_SHOT, 78));
         SHOTS.add(new Shot("table_spin_blackjack", x + 15.2, y + 0.9, z - 6 - 1.6, -40, 60, DEAL_SHOT, 0));
         SHOTS.add(new Shot("table_spin_wheel", x + 15.6, y + 0.6, z - 1.4, -60, 70, SPIN_SHOT, 30));
+        // The things standing along the players' edge, close enough to read their plates.
+        SHOTS.add(new Shot("table_spin_controls_roulette", x + 15.1, y + 0.3, z - 0.1, -90, 64, SPIN_SHOT, 30));
+        SHOTS.add(new Shot("table_spin_controls_blackjack", x + 15.1, y + 0.3, z - 6 + 0.5, -90, 60, DEAL_SHOT, 0));
         SHOTS.add(new Shot("floor_tables", x - 10.5, y + 2.2, z + TABLE_Z + 6, 180, 18));
         String[] games = {"craps", "baccarat", "keno", "scratch_card"};
         for (int i = 0; i < games.length; i++) {

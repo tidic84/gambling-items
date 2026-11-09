@@ -702,7 +702,7 @@ public final class StationTables {
                 case StationPanel.OPEN -> tableSign(pose, buffers, font, station.mode(), (x1 + x2) / 2, plate - 3,
                         x2 - x1 - 4, lit);
                 default -> pushButton(pose, buffers, (x1 + x2) / 2, (y1 + plate) / 2, Math.min(x2 - x1, plate - y1) / 2 - 2,
-                        buttonColour(control.label()), lit);
+                        buttonColour(control.label()), control.label(), lit);
             }
             nameplate(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.panel." + control.label()),
                     x1 + 2, plate, x2 - 2, y2 - 1, lit);
@@ -716,7 +716,12 @@ public final class StationTables {
         float scale = Math.min(0.45f, (x2 - x1 - 4) / Math.max(1, WorldCanvas.width(font, text)));
         float half = Math.min((x2 - x1) / 2, WorldCanvas.width(font, text) * scale / 2 + 3), cx = (x1 + x2) / 2;
         solidBox(pose, buffers, cx - half, y1, cx + half, y2, 2.5f, 3.3f, lit ? 0xffe8c36a : 0xff9c7a32);
-        quad(pose, buffers, cx - half + 0.7f, y1 + 0.7f, cx + half - 0.7f, y2 - 0.7f, lit ? 0xffffe08a : BRASS, 3.35f);
+        int face = lit ? 0xffffe08a : BRASS;
+        quad(pose, buffers, cx - half + 0.7f, y1 + 0.7f, cx + half - 0.7f, y2 - 0.7f, face, 3.35f);
+        brushed(pose, buffers, cx - half + 0.7f, y1 + 0.7f, cx + half - 0.7f, y2 - 0.7f, face, 3.36f, text.hashCode());
+        // An engraved line just inside the edge, and a screw at either end.
+        outline(pose, buffers, cx - half + 1.4f, y1 + 1.3f, cx + half - 1.4f, y2 - 1.3f, 0.3f, shade(face, .62f), 3.37f);
+        for (float sx : new float[] {cx - half + 2.1f, cx + half - 2.1f}) screw(pose, buffers, sx, (y1 + y2) / 2, 0.75f, face, 3.38f);
         label(pose, buffers, font, text, cx, (y1 + y2) / 2 + 0.4f, lit ? 0xff2a1206 : 0xff3a2008, scale, 3.4f);
     }
 
@@ -726,10 +731,18 @@ public final class StationTables {
         solidBox(pose, buffers, x1, y1, x2, y2, 2.5f, top, lit ? MAHOGANY_LIGHT : MAHOGANY);
         // A gold band round the lid, and the lid itself a shade lighter than the chest.
         solidBox(pose, buffers, x1 - 0.4f, y1 - 0.4f, x2 + 0.4f, y2 + 0.4f, top - 1.6f, top - 0.6f, GOLD);
-        quad(pose, buffers, x1 + 1.2f, y1 + 1.2f, x2 - 1.2f, y2 - 1.2f, shade(MAHOGANY_LIGHT, lit ? 1.2f : .85f), top + 0.03f);
+        int lid = shade(MAHOGANY_LIGHT, lit ? 1.2f : .85f);
+        quad(pose, buffers, x1 + 1.2f, y1 + 1.2f, x2 - 1.2f, y2 - 1.2f, lid, top + 0.03f);
+        grain(pose, buffers, x1 + 1.2f, y1 + 1.2f, x2 - 1.2f, y2 - 1.2f, lid, top + 0.04f, 11);
         float cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+        // A brass keyhole escutcheon on the front of the chest, facing the player.
+        wall(pose, buffers, cx + 1.6f, y2 + 0.05f, cx - 1.6f, y2 + 0.05f, top - 6, top - 2.5f, BRASS);
+        wall(pose, buffers, cx + 0.45f, y2 + 0.1f, cx - 0.45f, y2 + 0.1f, top - 5.4f, top - 3.4f, 0xff120806);
         // The brass plate round the slot, the slot, and a chip half way into it.
-        solidBox(pose, buffers, x1 + 3, cy - 3.2f, x2 - 3, cy + 3.2f, top, top + 0.6f, lit ? 0xffffe08a : BRASS);
+        int slotPlate = lit ? 0xffffe08a : BRASS;
+        solidBox(pose, buffers, x1 + 3, cy - 3.2f, x2 - 3, cy + 3.2f, top, top + 0.6f, slotPlate);
+        brushed(pose, buffers, x1 + 3, cy - 3.2f, x2 - 3, cy + 3.2f, slotPlate, top + 0.62f, 12);
+        for (float sx : new float[] {x1 + 4, x2 - 4}) screw(pose, buffers, sx, cy, 0.7f, slotPlate, top + 0.64f);
         quad(pose, buffers, x1 + 5, cy - 1.2f, x2 - 5, cy + 1.2f, 0xff120806, top + 0.65f);
         solidBox(pose, buffers, cx - 5, cy - 0.6f, cx + 5, cy + 0.6f, top, top + 4.5f, lit ? 0xffff5a5a : 0xffc8303c);
         quad(pose, buffers, cx - 3, cy - 0.65f, cx + 3, cy + 0.65f, 0xfff3eee2, top + 4.55f);
@@ -742,7 +755,9 @@ public final class StationTables {
     /** The player's chip tray: a mahogany tray, its grooves holding rows of chips lying on their edge. */
     private static void chipTray(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2, boolean lit) {
         float top = lit ? 7.5f : 6.5f;
-        solidBox(pose, buffers, x1, y1, x2, y2, 2.5f, top, lit ? MAHOGANY_LIGHT : MAHOGANY);
+        int wood = lit ? MAHOGANY_LIGHT : MAHOGANY;
+        solidBox(pose, buffers, x1, y1, x2, y2, 2.5f, top, wood);
+        grain(pose, buffers, x1, y1, x2, y2, wood, top + 0.02f, 21);
         quad(pose, buffers, x1, y1, x2, y1 + 0.8f, GOLD, top + 0.04f);
         int[] colours = {0xffc8303c, 0xff2f7fd8, 0xff1f8a4c, 0xff1c1c22, 0xffe8e4dc};
         int grooves = Math.max(2, Math.min(colours.length, (int) ((x2 - x1 - 4) / 13)));
@@ -768,7 +783,15 @@ public final class StationTables {
         circle(pose, buffers, x + 1.5f, y + 1.5f, radius, 0x50000000, 2.55f);
         cylinder(pose, buffers, x, y, radius * 0.55f, 2.5f, 4.5f, shade(brass, .85f));
         cone(pose, buffers, x, y, radius * 0.6f, 4.5f, radius, 12, brass);
+        // Spun brass: fine rings turned into the bowl, a shade darker or lighter, inside and out.
+        for (int ring = 1; ring < 7; ring++) {
+            float t = ring / 7f, t2 = t + 0.03f;
+            float r1 = radius * (0.6f + 0.4f * t), r2 = radius * (0.6f + 0.4f * t2);
+            cone(pose, buffers, x, y, r1 + 0.06f, 4.5f + 7.5f * t, r2 + 0.06f, 4.5f + 7.5f * t2,
+                    shade(brass, ring % 2 == 0 ? .78f : 1.15f));
+        }
         annulus(pose, buffers, x, y, radius - 1.1f, radius + 0.6f, lit ? 0xfffff4d0 : GOLD, 12.05f);
+        annulus(pose, buffers, x, y, radius - 0.5f, radius - 0.2f, 0xfffff4d0, 12.08f);
         circle(pose, buffers, x, y, radius * 0.6f, 0xff3a2a12, 4.6f);
         // Three short stacks of gold chips in the bottom of the cup.
         for (int stack = 0; stack < 3; stack++) {
@@ -781,17 +804,54 @@ public final class StationTables {
     }
 
     /** A domed push button set into a brass bezel, glowing when the hand is on it. */
-    private static void pushButton(PoseStack pose, WorldCanvas buffers, float x, float y, float radius, int colour, boolean lit) {
+    private static void pushButton(PoseStack pose, WorldCanvas buffers, float x, float y, float radius, int colour,
+                                   String move, boolean lit) {
         if (lit) circle(pose, buffers, x, y, radius + 3.5f, (colour & 0x00ffffff) | 0x60000000, 2.55f);
         cylinder(pose, buffers, x, y, radius + 1.6f, 2.5f, 4.2f, BRASS);
         annulus(pose, buffers, x, y, radius, radius + 1.6f, GOLD, 4.25f);
+        // The knurled edge of the bezel: little notches all round it.
+        for (int notch = 0; notch < 24; notch++) {
+            double a = notch * Math.PI / 12;
+            float c = (float) Math.cos(a), s = (float) Math.sin(a);
+            quad(pose, buffers, x + c * (radius + 0.9f) - 0.25f, y + s * (radius + 0.9f) - 0.25f,
+                    x + c * (radius + 0.9f) + 0.25f, y + s * (radius + 0.9f) + 0.25f, 0xff7a5a22, 4.27f);
+        }
         int face = lit ? shade(colour, 1.45f) : colour;
         // Pressed in a little under the hand.
         float rise = lit ? 2.5f : 4;
         cylinder(pose, buffers, x, y, radius, 3.5f, 4.2f + rise * 0.4f, shade(face, .8f));
         cylinder(pose, buffers, x, y, radius * 0.85f, 4.2f + rise * 0.4f, 4.2f + rise * 0.75f, face);
         cylinder(pose, buffers, x, y, radius * 0.6f, 4.2f + rise * 0.75f, 4.2f + rise, shade(face, 1.12f));
-        circle(pose, buffers, x - radius * 0.25f, y - radius * 0.25f, radius * 0.18f, 0xc0ffffff, 4.25f + rise);
+        // The lamp inside a translucent dome: a brighter heart, then the move engraved over it.
+        circle(pose, buffers, x, y, radius * 0.42f, shade(face, lit ? 1.4f : 1.22f), 4.22f + rise);
+        float top = 4.26f + rise, size = radius * 0.32f;
+        int ink = shade(face, .45f);
+        switch (move) {
+            case "hit", "bingo_buy" -> {
+                quad(pose, buffers, x - size, y - size * 0.22f, x + size, y + size * 0.22f, ink, top);
+                quad(pose, buffers, x - size * 0.22f, y - size, x + size * 0.22f, y + size, ink, top);
+            }
+            case "stand" -> quad(pose, buffers, x - size, y - size * 0.25f, x + size, y + size * 0.25f, ink, top);
+            case "bingo_board" -> {
+                for (int i = -1; i <= 1; i++) {
+                    for (int j = -1; j <= 1; j++) {
+                        float px = x + i * size * 0.7f, py = y + j * size * 0.7f;
+                        quad(pose, buffers, px - size * 0.25f, py - size * 0.25f, px + size * 0.25f, py + size * 0.25f, ink, top);
+                    }
+                }
+            }
+            case "info" -> {
+                quad(pose, buffers, x - size * 0.2f, y - size * 0.3f, x + size * 0.2f, y + size, ink, top);
+                quad(pose, buffers, x - size * 0.2f, y - size, x + size * 0.2f, y - size * 0.6f, ink, top);
+            }
+            default -> {
+                // Deal or start: a card, its corner turned towards the player.
+                outline(pose, buffers, x - size * 0.7f, y - size, x + size * 0.7f, y + size, size * 0.22f, ink, top);
+            }
+        }
+        // The light on the dome, and the softer glint opposite it.
+        circle(pose, buffers, x - radius * 0.3f, y - radius * 0.3f, radius * 0.16f, 0xc0ffffff, top + 0.02f);
+        circle(pose, buffers, x + radius * 0.34f, y + radius * 0.34f, radius * 0.08f, 0x60ffffff, top + 0.02f);
     }
 
     /** The colour of the button a move is played with. */
@@ -821,6 +881,18 @@ public final class StationTables {
         solidBox(pose, buffers, -half, -height, half, 0, -1.4f, 0, lit ? 0xffffe08a : GOLD);
         back(pose, buffers, -half, -height, half, 0, -1.45f, GOLD);
         quad(pose, buffers, -half + 1.4f, -height + 1.4f, half - 1.4f, -1.4f, lit ? 0xff2a2018 : 0xff121014, 0.05f);
+        brushed(pose, buffers, -half, -height, half, -height + 1.4f, GOLD, 0.02f, 31);
+        // The lacquer catches the light in a broad diagonal band.
+        float band = -height * 0.35f;
+        buffers.quads(pose, (m, v) -> {
+            WorldCanvas.vertex(v, m, -half + 1.4f, band + 6, 0.07f, 0x14ffffff);
+            WorldCanvas.vertex(v, m, -half + 1.4f, band + 12, 0.07f, 0x14ffffff);
+            WorldCanvas.vertex(v, m, half - 1.4f, band - 4, 0.07f, 0x14ffffff);
+            WorldCanvas.vertex(v, m, half - 1.4f, band - 10, 0.07f, 0x14ffffff);
+        });
+        for (float sx : new float[] {-half + 3.2f, half - 3.2f}) {
+            for (float sy : new float[] {-height + 3.2f, -3.2f}) screw(pose, buffers, sx, sy, 0.8f, GOLD, 0.08f);
+        }
         String game = WorldCanvas.translate("gui.gamblingitems.mode." + mode.id()).toUpperCase(java.util.Locale.ROOT);
         float scale = Math.min(0.5f, (width - 8) / Math.max(1, WorldCanvas.width(font, game)));
         label(pose, buffers, font, game, 0, -height + 9, GOLD, scale, 0.1f);
@@ -973,6 +1045,65 @@ public final class StationTables {
                     x + (float) Math.cos(b) * radius, y + (float) Math.sin(b) * radius,
                     bottom, top, shade(colour, .68f + .13f * (float) Math.cos(a - .8)));
         }
+    }
+
+    /**
+     * The grain of a piece of wood lying flat: thin streaks along its length, some darker, some
+     * lighter, each starting and ending somewhere of its own. The same seed always grows the same wood.
+     */
+    private static void grain(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2,
+                              int colour, float lift, int seed) {
+        float length = x2 - x1, depth = y2 - y1;
+        int lines = Math.max(2, (int) (depth / 1.1f));
+        for (int line = 0; line < lines; line++) {
+            int h = hash(seed * 131 + line);
+            float y = y1 + (line + 0.5f) * depth / lines + ((h & 7) - 3.5f) * 0.06f;
+            float start = x1 + (h >> 3 & 15) / 15f * length * 0.35f;
+            float end = x2 - (h >> 7 & 15) / 15f * length * 0.35f;
+            float width = 0.18f + (h >> 11 & 3) * 0.1f;
+            int tone = (h >> 13 & 3) == 0 ? shade(colour, 1.25f) : shade(colour, .74f);
+            // A streak wavers a little half way along, as grain does round a knot.
+            float mid = (start + end) / 2, sway = ((h >> 15 & 7) - 3.5f) * 0.07f;
+            quad(pose, buffers, start, y - width / 2, mid, y + width / 2, tone, lift);
+            quad(pose, buffers, mid, y + sway - width / 2, end, y + sway + width / 2, tone, lift);
+        }
+    }
+
+    /** Brushed metal: fine scratches all one way, barely lighter or darker than the metal. */
+    private static void brushed(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2,
+                                int colour, float lift, int seed) {
+        int lines = Math.max(1, (int) ((y2 - y1) / 0.55f));
+        for (int line = 0; line < lines; line++) {
+            int h = hash(seed * 977 + line);
+            if ((h & 1) == 0) continue;
+            float y = y1 + (line + 0.5f) * (y2 - y1) / lines;
+            float start = x1 + (h >> 2 & 7) / 7f * (x2 - x1) * 0.2f, end = x2 - (h >> 5 & 7) / 7f * (x2 - x1) * 0.2f;
+            quad(pose, buffers, start, y - 0.07f, end, y + 0.07f, shade(colour, (h >> 8 & 1) == 0 ? 1.12f : .88f), lift);
+        }
+    }
+
+    /** A line engraved round a rectangle, this thick. */
+    private static void outline(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2,
+                                float line, int colour, float lift) {
+        quad(pose, buffers, x1, y1, x2, y1 + line, colour, lift);
+        quad(pose, buffers, x1, y2 - line, x2, y2, colour, lift);
+        quad(pose, buffers, x1, y1, x1 + line, y2, colour, lift);
+        quad(pose, buffers, x2 - line, y1, x2, y2, colour, lift);
+    }
+
+    /** A slotted screw head set in a plate. */
+    private static void screw(PoseStack pose, WorldCanvas buffers, float x, float y, float radius, int plate, float lift) {
+        circle(pose, buffers, x, y, radius, shade(plate, .7f), lift);
+        circle(pose, buffers, x - radius * 0.15f, y - radius * 0.15f, radius * 0.7f, shade(plate, 1.1f), lift + 0.01f);
+        quad(pose, buffers, x - radius * 0.7f, y - radius * 0.14f, x + radius * 0.7f, y + radius * 0.14f, shade(plate, .5f), lift + 0.02f);
+    }
+
+    private static int hash(int value) {
+        int h = value * 0x9E3779B9;
+        h ^= h >>> 15;
+        h *= 0x85EBCA6B;
+        h ^= h >>> 13;
+        return h & 0x7fffffff;
     }
 
     /** A flat coloured rectangle, wound the way the station screen winds its own. */

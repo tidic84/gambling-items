@@ -184,7 +184,7 @@ def blackjack(f):
 
 
 def roulette(f):
-    """Four turned legs under stretchers, and a wooden bowl round the wheel with a brass lip."""
+    """Four turned legs under stretchers."""
     for x in (4, 44):
         for z in (4, 28):
             for w, y1, y2, material in ((3.4, 0, .8, 'dark'), (2.6, .8, 1.5, 'brass'), (1.6, 1.5, 4.6, 'wood'),
@@ -193,10 +193,7 @@ def roulette(f):
     for z in (4, 28):
         f.box((5, 3, z - .5), (43, 3.8, z + .5), 'wood')
     f.box((23.5, 3.1, 4.5), (24.5, 3.7, 27.5), 'wood')
-    # The bowl and the wheel are StationTables' voxels, standing straight on the felt.
-    # A brass chip rake laid along the dealer's edge.
-    f.box((14, 13.95, 29.4), (30, 14.2, 29.8), 'brass')
-    f.box((12.8, 13.95, 28.8), (14, 14.3, 30.4), 'dark')
+    # The bowl, the wheel and all that lies on the felt are StationTables' voxels.
 
 
 def bingo(f):

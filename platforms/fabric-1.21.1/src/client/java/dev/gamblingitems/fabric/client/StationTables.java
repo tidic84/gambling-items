@@ -62,7 +62,16 @@ public final class StationTables {
         pose.scale(1f / 128, -1f / 128, 1f / 128);
         // The roulette is built of voxels, a sixty-fourth of a block each; the other tables are not yet.
         voxels = station.mode() == dev.gamblingitems.core.GameMode.ROULETTE;
+        int mahogany = MAHOGANY, mahoganyLight = MAHOGANY_LIGHT, track = TRACK, ink = INK;
         try {
+            if (voxels && STYLE == 3) {
+                // The private room: ebony for mahogany, gold ink on a blue cloth.
+                MAHOGANY = 0xff1a181c;
+                MAHOGANY_LIGHT = 0xff3a3640;
+                TRACK = 0xff55505c;
+                INK = 0xffe6c36a;
+                blueCloth(pose, buffers);
+            }
             cloth(pose, buffers, station.mode() != dev.gamblingitems.core.GameMode.BINGO);
             switch (station.mode()) {
                 case BLACKJACK -> blackjack(station, partialTick, pose, buffers, font);
@@ -74,8 +83,20 @@ public final class StationTables {
             controls(station, pose, buffers, font);
         } finally {
             voxels = false;
+            MAHOGANY = mahogany;
+            MAHOGANY_LIGHT = mahoganyLight;
+            TRACK = track;
+            INK = ink;
         }
         pose.popPose();
+    }
+
+    /** A blue baize laid over the green one, the ribs of its twill running across it. */
+    private static void blueCloth(PoseStack pose, WorldCanvas buffers) {
+        rawQuad(pose, buffers, -HALF_WIDTH, -HALF_DEPTH, HALF_WIDTH, HALF_DEPTH, 0xff15306a, 0.6f);
+        for (float rib = -HALF_WIDTH - HALF_DEPTH; rib < HALF_WIDTH + HALF_DEPTH; rib += 8) {
+            band(pose, buffers, -HALF_WIDTH, -HALF_DEPTH, HALF_WIDTH, HALF_DEPTH, rib, rib + 4, 0x16000000, 0.62f);
+        }
     }
 
     /**
@@ -281,10 +302,15 @@ public final class StationTables {
 
     // ---------------------------------------------------------------- roulette
 
-    private static final int MAHOGANY = 0xff3b1d12, MAHOGANY_LIGHT = 0xff6a3520, TRACK = 0xff8a5a34, BRASS = 0xffc9a04a;
+    private static final int BRASS = 0xffc9a04a;
+    /** The woods of the wheel and the ink of the layout: a private room's table takes its own. */
+    private static int MAHOGANY = 0xff3b1d12, MAHOGANY_LIGHT = 0xff6a3520, TRACK = 0xff8a5a34;
+    private static final int STYLE = TableLayout.STYLE;
+    /** How large the wheel is built, against the full one. */
+    private static final float WHEEL = STYLE == 1 ? 0.8f : 1;
     /** The ink the layout is printed in, and where the wheel stands: at the end of the layout, as on a real table. */
-    private static final int INK = 0xffe9e4d6;
-    private static final float WHEEL_X = -122, WHEEL_Y = 0;
+    private static int INK = 0xffe9e4d6;
+    private static final float WHEEL_X = STYLE == 1 ? -134 : -122, WHEEL_Y = 0;
     /** The colours of the players' chips on the layout: every seat at a roulette plays its own colour. */
     private static final int[] SEAT_COLOURS = {0xff2f7fd8, 0xffe8b830, 0xff9a4fd0, 0xffe07a2a, 0xff3cc0a0, 0xffe86aa8};
 
@@ -310,6 +336,7 @@ public final class StationTables {
         if (result >= 0 && station.phase > 0) ball(pose, buffers, wheelAngle, result, spin, eased);
         pose.popPose();
         layout(pose, buffers, font, result, station.phase == 3);
+        if (STYLE == 2) racetrack(pose, buffers, font);
         layoutChips(station, pose, buffers);
     }
 
@@ -321,10 +348,11 @@ public final class StationTables {
         float[][] diamonds = new float[8][];
         for (int diamond = 0; diamond < 8; diamond++) {
             double angle = diamond * Math.PI / 4 + Math.PI / 8;
-            diamonds[diamond] = new float[] {(float) Math.cos(angle) * 58, (float) Math.sin(angle) * 58};
+            diamonds[diamond] = new float[] {(float) Math.cos(angle) * 58 * WHEEL, (float) Math.sin(angle) * 58 * WHEEL};
         }
-        field(pose, buffers, -70, -70, 70, 70, 0.5f, MAHOGANY, (x, y) -> {
-            float r = (float) Math.hypot(x, y);
+        float reach = 70 * WHEEL;
+        field(pose, buffers, -reach, -reach, reach, reach, 0.5f, MAHOGANY, (x, y) -> {
+            float r = (float) Math.hypot(x, y) / WHEEL;
             if (r >= 68 || r < 52) return NONE;
             if (r >= 66) return cell(16.5f, GOLD);
             if (r >= 64) return cell(16.5f, MAHOGANY_LIGHT);
@@ -342,8 +370,9 @@ public final class StationTables {
      */
     private static void head(PoseStack pose, WorldCanvas buffers, Font font) {
         double step = 2 * Math.PI / RouletteWheel.POCKETS;
-        field(pose, buffers, -52, -52, 52, 52, 4.5f, MAHOGANY, (x, y) -> {
-            float r = (float) Math.hypot(x, y);
+        float reach = 52 * WHEEL;
+        field(pose, buffers, -reach, -reach, reach, reach, 4.5f, MAHOGANY, (x, y) -> {
+            float r = (float) Math.hypot(x, y) / WHEEL;
             if (r >= 52) return NONE;
             double at = Math.atan2(y, x) / step;
             if (at < 0) at += RouletteWheel.POCKETS;
@@ -353,7 +382,7 @@ public final class StationTables {
             if (r >= 39) return cell(10.5f, BRASS);
             if (r >= 30) {
                 // How far this column lies from the fret between its pocket and the next, along the ring.
-                double fret = (0.5 - Math.abs(at - Math.round(at))) * step * r;
+                double fret = (0.5 - Math.abs(at - Math.round(at))) * step * r * WHEEL;
                 return fret < 1.1 ? cell(12.5f, BRASS) : cell(8.5f, shade(colour, .55f));
             }
             if (r >= 15) return cell(level(10.5f + (30 - r) / 15 * 8), MAHOGANY_LIGHT);
@@ -363,7 +392,7 @@ public final class StationTables {
         for (int pocket = 0; pocket < RouletteWheel.POCKETS; pocket++) {
             double angle = pocket * step;
             label(pose, buffers, font, String.valueOf(RouletteWheel.numberAtPocket(pocket)),
-                    (float) (Math.cos(angle) * 46.5), (float) (Math.sin(angle) * 46.5), TEXT, 0.42f, 10.6f);
+                    (float) (Math.cos(angle) * 46.5 * WHEEL), (float) (Math.sin(angle) * 46.5 * WHEEL), TEXT, 0.42f * WHEEL, 10.6f);
         }
     }
 
@@ -387,7 +416,7 @@ public final class StationTables {
             radius = 35;
             height = 11.5;
         }
-        float x = (float) (Math.cos(angle) * radius), y = (float) (Math.sin(angle) * radius), h = (float) height;
+        float x = (float) (Math.cos(angle) * radius) * WHEEL, y = (float) (Math.sin(angle) * radius) * WHEEL, h = (float) height;
         // A ball of voxels, three across: a full middle layer, a cross above it, a glint on top.
         rawBox(pose, buffers, x - 3, y - 3, x + 3, y + 3, h - 2, h, 0xfff4f4f0);
         rawBox(pose, buffers, x - 3, y - 1, x + 3, y + 1, h, h + 2, 0xffffffff);
@@ -495,6 +524,47 @@ public final class StationTables {
         }
     }
 
+    /**
+     * The racetrack of a European table, printed between the layout and the player: the numbers in the
+     * order they stand round the wheel, running round a long track, and in the middle of it the four
+     * sections of the wheel the call bets are named for.
+     */
+    private static void racetrack(PoseStack pose, WorldCanvas buffers, Font font) {
+        float left = -34, top = 84, cell = 12, row = 10, middle = 8, across = 16;
+        float right = left + cell * (across + 2), bottom = top + row * 2 + middle;
+        for (int pocket = 0; pocket < RouletteWheel.POCKETS; pocket++) {
+            float x, y, width = cell, height = row;
+            if (pocket < across) {
+                x = left + cell * (pocket + 1);
+                y = top;
+            } else if (pocket < across + 2) {
+                x = right - cell;
+                height = (bottom - top) / 2;
+                y = top + (pocket - across) * height;
+            } else if (pocket < across * 2 + 2) {
+                x = right - cell * (pocket - across - 2 + 2);
+                y = bottom - row;
+            } else {
+                x = left;
+                height = (bottom - top) / 3;
+                y = bottom - height * (pocket - across * 2 - 2 + 1);
+            }
+            int number = RouletteWheel.numberAtPocket(pocket);
+            float[] box = {x, y, width - 1, height - 1};
+            frame(pose, buffers, box);
+            quad(pose, buffers, x + 1.4f, y + 1.4f, x + width - 2.4f, y + height - 2.4f, colourOf(number), 3.1f);
+            label(pose, buffers, font, String.valueOf(number), x + (width - 1) / 2, y + (height - 1) / 2, 0xfff3eee2, 0.45f, 3.4f);
+        }
+        // The middle of the track, cut into the sections of the wheel.
+        String[] sections = {"TIERS", "ORPHELINS", "VOISINS", "ZERO"};
+        float[] ends = {0, 5, 8, 13, 16};
+        for (int section = 0; section < sections.length; section++) {
+            float x1 = left + cell * (1 + ends[section]), x2 = left + cell * (1 + ends[section + 1]);
+            frame(pose, buffers, new float[] {x1, top + row, x2 - x1 - 1, middle - 1});
+            label(pose, buffers, font, sections[section], (x1 + x2) / 2, top + row + (middle - 1) / 2, INK, 0.36f, 3.4f);
+        }
+    }
+
     /** One area of the layout: a line of white ink round it, the cloth showing through. */
     private static void frame(PoseStack pose, WorldCanvas buffers, float[] box) {
         float x1 = box[0] - 0.5f, y1 = box[1] - 0.5f, x2 = box[0] + box[2] + 0.5f, y2 = box[1] + box[3] + 0.5f;
@@ -570,7 +640,7 @@ public final class StationTables {
         quad(pose, buffers, x + 1.4f, y + 1.4f, x + width - 1.4f, y + height - 1.4f, colourOf(number), 3.1f);
         dyed(pose, buffers, x + 1.4f, y + 1.4f, x + width - 1.4f, y + height - 1.4f, 3.2f, number);
         float cx = x + width / 2, cy = y + height / 2;
-        label(pose, buffers, font, String.valueOf(number), cx, cy, 0xfff3eee2, 0.62f, 3.4f);
+        label(pose, buffers, font, String.valueOf(number), cx, cy, 0xfff3eee2, 0.62f * width / 14, 3.4f);
         if (settled && number == result) dolly(pose, buffers, cx, cy);
     }
 
@@ -808,7 +878,7 @@ public final class StationTables {
      */
     private static void chipFloat(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2, boolean lit) {
         int[] cash = {0xffe8e4dc, 0xff1c1c22};
-        int columns = SEAT_COLOURS.length + cash.length, rows = 3;
+        int columns = SEAT_COLOURS.length + cash.length, rows = y2 - y1 >= 50 ? 3 : 2;
         float pitch = (x2 - x1) / columns, deep = (y2 - y1) / rows;
         for (int column = 0; column < columns; column++) {
             int colour = column < SEAT_COLOURS.length ? SEAT_COLOURS[column] : cash[column - SEAT_COLOURS.length];
@@ -1151,14 +1221,14 @@ public final class StationTables {
         if (station.stakeItems.isEmpty()) return;
         String[] parts = station.stakeItems.split(",");
         float centreX = switch (station.mode()) {
-            case ROULETTE -> 64;
+            case ROULETTE -> STYLE == 2 ? -112 : 64;
             case BINGO -> -40;
             default -> 0;
         };
         float centreY = switch (station.mode()) {
             case BINGO -> 34;
             // In front of the player, between the layout and the rail.
-            case ROULETTE -> 105;
+            case ROULETTE -> STYLE == 1 ? 108 : STYLE == 2 ? 100 : 105;
             default -> TableLayout.STAKE_Y;
         };
         int shown = Math.min(parts.length, 6);

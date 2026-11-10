@@ -22,11 +22,18 @@ public final class TableLayout {
     /** The surface: three blocks across, two deep, the anchor block at the front middle. */
     public static final float HALF_WIDTH = 190, HALF_DEPTH = 126;
     /** The printed layout of a roulette: the zero, twelve columns of three numbers, then the column bets. */
-    public static final float LAYOUT_LEFT = -50, LAYOUT_TOP = -50, ZERO_WIDTH = 26;
-    public static final float CELL_WIDTH = 15, CELL_HEIGHT = 30, COLUMN_WIDTH = 22;
+    /**
+     * The cut of the roulette, while the choice between them is open: 0 the classic table, 1 a small
+     * wheel and a large layout, 2 the classic with a racetrack printed in front of the player, 3 the
+     * classic in the blue and ebony of a private room. Read once, from -Dgamblingitems.roulette.style.
+     */
+    public static final int STYLE = Math.max(0, Math.min(3, Integer.getInteger("gamblingitems.roulette.style", 0)));
+    private static final boolean WIDE = STYLE == 1;
+    public static final float LAYOUT_LEFT = WIDE ? -78 : -50, LAYOUT_TOP = WIDE ? -64 : -50, ZERO_WIDTH = 26;
+    public static final float CELL_WIDTH = WIDE ? 18 : 15, CELL_HEIGHT = WIDE ? 36 : 30, COLUMN_WIDTH = 22;
     /** The dozens, then the even money areas, printed underneath the numbers as on a real layout. */
-    public static final float DOZEN_TOP = LAYOUT_TOP + CELL_HEIGHT * 3, DOZEN_HEIGHT = 20;
-    public static final float OUTSIDE_TOP = DOZEN_TOP + DOZEN_HEIGHT, OUTSIDE_HEIGHT = 22;
+    public static final float DOZEN_TOP = LAYOUT_TOP + CELL_HEIGHT * 3, DOZEN_HEIGHT = WIDE ? 22 : 20;
+    public static final float OUTSIDE_TOP = DOZEN_TOP + DOZEN_HEIGHT, OUTSIDE_HEIGHT = WIDE ? 24 : 22;
     public static final float OUTSIDE_WIDTH = CELL_WIDTH * 2;
     /** Where the items staked on this table are laid out, one game at a time. */
     public static final float STAKE_Y = 62;
@@ -47,7 +54,8 @@ public final class TableLayout {
             // Only what a real roulette carries: the croupier's float, on the far side beside the
             // wheel, pays the winnings out. A stake goes straight from the hand onto the layout,
             // and a click on the bare cloth opens the window for everything else.
-            add(controls, mode, phase, StationPanel.COLLECT, -44, -116, 128, 54);
+            if (WIDE) add(controls, mode, phase, StationPanel.COLLECT, -60, -120, 128, 48);
+            else add(controls, mode, phase, StationPanel.COLLECT, -44, -116, 128, 54);
             return controls;
         }
         add(controls, mode, phase, StationPanel.DEPOSIT, -186, 78, 38, 38);

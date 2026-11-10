@@ -22,7 +22,7 @@ public final class TableLayout {
     /** The surface: three blocks across, two deep, the anchor block at the front middle. */
     public static final float HALF_WIDTH = 190, HALF_DEPTH = 126;
     /** The printed layout of a roulette: the zero, twelve columns of three numbers, then the column bets. */
-    public static final float LAYOUT_LEFT = -50, LAYOUT_TOP = -110, ZERO_WIDTH = 26;
+    public static final float LAYOUT_LEFT = -50, LAYOUT_TOP = -50, ZERO_WIDTH = 26;
     public static final float CELL_WIDTH = 15, CELL_HEIGHT = 30, COLUMN_WIDTH = 22;
     /** The dozens, then the even money areas, printed underneath the numbers as on a real layout. */
     public static final float DOZEN_TOP = LAYOUT_TOP + CELL_HEIGHT * 3, DOZEN_HEIGHT = 20;
@@ -38,16 +38,16 @@ public final class TableLayout {
      * are the same actions as the panel of a station, read from the same names, but each one is a
      * thing standing on the table rather than a printed button: the drop box the stake goes into,
      * the player's chip tray, the payout cup, the sign giving the table's rules, and on a blackjack
-     * or a bingo the domed buttons set in the rail. A roulette has no move of its own: every bet
-     * is a printed area of its layout.
+     * or a bingo the domed buttons set in the rail. A roulette is left as a real one is: every bet
+     * is a printed area of its layout, and the croupier's float is the only thing that answers.
      */
     public static List<StationPanel.Control> controls(GameMode mode, int phase) {
         List<StationPanel.Control> controls = new ArrayList<>();
         if (mode == GameMode.ROULETTE) {
-            add(controls, mode, phase, StationPanel.DEPOSIT, -44, 62, 40, 46);
-            add(controls, mode, phase, StationPanel.RETURN, 6, 74, 74, 34);
-            add(controls, mode, phase, StationPanel.COLLECT, 92, 66, 48, 44);
-            add(controls, mode, phase, StationPanel.OPEN, 148, 50, 40, 62);
+            // Only what a real roulette carries: the croupier's float, on the far side beside the
+            // wheel, pays the winnings out. A stake goes straight from the hand onto the layout,
+            // and a click on the bare cloth opens the window for everything else.
+            add(controls, mode, phase, StationPanel.COLLECT, -44, -116, 128, 54);
             return controls;
         }
         add(controls, mode, phase, StationPanel.DEPOSIT, -186, 78, 38, 38);

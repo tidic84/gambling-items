@@ -284,7 +284,7 @@ public final class StationTables {
     private static final int MAHOGANY = 0xff3b1d12, MAHOGANY_LIGHT = 0xff6a3520, TRACK = 0xff8a5a34, BRASS = 0xffc9a04a;
     /** The ink the layout is printed in, and where the wheel stands: at the end of the layout, as on a real table. */
     private static final int INK = 0xffe9e4d6;
-    private static final float WHEEL_X = -122, WHEEL_Y = -42;
+    private static final float WHEEL_X = -122, WHEEL_Y = 0;
     /** The colours of the players' chips on the layout: every seat at a roulette plays its own colour. */
     private static final int[] SEAT_COLOURS = {0xff2f7fd8, 0xffe8b830, 0xff9a4fd0, 0xffe07a2a, 0xff3cc0a0, 0xffe86aa8};
 
@@ -676,7 +676,7 @@ public final class StationTables {
             int paid = areas.indexOf(" -> ");
             if (paid >= 0) areas = areas.substring(0, paid);
             int colour = SEAT_COLOURS[seat % SEAT_COLOURS.length];
-            float dx = (seat % 3 - 1) * 3.5f, dy = (seat % 2 == 0 ? -1 : 1) * 2.5f * Math.min(1, seat);
+            float dx = (seat % 3 - 1) * 4, dy = (seat % 2 == 0 ? -1 : 1) * 2 * Math.min(1, seat);
             for (String area : areas.split(", ")) {
                 int space = area.lastIndexOf(' ');
                 if (space <= 0) continue;
@@ -691,8 +691,7 @@ public final class StationTables {
                     continue;
                 }
                 int chips = (int) Math.max(1, Math.min(8, Math.ceil(value)));
-                chipStack(pose, buffers, box[0] + box[2] / 2 + dx, box[1] + box[3] / 2 + dy,
-                        Math.min(6.2f, box[2] * 0.42f), chips, colour);
+                voxelChips(pose, buffers, box[0] + box[2] / 2 + dx, box[1] + box[3] / 2 + dy, 7, chips, colour, false);
             }
         }
     }
@@ -716,48 +715,107 @@ public final class StationTables {
         return null;
     }
 
-    /** A stack of casino chips: each one edged with white inserts, the top one showing its inlay. */
-    private static void chipStack(PoseStack pose, WorldCanvas buffers, float x, float y, float radius, int chips,
-                                  int colour) {
-        float base = 3.6f, thickness = 1.5f;
-        // The shadow of the stack on the cloth.
-        circle(pose, buffers, x + 0.8f, y + 0.8f, radius + 0.4f, 0x50000000, 3.55f);
+    /**
+     * A stack of casino chips built of voxels, this many voxels across. Each chip is one voxel thick,
+     * its edge set with eight cream inserts that show on its side as well, turned a step from the chip
+     * under it so a stack is striped the way a real one is. The top chip shows its face: the inserts
+     * round the edge, a cream inlay, and the colour again in the middle of it.
+     */
+    private static void voxelChips(PoseStack pose, WorldCanvas buffers, float x, float y, int size, int chips,
+                                   int colour, boolean lit) {
+        // Cream inserts, or blue ones on a chip that is itself pale.
+        int cream = (colour >> 8 & 255) > 215 && (colour & 255) > 200 ? BLUE : 0xfff3eee2;
+        float radius = size / 2f, middle = (size - 1) / 2f;
+        float left = snap(x - size), near = snap(y - size), base = 4.5f;
+        int[][] top = new int[size][size];
+        boolean[][] solid = new boolean[size][size];
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                solid[row][col] = Math.hypot(col - middle, row - middle) <= radius;
+            }
+        }
+        // The shadow of the stack on the cloth, a voxel down and across from it.
+        for (int row = 0; row < size; row++) {
+            int from = 0, to = size;
+            while (from < size && !solid[row][from]) from++;
+            while (to > from && !solid[row][to - 1]) to--;
+            if (to > from) rawQuad(pose, buffers, left + (from + 1) * VOXEL, near + (row + 1) * VOXEL,
+                    left + (to + 1) * VOXEL, near + (row + 2) * VOXEL, 0x50000000, 3.55f);
+        }
+        float[] light = {.65f, .8f, .75f, .6f};
+        int[][] sides = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
         for (int chip = 0; chip < chips; chip++) {
-            float bottom = base + chip * thickness, top = bottom + thickness - 0.15f;
-            // Stacked by hand: each chip a hair off the one under it.
-            float ox = (float) Math.sin(chip * 2.3) * 0.35f, oy = (float) Math.cos(chip * 1.7) * 0.35f;
-            if (voxels) {
-                int turn = chip;
-                field(pose, buffers, x - radius - VOXEL, y - radius - VOXEL, x + radius + VOXEL, y + radius + VOXEL, bottom - 0.35f, 0,
-                        (cx, cy) -> {
-                            double r = Math.hypot(cx - x, cy - y);
-                            if (r > radius) return NONE;
-                            double a = Math.atan2(cy - y, cx - x) + Math.PI + turn * 0.5;
-                            boolean insert = r > radius - VOXEL && (int) (a / (Math.PI / 4)) % 2 == 0;
-                            return cell(top + 0.35f, insert ? 0xfff3eee2 : colour);
-                        });
-                if (chip == chips - 1) {
-                    circle(pose, buffers, x, y, radius * 0.55f, 0xfff3eee2, top + 0.4f);
-                    circle(pose, buffers, x, y, radius * 0.3f, shade(colour, 1.15f), top + 0.45f);
+            boolean last = chip == chips - 1;
+            float bottom = base + chip * VOXEL, height = bottom + VOXEL;
+            int body = chip % 2 == 0 ? colour : shade(colour, .84f);
+            if (lit) body = shade(body, 1.25f);
+            for (int row = 0; row < size; row++) {
+                for (int col = 0; col < size; col++) {
+                    if (!solid[row][col]) continue;
+                    float i = col - middle, j = row - middle;
+                    boolean edge = false;
+                    for (int[] side : sides) {
+                        int c = col + side[0], r = row + side[1];
+                        if (c < 0 || r < 0 || c >= size || r >= size || !solid[r][c]) edge = true;
+                    }
+                    int sector = (int) Math.round(Math.atan2(j, i) / (Math.PI / 8));
+                    int voxel = edge && Math.floorMod(sector + chip, 2) == 0 ? cream : body;
+                    if (last && !edge) {
+                        double from = Math.hypot(i, j);
+                        if (from <= radius * 0.2) voxel = shade(body, .72f);
+                        else if (from <= radius * 0.47) voxel = cream;
+                    }
+                    top[row][col] = voxel;
+                    if (!edge) continue;
+                    float xa = left + col * VOXEL, ya = near + row * VOXEL, xb = xa + VOXEL, yb = ya + VOXEL;
+                    for (int side = 0; side < 4; side++) {
+                        int c = col + sides[side][0], r = row + sides[side][1];
+                        if (c >= 0 && r >= 0 && c < size && r < size && solid[r][c]) continue;
+                        // Wound as the walls of a field are: outwards, on a mirrored canvas.
+                        float[] line = switch (side) {
+                            case 0 -> new float[] {xb, ya, xa, ya};
+                            case 1 -> new float[] {xb, yb, xb, ya};
+                            case 2 -> new float[] {xa, yb, xb, yb};
+                            default -> new float[] {xa, ya, xa, yb};
+                        };
+                        rawWall(pose, buffers, line[0], line[1], line[2], line[3], bottom, height, shade(voxel, light[side]));
+                        // The dark line where the bottom chip meets the cloth.
+                        if (chip == 0) rawWall(pose, buffers, line[0], line[1], line[2], line[3], 3.4f, bottom, 0xff0c0c0c);
+                    }
                 }
-                continue;
             }
-            cylinder(pose, buffers, x + ox, y + oy, radius, bottom, top, colour);
-            for (int insert = 0; insert < 6; insert++) {
-                double a = insert * Math.PI / 3 + chip * 0.4, b = a + 0.28;
-                wall(pose, buffers, x + ox + (float) Math.cos(a) * (radius + 0.05f), y + oy + (float) Math.sin(a) * (radius + 0.05f),
-                        x + ox + (float) Math.cos(b) * (radius + 0.05f), y + oy + (float) Math.sin(b) * (radius + 0.05f),
-                        bottom + 0.1f, top - 0.1f, 0xfff3eee2);
-            }
-            if (chip == chips - 1) {
-                for (int insert = 0; insert < 6; insert++) {
-                    double a = insert * Math.PI / 3 + chip * 0.4;
-                    float cx = x + ox + (float) Math.cos(a + 0.14) * (radius - 1.2f);
-                    float cy = y + oy + (float) Math.sin(a + 0.14) * (radius - 1.2f);
-                    quad(pose, buffers, cx - 0.7f, cy - 0.7f, cx + 0.7f, cy + 0.7f, 0xfff3eee2, top + 0.03f);
+            if (!last) continue;
+            for (int row = 0; row < size; row++) {
+                for (int col = 0; col < size; ) {
+                    if (!solid[row][col]) {
+                        col++;
+                        continue;
+                    }
+                    int end = col + 1;
+                    while (end < size && solid[row][end] && top[row][end] == top[row][col]) end++;
+                    rawQuad(pose, buffers, left + col * VOXEL, near + row * VOXEL, left + end * VOXEL,
+                            near + (row + 1) * VOXEL, top[row][col], height);
+                    col = end;
                 }
-                circle(pose, buffers, x + ox, y + oy, radius * 0.55f, 0xfff3eee2, top + 0.05f);
-                circle(pose, buffers, x + ox, y + oy, radius * 0.45f, shade(colour, 1.15f), top + 0.08f);
+            }
+        }
+    }
+
+    /**
+     * The croupier's float: the chips of the table standing in rows on the far side of the felt, beside
+     * the wheel, a column for each colour the players are given and two of cash chips. Winnings are
+     * paid out of it, so it is where a player collects them.
+     */
+    private static void chipFloat(PoseStack pose, WorldCanvas buffers, float x1, float y1, float x2, float y2, boolean lit) {
+        int[] cash = {0xffe8e4dc, 0xff1c1c22};
+        int columns = SEAT_COLOURS.length + cash.length, rows = 3;
+        float pitch = (x2 - x1) / columns, deep = (y2 - y1) / rows;
+        for (int column = 0; column < columns; column++) {
+            int colour = column < SEAT_COLOURS.length ? SEAT_COLOURS[column] : cash[column - SEAT_COLOURS.length];
+            for (int row = 0; row < rows; row++) {
+                // Fuller at the back, where the croupier has not drawn on them yet.
+                int chips = 7 - row * 2 + hash(column * 31 + row * 7) % 2;
+                voxelChips(pose, buffers, x1 + (column + 0.5f) * pitch, y1 + (row + 0.5f) * deep, 7, chips, colour, lit);
             }
         }
     }
@@ -837,6 +895,11 @@ public final class StationTables {
             float y2 = control.y() + control.height();
             // The plate takes the front of the box; the thing itself stands behind it.
             float plate = y2 - 9;
+            if (station.mode() == dev.gamblingitems.core.GameMode.ROULETTE) {
+                // A roulette carries nothing a real one does not: its one control is the croupier's float.
+                chipFloat(pose, buffers, x1, y1, x2, y2, lit);
+                continue;
+            }
             switch (control.action()) {
                 case StationPanel.DEPOSIT -> dropBox(pose, buffers, x1 + 3, y1 + 2, x2 - 3, plate - 2, lit);
                 case StationPanel.RETURN -> chipTray(pose, buffers, x1 + 2, y1 + 2, x2 - 2, plate - 2, lit);
@@ -1088,17 +1151,26 @@ public final class StationTables {
         if (station.stakeItems.isEmpty()) return;
         String[] parts = station.stakeItems.split(",");
         float centreX = switch (station.mode()) {
-            case ROULETTE -> -124;
+            case ROULETTE -> 64;
             case BINGO -> -40;
             default -> 0;
         };
-        float centreY = station.mode() == dev.gamblingitems.core.GameMode.BINGO ? 34 : TableLayout.STAKE_Y;
+        float centreY = switch (station.mode()) {
+            case BINGO -> 34;
+            // In front of the player, between the layout and the rail.
+            case ROULETTE -> 105;
+            default -> TableLayout.STAKE_Y;
+        };
         int shown = Math.min(parts.length, 6);
         for (int index = 0; index < shown; index++) {
             ItemStack stack = stackOf(parts[index]);
             if (stack.isEmpty()) continue;
             float x = centreX + (index - (shown - 1) / 2f) * 26;
             int chip = chipColour(stack);
+            if (chip != 0 && voxels) {
+                voxelChips(pose, buffers, x, centreY, 9, Math.min(8, stack.getCount()), chip, false);
+                continue;
+            }
             if (chip != 0) {
                 // Casino chips stand in a real stack, one disc per chip up to twenty, edged in white.
                 float top = 8 + Math.min(20, stack.getCount()) * 2.2f;
@@ -1166,8 +1238,9 @@ public final class StationTables {
     }
 
     private static int shade(int colour, float amount) {
-        return 0xff000000 | (int) (((colour >> 16) & 255) * amount) << 16
-                | (int) (((colour >> 8) & 255) * amount) << 8 | (int) ((colour & 255) * amount);
+        // Clamped: a colour made lighter must not spill from one channel into the next.
+        return 0xff000000 | Math.min(255, (int) (((colour >> 16) & 255) * amount)) << 16
+                | Math.min(255, (int) (((colour >> 8) & 255) * amount)) << 8 | Math.min(255, (int) ((colour & 255) * amount));
     }
 
     private static void wall(PoseStack pose, WorldCanvas buffers, float x1, float y1,

@@ -22,13 +22,13 @@ public final class TableLayout {
     /** The surface: three blocks across, two deep, the anchor block at the front middle. */
     public static final float HALF_WIDTH = 190, HALF_DEPTH = 126;
     /**
-     * The roulette a table is, while the choice between them is open. 0 is the Vegas table: the wheel at
-     * one end, a long layout beside it. 1 is the Monte-Carlo table: the wheel in the middle, a layout
-     * standing upright on either side of it. 2 is the electronic table: the wheel at the back, a layout of
-     * large square areas across the whole front. 3 is the saloon table: the wheel at the other end, the
-     * numbers in a square of six by six. Read once, from -Dgamblingitems.roulette.direction.
+     * The roulette a table is. 1 is the Monte-Carlo table, the one that is played: the wheel in the
+     * middle, a layout standing upright on either side of it. The others are kept for skins to come:
+     * 0 the Vegas table, the wheel at one end of a long layout; 2 the electronic table, the wheel at the
+     * back of a layout of large square areas; 3 the saloon table, the numbers in a square of six by six.
+     * Until skins exist, -Dgamblingitems.roulette.direction shows one of them.
      */
-    public static final int DIRECTION = Math.max(0, Math.min(3, Integer.getInteger("gamblingitems.roulette.direction", 0)));
+    public static final int DIRECTION = Math.max(0, Math.min(3, Integer.getInteger("gamblingitems.roulette.direction", 1)));
     /** The printed layout of the Vegas table: the zero, twelve columns of three numbers, then the column bets. */
     public static final float LAYOUT_LEFT = -78, LAYOUT_TOP = -64, ZERO_WIDTH = 26;
     public static final float CELL_WIDTH = 18, CELL_HEIGHT = 36, COLUMN_WIDTH = 22;

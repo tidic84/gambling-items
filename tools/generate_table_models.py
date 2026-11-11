@@ -30,9 +30,9 @@ TEXTURES = dict(wood='gamblingitems:block/table_wood', panel='gamblingitems:bloc
 # The bingo table takes a blue cloth, so it reads apart from the green card tables.
 FELT = {'roulette': 'gamblingitems:block/table_felt_green', 'blackjack': 'gamblingitems:block/table_felt_green',
         'bingo': 'gamblingitems:block/table_felt_blue'}
-# The roulette comes in four tables while the choice between them is open (see TableLayout.DIRECTION):
-# 0 Vegas, 1 Monte-Carlo, 2 electronic, 3 saloon. Its furniture and its textures follow the one asked for.
-DIRECTION = int(os.environ.get('ROULETTE_DIRECTION', '0'))
+# The roulette is the Monte-Carlo table (1). The others are kept for skins to come (see
+# TableLayout.DIRECTION): 0 Vegas, 2 electronic, 3 saloon. ROULETTE_DIRECTION builds one of them instead.
+DIRECTION = int(os.environ.get('ROULETTE_DIRECTION', '1'))
 ROULETTE_TEXTURES = dict(wood='gamblingitems:block/roulette_wood', panel='gamblingitems:block/roulette_panel',
                          dark='gamblingitems:block/roulette_dark', leather='gamblingitems:block/roulette_leather',
                          brass='gamblingitems:block/roulette_metal', glow='gamblingitems:block/roulette_glow',

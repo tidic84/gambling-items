@@ -107,8 +107,8 @@ public class TableGameTests implements FabricGameTest {
             helper.assertTrue(RouletteWheel.wins(bet, 1 + index) && !RouletteWheel.wins(bet, 1 + (index + 1) % 3),
                     "A 2 to 1 box covers the row it is printed at the end of");
         }
-        // The side of the felt the wheel stands on is not a bet.
-        helper.assertTrue(TableLayout.betAt(-122, -42) == null, "The wheel itself takes no chips");
+        // The wheel stands in the middle of the felt, between the two layouts, and is not a bet.
+        helper.assertTrue(TableLayout.betAt(0, -6) == null, "The wheel itself takes no chips");
         helper.succeed();
     }
 

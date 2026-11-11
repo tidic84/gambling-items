@@ -922,9 +922,9 @@ public final class StationTables {
 
     /**
      * A stack of chips built of voxels, seven across, each one voxel thick, the top one showing its
-     * face. Vegas plays round chips with eight cream inserts, striped down the stack; Monte-Carlo plays
-     * oblong plaques framed in cream with a gold bar; the electronic table plays square markers that
-     * light round their edge; the saloon plays coins, milled in gold round the colour of the player.
+     * face. Monte-Carlo and Vegas play round chips with eight cream inserts, striped down the stack;
+     * the electronic table plays square markers that light round their edge; the saloon plays coins,
+     * milled in gold round the colour of the player.
      */
     private static void voxelChips(PoseStack pose, WorldCanvas buffers, float x, float y, int size, int chips,
                                    int colour, boolean lit) {
@@ -938,7 +938,6 @@ public final class StationTables {
             for (int col = 0; col < size; col++) {
                 float i = Math.abs(col - middle), j = Math.abs(row - middle);
                 solid[row][col] = switch (DIRECTION) {
-                    case 1 -> j <= 2;
                     case 2 -> i < middle || j < middle;
                     default -> Math.hypot(i, j) <= radius;
                 };
@@ -973,10 +972,6 @@ public final class StationTables {
                     int voxel = body;
                     double from = Math.hypot(i, j), square = Math.max(Math.abs(i), Math.abs(j));
                     switch (DIRECTION) {
-                        case 1 -> {
-                            if (edge && down % 2 == 0) voxel = cream;
-                            if (last && !edge && j == 0) voxel = cream;
-                        }
                         case 2 -> {
                             voxel = edge ? (down % 2 == 0 ? shade(colour, 1.35f) : shade(colour, .6f)) : 0xff0e1218;
                             if (last && !edge && square <= 1) voxel = square == 0 ? 0xffffffff : shade(colour, 1.2f);

@@ -1,15 +1,16 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "wood": "gamblingitems:block/table_wood",
-    "panel": "gamblingitems:block/table_panel",
-    "dark": "gamblingitems:block/table_dark",
-    "leather": "gamblingitems:block/table_leather",
-    "brass": "gamblingitems:block/table_brass",
+    "wood": "gamblingitems:block/roulette_wood",
+    "panel": "gamblingitems:block/roulette_panel",
+    "dark": "gamblingitems:block/roulette_dark",
+    "leather": "gamblingitems:block/roulette_leather",
+    "brass": "gamblingitems:block/roulette_metal",
     "red": "minecraft:block/red_concrete",
     "ivory": "minecraft:block/white_concrete",
-    "felt": "gamblingitems:block/table_felt_green",
-    "particle": "gamblingitems:block/table_wood"
+    "felt": "gamblingitems:block/roulette_felt",
+    "particle": "gamblingitems:block/table_wood",
+    "glow": "gamblingitems:block/roulette_glow"
   },
   "elements": [
     {

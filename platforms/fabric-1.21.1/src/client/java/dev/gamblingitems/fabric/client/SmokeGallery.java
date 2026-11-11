@@ -309,7 +309,8 @@ final class SmokeGallery {
         SHOTS.add(new Shot("table_spin_blackjack", x + 15.2, y + 0.9, z - 6 - 1.6, -40, 60, DEAL_SHOT, 0));
         SHOTS.add(new Shot("table_spin_wheel", x + 15.6, y + 0.6, z - 1.4, -60, 70, SPIN_SHOT, 30));
         // The whole roulette from over the players' rail, then its chips close enough to count their inserts.
-        SHOTS.add(new Shot("table_spin_whole_roulette", x + 15.3, y + 1.9, z - 0.5, -90, 70, SPIN_SHOT, 30));
+        SHOTS.add(new Shot("table_spin_whole_roulette", x + 15.75, y + 2.2, z - 0.5, -90, 78, SPIN_SHOT, 30));
+        SHOTS.add(new Shot("table_spin_side_roulette", x + 14.5, y + 0.1, z + 1.5, -128, 22, SPIN_SHOT, 30));
         SHOTS.add(new Shot("table_spin_chips_roulette", x + 16.0, y + 0.1, z - 0.1, -90, 62, SPIN_SHOT, 30));
         // The things standing along the players' edge, close enough to read their plates.
         SHOTS.add(new Shot("table_spin_controls_blackjack", x + 15.1, y + 0.3, z - 6 + 0.5, -90, 60, DEAL_SHOT, 0));

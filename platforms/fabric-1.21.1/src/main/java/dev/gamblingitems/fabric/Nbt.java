@@ -32,6 +32,32 @@ public final class Nbt {
         //#endif
     }
 
+    /** A nested compound, empty when it is absent. */
+    public static CompoundTag child(CompoundTag tag, String key) {
+        //#if MC >= 1.21.5
+        //$ return tag.getCompoundOrEmpty(key);
+        //#else
+        return tag.getCompound(key);
+        //#endif
+    }
+
+    public static double doubleValue(CompoundTag tag, String key) {
+        //#if MC >= 1.21.5
+        //$ return tag.getDoubleOr(key, 0);
+        //#else
+        return tag.getDouble(key);
+        //#endif
+    }
+
+    /** A UUID that may be absent, as a market made by the house has no creator. */
+    public static UUID optionalUuid(CompoundTag tag, String key) {
+        return tag.contains(key) ? uuid(tag, key) : null;
+    }
+
+    public static void putOptionalUuid(CompoundTag tag, String key, UUID uuid) {
+        if (uuid != null) putUuid(tag, key, uuid);
+    }
+
     public static boolean bool(CompoundTag tag, String key) {
         //#if MC >= 1.21.5
         //$ return tag.getBooleanOr(key, false);

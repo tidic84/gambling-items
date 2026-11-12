@@ -106,6 +106,8 @@ public final class GamblingItemsForge {
             BattleLobbies.tick(server);
             BingoGames.tick(server);
             StationInteractions.tick(server);
+            dev.gamblingitems.fabric.cheat.CasinoSecurity.tick(server);
+            dev.gamblingitems.fabric.prediction.PredictionMarkets.tick(server);
         });
         // An interrupted round is cancelled and every engaged stake is given back exactly once.
         game.addListener((ServerStoppingEvent event) -> {
@@ -123,6 +125,7 @@ public final class GamblingItemsForge {
             BlackjackTables.clear();
             BattleLobbies.clear();
             BingoGames.clear();
+            dev.gamblingitems.fabric.cheat.CasinoSecurity.clear();
         });
         String availableModes = GameMenus.AVAILABLE.stream().map(GameMode::id).collect(Collectors.joining(", "));
         String plannedModes = Arrays.stream(GameMode.values())
@@ -136,6 +139,7 @@ public final class GamblingItemsForge {
                                     + " | Use a terminal or a station. Roadmap: " + plannedModes), false);
                             return 1;
                         }))));
+        game.addListener((RegisterCommandsEvent event) -> dev.gamblingitems.fabric.CasinoCommands.register(event.getDispatcher()));
         LOGGER.info("Gambling Items loaded. Playable: {}. Planned: {}", availableModes, plannedModes);
         // Release checks start a real server once per Minecraft version; it stops when the world is up.
         if (Boolean.getBoolean("gamblingitems.smoke")) game.addListener((ServerStartedEvent event) -> {

@@ -28,7 +28,7 @@ import net.minecraft.world.item.ItemStack;
  */
 public final class RouletteMenu extends AbstractContainerMenu {
     /** A bet is sent as one button: its kind and, when it needs one, its number, dozen or column. */
-    public static final int BET_BUTTON = 2000, COLLECT_BUTTON = 1100;
+    public static final int BET_BUTTON = 2000, COLLECT_BUTTON = 1100, CHEAT_BUTTON = 1101;
     public static final int STAKE_X = 16, ENGAGED_Y = 164, INPUT_Y = 192;
     public static final int INVENTORY_START = 2 * RouletteSettings.STAKE_SLOTS;
     // Small numbers first, then the values, which each need two slots to survive the packet.
@@ -37,7 +37,9 @@ public final class RouletteMenu extends AbstractContainerMenu {
     /** Then one bet per pair of slots: the area it covers, and what it holds. */
     private static final int FIRST_BET = 16;
     private static final int BET_FIELDS = 1 + ValueSync.SLOTS;
-    private static final int DATA_SIZE = FIRST_BET + BET_FIELDS * RouletteGame.MAX_BETS;
+    /** Then the trick: its chance of being spotted, and whether the magnet is set. */
+    private static final int CHEAT_CHANCE = FIRST_BET + BET_FIELDS * RouletteGame.MAX_BETS, MAGNET = CHEAT_CHANCE + 1;
+    private static final int DATA_SIZE = MAGNET + 1;
 
     private final Player owner;
     private final Container vault;
@@ -101,6 +103,13 @@ public final class RouletteMenu extends AbstractContainerMenu {
     public long paid() { return ValueSync.read(data, PAID); }
     public boolean settled() { return data.get(SETTLED) != 0; }
     public int lastResultNumber() { return data.get(LAST_RESULT) - 1; }
+    /** How likely the magnet is to be spotted, in basis points; -1 without a magnet. */
+    public int cheatChance() { return data.get(CHEAT_CHANCE); }
+    public boolean magnetSet() { return data.get(MAGNET) != 0; }
+    public boolean canMagnet() {
+        return cheatChance() >= 0 && !magnetSet() && staked() > 0 && !settled()
+                && (phase() == RouletteGame.Phase.WAITING || phase() == RouletteGame.Phase.BETTING);
+    }
 
     /** What this player has on a given area of the table, in value. */
     public long stakeOn(Bet bet) {
@@ -145,12 +154,27 @@ public final class RouletteMenu extends AbstractContainerMenu {
         boolean handled;
         if (button == COLLECT_BUTTON) {
             handled = collect(player);
+        } else if (button == CHEAT_BUTTON) {
+            handled = magnet((ServerPlayer) player);
         } else {
             Bet bet = decode(button - BET_BUTTON);
             handled = bet != null && game.place(player.getUUID(), bet, game.stagedValue(player.getUUID()));
         }
         if (handled) broadcastChanges();
         return handled;
+    }
+
+    /** Slides a magnet under the felt; spotted, every chip this player has on it is lost. */
+    private boolean magnet(ServerPlayer player) {
+        if (!game.canMagnet(player.getUUID())) return false;
+        var result = dev.gamblingitems.fabric.cheat.CasinoSecurity.attempt(player,
+                dev.gamblingitems.core.cheat.CheatRules.Tool.ROULETTE_MAGNET);
+        switch (result) {
+            case UNNOTICED -> game.setMagnet(player.getUUID());
+            case CAUGHT -> game.forfeit(player.getUUID());
+            default -> { return false; }
+        }
+        return true;
     }
 
     /** Moves the winnings into the inventory, keeping in the vault whatever does not fit. */
@@ -197,6 +221,10 @@ public final class RouletteMenu extends AbstractContainerMenu {
                 data.set(slot, 0);
                 ValueSync.write(data, slot + 1, 0);
             }
+            data.set(CHEAT_CHANCE, owner instanceof ServerPlayer player
+                    ? dev.gamblingitems.fabric.cheat.CasinoSecurity.shownChance(player,
+                            dev.gamblingitems.core.cheat.CheatRules.Tool.ROULETTE_MAGNET) : -1);
+            data.set(MAGNET, game.magnetSet(owner.getUUID()) ? 1 : 0);
         }
         super.broadcastChanges();
     }

@@ -3,6 +3,7 @@
   "values": [
     "gamblingitems:blackjack_table",
     "gamblingitems:roulette_table",
-    "gamblingitems:bingo_table"
+    "gamblingitems:bingo_table",
+    "gamblingitems:odds_board"
   ]
 }

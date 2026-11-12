@@ -44,11 +44,12 @@ import net.minecraft.world.item.Items;
 
 /** Server-side settings. Item values are shared by every game; each game keeps its own tuning. */
 public final class ModConfig {
-    public static final int SCHEMA_VERSION = 20;
+    public static final int SCHEMA_VERSION = 21;
     /** One displayed unit of currency, so every screen counts in the currency's own units. */
     public static final long CURRENCY_UNIT = 1_000;
     /** The casino games that can be switched to a currency. Upgrader, trade up, cases and battles never are. */
-    public static final List<String> CURRENCY_GAMES = List.of("crash", "roulette", "blackjack", "bingo", "slotMachine");
+    public static final List<String> CURRENCY_GAMES = List.of("crash", "roulette", "blackjack", "bingo", "slotMachine",
+            "predictionMarket");
     private static ValueCatalog values;
     private static UpgradeSetup upgrader;
     private static TradeUpSetup tradeUp;
@@ -169,6 +170,11 @@ public final class ModConfig {
         }
         if (schema < 20 && !json.getAsJsonObject("upgrader").has("enchantedBooks"))
             json.getAsJsonObject("upgrader").add("enchantedBooks", defaultEnchantedBooks());
+        // Schema 21 adds the casino security, which catches cheaters, and the prediction market.
+        if (schema < 21) {
+            if (!json.has("security")) json.add("security", defaultSecurity());
+            if (!json.has("predictionMarket")) json.add("predictionMarket", defaultPrediction());
+        }
         json.addProperty("schemaVersion", SCHEMA_VERSION);
         return true;
     }
@@ -229,6 +235,90 @@ public final class ModConfig {
                 blackjackJson.get("minimumStake").getAsLong(),
                 blackjackJson.get("dealerDelayTicks").getAsInt(),
                 blackjackJson.get("resultTicks").getAsInt()));
+        dev.gamblingitems.fabric.cheat.CasinoSecurity.configure(readSecurity(json.getAsJsonObject("security")));
+        dev.gamblingitems.fabric.prediction.PredictionMarkets.configure(new dev.gamblingitems.fabric.prediction.PredictionSetup(
+                casino.get("predictionMarket"), readPrediction(json.getAsJsonObject("predictionMarket"))));
+    }
+
+    /** How closely the casino watches its players; each trick keeps its own risk and suspicion. */
+    private static dev.gamblingitems.fabric.cheat.SecuritySettings readSecurity(JsonObject json) {
+        var chances = new java.util.EnumMap<dev.gamblingitems.core.cheat.CheatRules.Tool, Integer>(
+                dev.gamblingitems.core.cheat.CheatRules.Tool.class);
+        var heat = new java.util.EnumMap<dev.gamblingitems.core.cheat.CheatRules.Tool, Integer>(
+                dev.gamblingitems.core.cheat.CheatRules.Tool.class);
+        JsonObject tools = json.getAsJsonObject("tools");
+        for (var tool : dev.gamblingitems.core.cheat.CheatRules.Tool.values()) {
+            JsonObject tuning = tools.has(tool.id()) ? tools.getAsJsonObject(tool.id()) : new JsonObject();
+            chances.put(tool, tuning.has("baseBasisPoints") ? tuning.get("baseBasisPoints").getAsInt() : tool.defaultBaseChance());
+            heat.put(tool, tuning.has("heat") ? tuning.get("heat").getAsInt() : tool.defaultHeat());
+        }
+        return new dev.gamblingitems.fabric.cheat.SecuritySettings(json.get("enabled").getAsBoolean(),
+                new dev.gamblingitems.core.cheat.CheatRules.Settings(json.get("heatBasisPoints").getAsInt(),
+                        json.get("cameraBasisPoints").getAsInt(), json.get("maximumBasisPoints").getAsInt(),
+                        json.get("coolingSeconds").getAsLong() * 1_000, json.get("banSeconds").getAsLong() * 1_000,
+                        json.get("caughtHeat").getAsInt()),
+                chances, heat, json.get("cameraRadius").getAsInt(), json.get("watchLeadTicks").getAsInt());
+    }
+
+    private static JsonObject defaultSecurity() {
+        var defaults = dev.gamblingitems.fabric.cheat.SecuritySettings.defaults();
+        JsonObject json = new JsonObject();
+        json.addProperty("enabled", true);
+        json.addProperty("heatBasisPoints", defaults.rules().heatChance());
+        json.addProperty("cameraBasisPoints", defaults.rules().cameraChance());
+        json.addProperty("maximumBasisPoints", defaults.rules().maximumChance());
+        json.addProperty("coolingSeconds", defaults.rules().coolingMillis() / 1_000);
+        json.addProperty("banSeconds", defaults.rules().banMillis() / 1_000);
+        json.addProperty("caughtHeat", defaults.rules().caughtHeat());
+        json.addProperty("cameraRadius", defaults.cameraRadius());
+        json.addProperty("watchLeadTicks", defaults.watchLeadTicks());
+        JsonObject tools = new JsonObject();
+        for (var tool : dev.gamblingitems.core.cheat.CheatRules.Tool.values()) {
+            JsonObject tuning = new JsonObject();
+            tuning.addProperty("baseBasisPoints", tool.defaultBaseChance());
+            tuning.addProperty("heat", tool.defaultHeat());
+            tools.add(tool.id(), tuning);
+        }
+        json.add("tools", tools);
+        return json;
+    }
+
+    /** Durations are written in minutes, hours and days, as an administrator thinks of them. */
+    private static dev.gamblingitems.fabric.prediction.PredictionSettings readPrediction(JsonObject json) {
+        JsonObject house = json.getAsJsonObject("houseMarkets");
+        return new dev.gamblingitems.fabric.prediction.PredictionSettings(json.get("shareValue").getAsLong(),
+                json.get("feeBasisPoints").getAsInt(), json.get("minimumSubsidy").getAsLong(),
+                json.get("maximumOpenPerPlayer").getAsInt(), json.get("challengeMinutes").getAsLong() * 60_000,
+                json.get("proposalTimeoutMinutes").getAsLong() * 60_000,
+                json.get("disputeTimeoutHours").getAsLong() * 3_600_000, json.get("retentionDays").getAsLong() * 86_400_000,
+                json.get("announce").getAsBoolean(), json.get("insiderBasisPoints").getAsInt(),
+                json.get("insiderHeat").getAsInt(), house.get("enabled").getAsBoolean(),
+                house.get("intervalMinutes").getAsLong() * 60_000, house.get("maximumOpen").getAsInt(),
+                house.get("subsidy").getAsLong(), house.get("durationMinutes").getAsLong() * 60_000);
+    }
+
+    private static JsonObject defaultPrediction() {
+        var defaults = dev.gamblingitems.fabric.prediction.PredictionSettings.defaults();
+        JsonObject json = new JsonObject();
+        json.addProperty("shareValue", defaults.shareValue());
+        json.addProperty("feeBasisPoints", defaults.feeBasisPoints());
+        json.addProperty("minimumSubsidy", defaults.minimumSubsidy());
+        json.addProperty("maximumOpenPerPlayer", defaults.maximumOpen());
+        json.addProperty("challengeMinutes", defaults.challengeMillis() / 60_000);
+        json.addProperty("proposalTimeoutMinutes", defaults.proposalMillis() / 60_000);
+        json.addProperty("disputeTimeoutHours", defaults.disputeMillis() / 3_600_000);
+        json.addProperty("retentionDays", defaults.retentionMillis() / 86_400_000);
+        json.addProperty("announce", defaults.announce());
+        json.addProperty("insiderBasisPoints", defaults.insiderChance());
+        json.addProperty("insiderHeat", defaults.insiderHeat());
+        JsonObject house = new JsonObject();
+        house.addProperty("enabled", defaults.houseMarkets());
+        house.addProperty("intervalMinutes", defaults.houseIntervalMillis() / 60_000);
+        house.addProperty("maximumOpen", defaults.houseMaximumOpen());
+        house.addProperty("subsidy", defaults.houseSubsidy());
+        house.addProperty("durationMinutes", defaults.houseDurationMillis() / 60_000);
+        json.add("houseMarkets", house);
+        return json;
     }
 
     /**
@@ -404,6 +494,8 @@ public final class ModConfig {
         json.add("bingo", defaultBingo());
         json.add("slotMachine", defaultSlots());
         json.add("currency", defaultCurrency());
+        json.add("security", defaultSecurity());
+        json.add("predictionMarket", defaultPrediction());
         return json;
     }
 

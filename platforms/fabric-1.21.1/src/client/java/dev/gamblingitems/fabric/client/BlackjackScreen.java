@@ -44,6 +44,14 @@ public final class BlackjackScreen extends CasinoScreen<BlackjackMenu> {
         return false;
     }
 
+    @Override protected dev.gamblingitems.core.cheat.CheatRules.Tool cheatTool() {
+        return dev.gamblingitems.core.cheat.CheatRules.Tool.MARKED_LENS;
+    }
+    @Override protected int cheatButton() { return BlackjackMenu.CHEAT_BUTTON; }
+    @Override protected int cheatChance() { return menu.cheatChance(); }
+    @Override protected int cheatState() { return menu.peeked() ? 1 : 0; }
+    @Override protected boolean cheatUsable() { return menu.canPeek(); }
+
     @Override protected void init() {
         super.init();
         int bx = leftPos + CasinoLayout.SLIP_X + 8, by = topPos + CasinoLayout.SLIP_Y + 52, bw = CasinoLayout.SLIP_WIDTH - 16;
@@ -135,7 +143,16 @@ public final class BlackjackScreen extends CasinoScreen<BlackjackMenu> {
         }
         if (menu.dealerHidden()) {
             int slide = (int) (dealerLanding * 60);
-            hidden(g, x + TABLE_X + dealer.size() * (CARD_WIDTH + CARD_GAP) + slide, y + DEALER_Y);
+            int holeX = x + TABLE_X + dealer.size() * (CARD_WIDTH + CARD_GAP) + slide;
+            hidden(g, holeX, y + DEALER_Y);
+            // The marked back, as the lens reads it: only this seat was sent the card.
+            if (menu.peekedHole() >= 0) marked(g, holeX, y + DEALER_Y, menu.peekedHole());
+        }
+        if (menu.peekedNext() >= 0) {
+            int value = menu.peekedNext();
+            GameScreens.fitted(g, font, Component.translatable("gui.gamblingitems.cheat.marked_lens.next",
+                            rankName(BlackjackRules.rankOf(value)) + suitName(BlackjackRules.suitOf(value))),
+                    x + TABLE_X + 112, y + PLAYER_Y - 10, GW - 132, GameScreens.GOLD);
         }
         String dealerTotal = menu.dealerHidden()
                 ? menu.dealerTotal() + "+" : String.valueOf(menu.dealerTotal());
@@ -174,6 +191,13 @@ public final class BlackjackScreen extends CasinoScreen<BlackjackMenu> {
         g.fill(x - 1, y - 1, x + CARD_WIDTH + 1, y + CARD_HEIGHT + 1, CARD_EDGE);
         g.fill(x, y, x + CARD_WIDTH, y + CARD_HEIGHT, CARD_BACK);
         g.fill(x + 3, y + 3, x + CARD_WIDTH - 3, y + CARD_HEIGHT - 3, 0xff5d1825);
+    }
+
+    /** What the lens reads on the back of a card: its rank, small, in gold. */
+    private void marked(GuiGraphics g, int x, int y, int value) {
+        String rank = rankName(BlackjackRules.rankOf(value)) + suitName(BlackjackRules.suitOf(value));
+        g.fill(x + 2, y + CARD_HEIGHT / 2 - 6, x + CARD_WIDTH - 2, y + CARD_HEIGHT / 2 + 6, 0xcc000000);
+        g.drawCenteredString(font, rank, x + CARD_WIDTH / 2, y + CARD_HEIGHT / 2 - 4, GameScreens.GOLD);
     }
 
     private static String rankName(int rank) {

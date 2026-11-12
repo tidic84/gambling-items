@@ -25,14 +25,17 @@ import net.minecraft.world.item.ItemStack;
  */
 public final class BlackjackMenu extends AbstractContainerMenu {
     public static final int DEAL_BUTTON = 1000, HIT_BUTTON = 1001, STAND_BUTTON = 1002,
-            DOUBLE_BUTTON = 1003, COLLECT_BUTTON = 1004;
+            DOUBLE_BUTTON = 1003, COLLECT_BUTTON = 1004, CHEAT_BUTTON = 1005;
     public static final int STAKE_X = 264, ENGAGED_Y = 92, INPUT_Y = 56;
     public static final int INVENTORY_START = 2 * BlackjackSettings.STAKE_SLOTS;
     // Small numbers first, then the values, which each need two slots to survive the packet.
     private static final int PHASE = 0, OUTCOME = 1, PAYABLE = 2, HAND_TOTAL = 3, DEALER_TOTAL = 4,
             DEALER_HIDDEN = 5, STAKE = 6, PAID = 8, WINNINGS = 10, PLANNED = 12;
     private static final int FIRST_CARD = 14;
-    private static final int DATA_SIZE = FIRST_CARD + 2 * BlackjackSettings.MAX_CARDS;
+    /** Then the trick: its chance of being spotted, and what the lens read, one more than the card. */
+    private static final int CHEAT_CHANCE = FIRST_CARD + 2 * BlackjackSettings.MAX_CARDS, PEEK_HOLE = CHEAT_CHANCE + 1,
+            PEEK_NEXT = CHEAT_CHANCE + 2, PEEKED = CHEAT_CHANCE + 3;
+    private static final int DATA_SIZE = PEEKED + 1;
 
     private final Player owner;
     private final Container vault;
@@ -93,6 +96,12 @@ public final class BlackjackMenu extends AbstractContainerMenu {
     public int handTotal() { return data.get(HAND_TOTAL); }
     public int dealerTotal() { return data.get(DEALER_TOTAL); }
     public boolean dealerHidden() { return data.get(DEALER_HIDDEN) != 0; }
+    /** How likely the lens is to be spotted, in basis points; -1 without a lens. */
+    public int cheatChance() { return data.get(CHEAT_CHANCE); }
+    public boolean peeked() { return data.get(PEEKED) != 0; }
+    public int peekedHole() { return data.get(PEEK_HOLE) - 1; }
+    public int peekedNext() { return data.get(PEEK_NEXT) - 1; }
+    public boolean canPeek() { return canAct() && !peeked() && cheatChance() >= 0; }
 
     /** The cards a client may draw: the player's hand, then the dealer's face up cards. */
     public List<Integer> hand() { return cards(FIRST_CARD); }
@@ -137,10 +146,24 @@ public final class BlackjackMenu extends AbstractContainerMenu {
             case STAND_BUTTON -> table.stand();
             case DOUBLE_BUTTON -> table.doubleDown();
             case COLLECT_BUTTON -> collect(player);
+            case CHEAT_BUTTON -> peek((ServerPlayer) player);
             default -> false;
         };
         if (handled) broadcastChanges();
         return handled;
+    }
+
+    /** The lens reads the hole card and the next card; spotted, the hand is lost on the spot. */
+    private boolean peek(ServerPlayer player) {
+        if (!table.canPeek()) return false;
+        var result = dev.gamblingitems.fabric.cheat.CasinoSecurity.attempt(player,
+                dev.gamblingitems.core.cheat.CheatRules.Tool.MARKED_LENS);
+        switch (result) {
+            case UNNOTICED -> table.markPeeked();
+            case CAUGHT -> table.forfeit();
+            default -> { return false; }
+        }
+        return true;
     }
 
     private boolean collect(Player player) {
@@ -171,6 +194,13 @@ public final class BlackjackMenu extends AbstractContainerMenu {
             ValueSync.write(data, PLANNED, table.stagedValue());
             writeCards(FIRST_CARD, table.hand());
             writeCards(FIRST_CARD + BlackjackSettings.MAX_CARDS, table.visibleDealer());
+            // What the lens read is sent to this seat alone; the felt everyone sees never shows it.
+            data.set(CHEAT_CHANCE, owner instanceof ServerPlayer player
+                    ? dev.gamblingitems.fabric.cheat.CasinoSecurity.shownChance(player,
+                            dev.gamblingitems.core.cheat.CheatRules.Tool.MARKED_LENS) : -1);
+            data.set(PEEKED, table.peeked() ? 1 : 0);
+            data.set(PEEK_HOLE, table.peekedHole() + 1);
+            data.set(PEEK_NEXT, table.peekedNext() + 1);
             showOnTable();
         }
         super.broadcastChanges();

@@ -27,6 +27,15 @@ public final class SlotScreen extends CasinoScreen<SlotMenu> {
 
     @Override protected GameMode mode() { return GameMode.SLOT_MACHINE; }
     @Override protected boolean portable() { return menu.portable(); }
+
+    @Override protected dev.gamblingitems.core.cheat.CheatRules.Tool cheatTool() {
+        return dev.gamblingitems.core.cheat.CheatRules.Tool.REEL_SHIM;
+    }
+    @Override protected int cheatButton() { return SlotMenu.CHEAT_BUTTON; }
+    @Override protected int cheatChance() { return menu.cheatChance(); }
+    @Override protected int cheatState() { return menu.shimSet() ? 1 : 0; }
+    // The shim can be slipped in, and taken out again, whenever the reels are still.
+    @Override protected boolean cheatUsable() { return !menu.spinning() && (menu.shimSet() || menu.cheatChance() >= 0); }
     @Override protected Component subtitle() {
         return Component.translatable("gui.gamblingitems.slot_subtitle", GameScreens.value(menu.settings().minimumStake()));
     }

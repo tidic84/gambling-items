@@ -54,6 +54,8 @@ public final class GameMenus {
     public static boolean open(ServerPlayer player, GameMode mode, ContainerLevelAccess access) {
         boolean portable = access == ContainerLevelAccess.NULL;
         if (player.isSpectator() || !AVAILABLE.contains(mode)) return false;
+        // A caught cheater is shown the door of every game until the ban runs out.
+        if (dev.gamblingitems.fabric.cheat.CasinoSecurity.refuses(player)) return false;
         dev.gamblingitems.fabric.block.StationInteractions.close(player.getUUID());
         if (portable) (TERMINAL.contains(mode) ? LAST_TERMINAL_GAME : LAST_CASINO_GAME).put(player.getUUID(), mode);
         switch (mode) {

@@ -33,6 +33,14 @@ public final class CrashScreen extends CasinoScreen<CrashMenu> {
     @Override protected GameMode mode() { return GameMode.CRASH; }
     @Override protected boolean portable() { return menu.portable(); }
 
+    @Override protected dev.gamblingitems.core.cheat.CheatRules.Tool cheatTool() {
+        return dev.gamblingitems.core.cheat.CheatRules.Tool.CRASH_WATCH;
+    }
+    @Override protected int cheatButton() { return CrashMenu.CHEAT_BUTTON; }
+    @Override protected int cheatChance() { return menu.cheatChance(); }
+    @Override protected int cheatState() { return menu.watch(); }
+    @Override protected boolean cheatUsable() { return menu.canWatch(); }
+
     @Override protected void init() {
         super.init();
         int bx = leftPos + CasinoLayout.SLIP_X + 8, by = topPos + CasinoLayout.SLIP_Y + 52, bw = CasinoLayout.SLIP_WIDTH - 16;
@@ -112,6 +120,8 @@ public final class CrashScreen extends CasinoScreen<CrashMenu> {
                 ? (int) Math.round(Math.sin(crashed * 1.7) * (SHAKE_TICKS - crashed) / 4.0) : 0;
         int left = x + GX + 6 + shake, right = x + GX + GW - 6 + shake;
         int top = y + GY + 6, bottom = y + GY + GH - 18;
+        // A watch that vibrated frames the curve in red, for this seat only.
+        if (menu.watch() == 2 && phase == CrashGame.Phase.FLYING) GameScreens.ring(g, left, top, right - left, bottom - top, GameScreens.RED);
         GameScreens.rounded(g, left, top, right - left, bottom - top, GameScreens.HOLE);
         for (int row = 1; row <= 3; row++) g.fill(left + 4, top + row * 21, right - 4, top + row * 21 + 1, 0xff12283a);
         boolean live = phase == CrashGame.Phase.FLYING || phase == CrashGame.Phase.CRASHED;

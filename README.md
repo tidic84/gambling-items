@@ -22,6 +22,27 @@ The **Exchange terminal** opens Trade Up, Upgrader, Cases and Case Battles. The 
 
 Games use Minecraft items. The server handles outcomes, stakes and unclaimed rewards. Shared rounds continue when an interface closes.
 
+### Cheating and casino security
+
+Four craftable tricks bend one casino game each. Carry one and a red button appears in the header of its game, showing the risk of being spotted.
+
+| Tool | Game | Effect |
+| --- | --- | --- |
+| Marked Card Lens | Blackjack | Reads the dealer's hole card and the next card of the shoe, once per hand. |
+| Roulette Magnet | Roulette | Drags the ball one pocket aside when that pays you more. |
+| Reel Shim | Slots | Your next pull keeps the better of two lines. |
+| Rigged Watch | Crash | Vibrates just before the round crashes. |
+
+Every use is a server-side detection roll. The chance grows with the player's suspicion, which builds up with each unnoticed trick and cools down over time, and with every **Security Camera** within sight. A caught cheater loses the tool and the stake of the round, is announced to nearby players and is banned from every game for a while. Operators can read a file with `/gamblingitems security status <player>` and clear it with `/gamblingitems security pardon <player>`.
+
+### Prediction market
+
+Bet YES or NO on what the players will do: earn an advancement, die a number of times, mine diamonds, kill mobs, or a question written on a paper named at an anvil. Open it from the **Predictions** tab of the pocket casino or from an **Odds Board**, which also shows the busiest questions to the room.
+
+Prices come from an automated market maker (logarithmic market scoring rule), so the price of YES reads as a probability and a question can be traded even by a single player. Each purchase gives a physical ticket that can be traded, stored, stolen and sold back before the deadline. The game settles questions about players by itself. A written question is answered by its creator, can be disputed for a few minutes, and is then decided by an operator with `/gamblingitems market resolve <id> yes|no|cancel`. Anyone can open a question by depositing its subsidy; the creator earns the trading fees and what the market maker did not lose. The house also opens questions about online players on its own.
+
+A player who bets on their own failure, such as YES on their own deaths, may have the winning ticket seized by the gaming commission and be banned.
+
 ## Installation
 
 1. Download the file matching your **exact Minecraft version and mod loader**.
@@ -42,6 +63,8 @@ Server settings live in `config/gamblingitems/games.json`. Adjust item values, g
 An optional casino currency lets you assign values to one or more vanilla or modded items. It is disabled by default. Selected casino games then accept and pay that currency; exchange games keep using the item catalogue. Restart the server after changing currency settings.
 
 The Upgrader supports enchanted books such as Mending and Sharpness V, including configured combinations. Set their enchantments, levels and prices in `upgrader.enchantedBooks`; eight examples are added automatically to existing configurations. Books can be selected as rewards or used as stakes when they exactly match a configured variant.
+
+The `security` section tunes cheat detection: each tool's base chance and suspicion, the weight of suspicion and cameras, the ban length and the camera range. Set `enabled` to `false` to turn every trick off. The `predictionMarket` section sets the value of a winning share, the creator fee, the smallest subsidy, the dispute windows, the gaming commission and the questions opened by the house (`houseMarkets`).
 
 See [portable devices and item values](ITEMS_AND_VALUES.md) for recipes and the limits of automatic valuation. This detailed guide is currently in French.
 
@@ -103,6 +126,7 @@ Open `platforms/fabric-1.21.1` in your IDE for Minecraft development, or the rep
 ## Further documentation
 
 - [Game design](CONCEPTION.md) (French).
+- [Cheating and prediction market](docs/triche-et-pronostics.md) (French).
 - [Architecture and porting](ARCHITECTURE.md) (French).
 - [CurseForge release preparation](release/curseforge/UPLOAD-FR.md) (French).
 - [Minecraft 1.20.1 startup crash diagnosis](docs/launch-crash-1.20.1.md) (French).

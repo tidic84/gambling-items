@@ -34,6 +34,14 @@ public final class RouletteScreen extends CasinoScreen<RouletteMenu> {
 
     @Override protected GameMode mode() { return GameMode.ROULETTE; }
     @Override protected boolean portable() { return menu.portable(); }
+
+    @Override protected dev.gamblingitems.core.cheat.CheatRules.Tool cheatTool() {
+        return dev.gamblingitems.core.cheat.CheatRules.Tool.ROULETTE_MAGNET;
+    }
+    @Override protected int cheatButton() { return RouletteMenu.CHEAT_BUTTON; }
+    @Override protected int cheatChance() { return menu.cheatChance(); }
+    @Override protected int cheatState() { return menu.magnetSet() ? 1 : 0; }
+    @Override protected boolean cheatUsable() { return menu.canMagnet(); }
     @Override protected Component subtitle() {
         return Component.translatable("gui.gamblingitems.roulette_subtitle", GameScreens.value(menu.settings().minimumStake()));
     }

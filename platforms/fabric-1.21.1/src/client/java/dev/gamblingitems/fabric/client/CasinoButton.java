@@ -8,8 +8,8 @@ import net.minecraft.network.chat.Component;
 
 /** Vanilla button behaviour and narration, drawn as a casino control. */
 public final class CasinoButton extends Button {
-    /** Green stakes something; secondary is any other action; quiet is for small tools such as arrows. */
-    public enum Style { PRIMARY, SECONDARY, QUIET }
+    /** Green stakes something; secondary is any other action; quiet is for small tools such as arrows; risk is a trick. */
+    public enum Style { PRIMARY, SECONDARY, QUIET, RISK }
     private final Style style;
 
     private CasinoButton(int x, int y, int width, int height, Component label, OnPress action, Style style) {
@@ -20,6 +20,7 @@ public final class CasinoButton extends Button {
     public static Builder builder(Component label, OnPress action) { return new Builder(label, action, Style.SECONDARY); }
     public static Builder primary(Component label, OnPress action) { return new Builder(label, action, Style.PRIMARY); }
     public static Builder quiet(Component label, OnPress action) { return new Builder(label, action, Style.QUIET); }
+    public static Builder risk(Component label, OnPress action) { return new Builder(label, action, Style.RISK); }
 
     @Override protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         boolean hot = active && isHoveredOrFocused();
@@ -32,6 +33,10 @@ public final class CasinoButton extends Button {
             case SECONDARY -> {
                 fill = !active ? 0xff1d3341 : hot ? GameScreens.HOVER : GameScreens.RAISED;
                 text = !active ? GameScreens.DIM : GameScreens.TEXT;
+            }
+            case RISK -> {
+                fill = !active ? 0xff2a1b23 : hot ? 0xffa8324a : 0xff7a2130;
+                text = !active ? 0xff7d5d66 : GameScreens.TEXT;
             }
             default -> {
                 fill = hot ? GameScreens.HOVER : 0;

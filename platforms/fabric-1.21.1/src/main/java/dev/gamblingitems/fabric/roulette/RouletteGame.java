@@ -78,6 +78,8 @@ public final class RouletteGame {
     private final RouletteSetup setup;
     private final LongSupplier draw;
     private final Map<UUID, Seat> seats = new LinkedHashMap<>();
+    /** Players with a magnet under the felt this round, in the order they set it; the first one pulls. */
+    private final java.util.Set<UUID> magnets = new java.util.LinkedHashSet<>();
     private Phase phase = Phase.WAITING;
     private int phaseTicks;
     private int resultNumber = -1;
@@ -120,6 +122,40 @@ public final class RouletteGame {
     }
 
     public boolean acceptsBets() { return phase == Phase.WAITING || phase == Phase.BETTING; }
+
+    /** A magnet is set while the bets are open, by a player who has chips on the felt. */
+    public boolean canMagnet(UUID player) {
+        Seat seat = seats.get(player);
+        return acceptsBets() && seat != null && seat.engaged() && !magnets.contains(player);
+    }
+
+    public boolean magnetSet(UUID player) { return magnets.contains(player); }
+
+    public boolean setMagnet(UUID player) {
+        if (!canMagnet(player)) return false;
+        magnets.add(player);
+        return true;
+    }
+
+    /** A cheat was caught at this table: the player's chips are the house's, whatever comes out. */
+    public void forfeit(UUID player) {
+        Seat seat = seats.get(player);
+        magnets.remove(player);
+        if (seat == null || seat.settled()) return;
+        clearChips(vault(player));
+        seat.paid = 0;
+        seat.settled = true;
+        stationTicks = 0;
+    }
+
+    /** What a seat would be paid if this number came out. */
+    private static long owed(Seat seat, int number) {
+        long owed = 0;
+        for (Map.Entry<Bet, Long> stake : seat.stakes.entrySet()) {
+            owed += RouletteWheel.payout(stake.getValue(), stake.getKey(), number);
+        }
+        return owed;
+    }
 
     /** The value waiting in the chip slots of this player. */
     public long stagedValue(UUID player) {
@@ -215,6 +251,14 @@ public final class RouletteGame {
     /** Bets close here. The pocket is drawn once, and no bet can be added or changed afterwards. */
     private void lock() {
         resultNumber = RouletteWheel.spin(draw.getAsLong(), DRAW_BOUND);
+        // A magnet set during the bets drags the ball one pocket aside, towards its owner's chips.
+        for (UUID cheater : magnets) {
+            Seat seat = seats.get(cheater);
+            if (seat == null || !seat.engaged()) continue;
+            resultNumber = dev.gamblingitems.core.cheat.CheatRules.magnet(RouletteWheel.pocketOf(resultNumber),
+                    RouletteWheel.POCKETS, RouletteWheel::numberAtPocket, number -> owed(seat, number));
+            break;
+        }
         phase = Phase.SPINNING;
         phaseTicks = settings().spinTicks();
     }
@@ -224,10 +268,7 @@ public final class RouletteGame {
             Seat seat = entry.getValue();
             if (seat.settled()) continue;
             Container vault = vault(entry.getKey());
-            long owed = 0;
-            for (Map.Entry<Bet, Long> stake : seat.stakes.entrySet()) {
-                owed += RouletteWheel.payout(stake.getValue(), stake.getKey(), resultNumber);
-            }
+            long owed = owed(seat, resultNumber);
             seat.paid = owed;
             seat.settled = true;
             if (owed >= seat.total()) {
@@ -264,6 +305,7 @@ public final class RouletteGame {
         resultNumber = -1;
         idleTicks = 0;
         seats.clear();
+        magnets.clear();
     }
 
     /** Cancels an unfinished round and gives every chip still on the table back exactly once. */

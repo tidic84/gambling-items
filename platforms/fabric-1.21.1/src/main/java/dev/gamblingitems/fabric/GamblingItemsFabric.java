@@ -65,6 +65,8 @@ public final class GamblingItemsFabric implements ModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(BattleLobbies::tick);
         ServerTickEvents.END_SERVER_TICK.register(BingoGames::tick);
         ServerTickEvents.END_SERVER_TICK.register(dev.gamblingitems.fabric.block.StationInteractions::tick);
+        ServerTickEvents.END_SERVER_TICK.register(dev.gamblingitems.fabric.cheat.CasinoSecurity::tick);
+        ServerTickEvents.END_SERVER_TICK.register(dev.gamblingitems.fabric.prediction.PredictionMarkets::tick);
         ServerLifecycleEvents.SERVER_STOPPING.register(dev.gamblingitems.fabric.block.StationInteractions::stop);
         // An interrupted round is cancelled and every engaged stake is given back exactly once.
         ServerLifecycleEvents.SERVER_STOPPING.register(CrashGames::stopping);
@@ -78,6 +80,7 @@ public final class GamblingItemsFabric implements ModInitializer {
             BlackjackTables.clear();
             BattleLobbies.clear();
             BingoGames.clear();
+            dev.gamblingitems.fabric.cheat.CasinoSecurity.clear();
         });
         String availableModes = GameMenus.AVAILABLE.stream().map(GameMode::id).collect(Collectors.joining(", "));
         String plannedModes = Arrays.stream(GameMode.values())
@@ -91,6 +94,7 @@ public final class GamblingItemsFabric implements ModInitializer {
                                     + " | Use a terminal or a station. Roadmap: " + plannedModes), false);
                             return 1;
                         }))));
+        CommandRegistrationCallback.EVENT.register((dispatcher, registries, environment) -> CasinoCommands.register(dispatcher));
         LOGGER.info("Gambling Items loaded. Playable: {}. Planned: {}", availableModes, plannedModes);
         // Release checks start a real server once per Minecraft version; it stops when the world is up.
         if (Boolean.getBoolean("gamblingitems.smoke")) ServerLifecycleEvents.SERVER_STARTED.register(server -> {

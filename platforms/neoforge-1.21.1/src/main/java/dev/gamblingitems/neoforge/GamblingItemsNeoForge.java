@@ -78,6 +78,8 @@ public final class GamblingItemsNeoForge {
             BattleLobbies.tick(server);
             BingoGames.tick(server);
             StationInteractions.tick(server);
+            dev.gamblingitems.fabric.cheat.CasinoSecurity.tick(server);
+            dev.gamblingitems.fabric.prediction.PredictionMarkets.tick(server);
         });
         // An interrupted round is cancelled and every engaged stake is given back exactly once.
         game.addListener(ServerStoppingEvent.class, event -> {
@@ -95,6 +97,7 @@ public final class GamblingItemsNeoForge {
             BlackjackTables.clear();
             BattleLobbies.clear();
             BingoGames.clear();
+            dev.gamblingitems.fabric.cheat.CasinoSecurity.clear();
         });
 
         String availableModes = GameMenus.AVAILABLE.stream().map(GameMode::id).collect(Collectors.joining(", "));
@@ -109,6 +112,8 @@ public final class GamblingItemsNeoForge {
                                     + " | Use a terminal or a station. Roadmap: " + plannedModes), false);
                             return 1;
                         }))));
+        game.addListener(RegisterCommandsEvent.class, event ->
+                dev.gamblingitems.fabric.CasinoCommands.register(event.getDispatcher()));
         LOGGER.info("Gambling Items loaded. Playable: {}. Planned: {}", availableModes, plannedModes);
         // Release checks start a real server once per Minecraft version; it stops when the world is up.
         if (Boolean.getBoolean("gamblingitems.smoke")) game.addListener(net.neoforged.neoforge.event.server.ServerStartedEvent.class, event -> {

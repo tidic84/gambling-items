@@ -3,6 +3,7 @@
   "textures": {
     "cab_chrome": "gamblingitems:block/cab_chrome",
     "cab_felt": "gamblingitems:block/cab_felt",
+    "cab_gold": "gamblingitems:block/cab_gold",
     "cab_graphite": "gamblingitems:block/cab_graphite",
     "cab_graphite_side": "gamblingitems:block/cab_graphite_side",
     "cab_interior": "gamblingitems:block/cab_interior",

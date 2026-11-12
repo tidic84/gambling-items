@@ -176,6 +176,19 @@ final class MachineCabinet {
     static void odds(PoseStack pose, WorldCanvas buffers, Font font, GameMode mode, int[][] table, int choice,
                              float x1, float y1, float x2, float y2) {
         quad(pose, buffers, x1, y1, x2, y2, 0xff0b111a, 0);
+        if (!near) {
+            // From across the room the panel only calls players over with the best prize.
+            int top = 0;
+            for (int multiplier : table[0]) top = Math.max(top, multiplier);
+            if (top > 0) {
+                float middle = (y1 + y2) / 2, height = y2 - y1;
+                label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.machine_up_to"), (x1 + x2) / 2,
+                        middle - height * 0.2f, SILVER, Math.min(0.9f, height / 40), x2 - x1 - 6, 0.2f);
+                label(pose, buffers, font, GameScreens.multiplier(top), (x1 + x2) / 2, middle + height * 0.14f,
+                        GOLD, Math.min(2.4f, height / 16), x2 - x1 - 6, 0.2f);
+            }
+            return;
+        }
         List<String[]> lines = best(mode, table, choice);
         float row = (y2 - y1) / 4;
         float scale = Math.min(0.6f, row / 11);
@@ -239,6 +252,13 @@ final class MachineCabinet {
         int[] multipliers = table[0], weights = table[1];
         double turn = shown ? MachineMotion.wheelTurn(weights, Math.min(outcome[0], weights.length - 1), outcome[1] % 1000, progress) : 0;
         boolean landed = shown && progress >= 1;
+        // How fast the wheel turns, from 0 at rest to 1 at full speed: past half speed it blurs and its prizes smear.
+        double blur = 0;
+        if (shown && progress < 1 && !ClientOptions.reducedMotion()) {
+            double ahead = MachineMotion.wheelTurn(weights, Math.min(outcome[0], weights.length - 1), outcome[1] % 1000,
+                    Math.min(1, progress + 0.01));
+            blur = Math.min(1, Math.abs(ahead - turn) / 0.01 / 9);
+        }
         sector(pose, buffers, 0, WHEEL_Y, 0, WHEEL_RADIUS + 3, 0, 2 * Math.PI, DARK, 0);
         // How close the nearest peg is to the flapper at the top, in radians.
         double nearestPeg = Math.PI;
@@ -257,8 +277,17 @@ final class MachineCabinet {
             float pegX = (float) Math.cos(from) * (WHEEL_RADIUS - 2.5f), pegY = WHEEL_Y + (float) Math.sin(from) * (WHEEL_RADIUS - 2.5f);
             quad(pose, buffers, pegX - 1.6f, pegY - 1.6f, pegX + 1.6f, pegY + 1.6f, CHROME, 0.3f);
             nearestPeg = Math.min(nearestPeg, Math.abs(Math.IEEEremainder(from + Math.PI / 2, 2 * Math.PI)));
-            // What the sector pays, written along its radius so it reads as the wheel turns.
-            if (width > 0.22) {
+            // Motion blur: the sector trails two fainter copies of itself behind the way it turns.
+            if (blur > 0.25) {
+                for (int ghost = 1; ghost <= 2; ghost++) {
+                    double back = ghost * 0.09 * blur;
+                    int alpha = (int) ((ghost == 1 ? 0x70 : 0x38) * blur);
+                    sector(pose, buffers, 0, WHEEL_Y, 14, WHEEL_RADIUS, from - back, to - back, alpha << 24 | (colour & 0xffffff),
+                            0.16f + ghost * 0.01f);
+                }
+            }
+            // What the sector pays, written along its radius so it reads as the wheel turns; at speed it is a smear.
+            if (width > 0.22 && blur < 0.55) {
                 pose.pushPose();
                 pose.translate(0, WHEEL_Y, 0);
                 pose.mulPose(Axis.ZP.rotation((float) (from + width / 2)));

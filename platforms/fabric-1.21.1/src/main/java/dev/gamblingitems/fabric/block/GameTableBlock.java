@@ -171,7 +171,7 @@ public final class GameTableBlock extends BaseEntityBlock implements GameSurface
     //#endif
 
     /**
-     * A table is played on where it is touched: the controls printed along the near edge answer
+     * A table is played on where it is touched: the things standing along the near edge answer
      * like the panel of a station, and on a roulette every printed area is its own bet. A click
      * that lands on none of them opens the full window, as it always did.
      */

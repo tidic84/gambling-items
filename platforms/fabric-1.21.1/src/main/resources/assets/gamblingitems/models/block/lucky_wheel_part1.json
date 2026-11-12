@@ -2,7 +2,9 @@
   "parent": "minecraft:block/block",
   "textures": {
     "cab_brass": "gamblingitems:block/cab_brass",
+    "cab_gold": "gamblingitems:block/cab_gold",
     "cab_lamp_red": "gamblingitems:block/cab_lamp_red",
+    "cab_lamp_white": "gamblingitems:block/cab_lamp_white",
     "cab_navy": "gamblingitems:block/cab_navy",
     "cab_navy_side": "gamblingitems:block/cab_navy_side",
     "cab_rubber": "gamblingitems:block/cab_rubber",

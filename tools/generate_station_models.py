@@ -27,27 +27,54 @@ def monitor():
     def box(a, b, material):
         boxes.append((a, b, material))
 
+    def bulb(u, y, z, lens='cab_lamp_white', size=.7):
+        box((u - size / 2, y - size / 2, z - .3), (u + size / 2, y + size / 2, z), lens)
+
     # The casing behind the glass, and the glass the station draws on.
-    box((0, 0, .5), (48, 32, 4), ('cab_graphite', {'south': 'cab_vents'}))
+    box((0, 0, .5), (48, 32, 4), ('cab_obsidian', {'south': 'cab_vents'}))
     box((0, 2, 0), (48, 32, .5), 'cab_screen')
-    # The bezel: a deep bottom rail, slim sides and top, all outside the screen.
-    box((-1.4, 0, -.6), (49.4, 2, 4.4), 'cab_graphite')
-    box((-1.4, 1.6, -.75), (49.4, 2, -.6), 'cab_brass')
-    box((-1.4, 2, -.6), (0, 32, 4.4), 'cab_graphite')
-    box((48, 2, -.6), (49.4, 32, 4.4), 'cab_graphite')
-    box((-1.4, 32, -.6), (49.4, 33.4, 4.4), 'cab_graphite')
-    # The brass lip all round the front of the bezel.
-    box((-1.7, 0, -.8), (-1.2, 33.7, 4.4), 'cab_brass')
-    box((48.6 + .6, 0, -.8), (49.7, 33.7, 4.4), 'cab_brass')
-    box((-1.2, 33.2, -.8), (49.2, 33.7, 4.4), 'cab_brass')
-    # A strip of lamps along the top of the frame, and the speaker grilles at the foot.
-    box((4, 32.5, -.7), (44, 33, -.6), 'cab_lamp_amber')
+    # The bezel: a deep bottom rail, slim sides and top, all outside the screen, in black lacquer.
+    box((-1.4, 0, -.6), (49.4, 2, 4.4), 'cab_obsidian')
+    box((-1.4, 1.6, -.75), (49.4, 2, -.6), 'cab_gold')
+    box((-1.4, 2, -.6), (0, 32, 4.4), 'cab_obsidian')
+    box((48, 2, -.6), (49.4, 32, 4.4), 'cab_obsidian')
+    box((-1.4, 32, -.6), (49.4, 33.4, 4.4), 'cab_obsidian')
+    # The gold lip all round the front of the bezel.
+    box((-1.7, 0, -.8), (-1.2, 33.7, 4.4), 'cab_gold')
+    box((48.6 + .6, 0, -.8), (49.7, 33.7, 4.4), 'cab_gold')
+    box((-1.2, 33.2, -.8), (49.2, 33.7, 4.4), 'cab_gold')
+    # Bulbs all along the top of the frame, and the speaker grilles at the foot.
+    for index in range(25):
+        bulb(1 + index * 46 / 24, 32.7, -.8)
     box((2, .3, -.65), (10, 1.4, -.6), 'cab_grille')
     box((38, .3, -.65), (46, 1.4, -.6), 'cab_grille')
+    # A pilaster on either side: a lacquered column on a gold base, a column of bulbs up its face.
+    for u1, u2 in ((-4.6, -1.7), (49.7, 52.6)):
+        box((u1 - .4, 0, -1.2), (u2 + .4, 1, 4.4), 'cab_gold')
+        box((u1, 1, -.9), (u2, 33, 4.4), ('cab_obsidian', {'east': 'cab_obsidian_side', 'west': 'cab_obsidian_side'}))
+        box((u1 - .3, 33, -1.2), (u2 + .3, 34, 4.4), 'cab_gold')
+        box((u1 + .5, 34, -.6), (u2 - .5, 35.4, 3.6), 'cab_gold')
+        for index in range(9):
+            bulb((u1 + u2) / 2, 3 + index * 3.6, -.9)
+    # The crest over the middle: a black arch in a gold rim set with bulbs, a red jewel at its top.
+    radius, cu, y0 = 6.5, 24, 33.7
+    for step in range(int(radius * 2)):
+        low, high = y0 + step * .5, y0 + (step + 1) * .5
+        half = math.sqrt(max(0, radius ** 2 - (low - y0) ** 2))
+        inner = math.sqrt(max(0, (radius - .9) ** 2 - (low - y0) ** 2))
+        if half < .3:
+            break
+        box((cu - half, low, -.4), (cu + half, high, 2.6), 'cab_gold')
+        if inner > .2:
+            box((cu - inner, low, -.45), (cu + inner, high, 2.65), 'cab_obsidian')
+    for index in range(9):
+        angle = math.pi * (index + .5) / 9
+        bulb(cu + math.cos(angle) * (radius - .45), y0 + math.sin(angle) * (radius - .45), -.45)
+    box((cu - 1.2, y0 + 1.5, -.7), (cu + 1.2, y0 + 3.9, -.45), 'cab_lamp_red')
     # Two feet reaching back, so the monitor stands rather than hangs.
     for u in (5, 39):
-        box((u, 0, 4), (u + 4, 1.2, 11), 'cab_rubber')
-        box((u + 1, 1.2, 4), (u + 3, 6, 5.5), 'cab_graphite')
+        box((u, 0, 4), (u + 4, 1.2, 11), 'cab_gold')
+        box((u + 1, 1.2, 4), (u + 3, 6, 5.5), 'cab_obsidian')
     return boxes
 
 
@@ -66,7 +93,7 @@ def textures_of(boxes, extra=()):
             names.add(material[0])
             names.update(material[1].values())
     textures = {name: f'gamblingitems:block/{name}' for name in sorted(names)}
-    textures['particle'] = 'gamblingitems:block/cab_graphite'
+    textures['particle'] = 'gamblingitems:block/cab_obsidian'
     return textures
 
 
@@ -166,7 +193,8 @@ def icon(game):
 
 
 def main():
-    for name in ('cab_graphite', 'cab_vents', 'cab_screen', 'cab_brass', 'cab_lamp_amber', 'cab_grille', 'cab_rubber'):
+    for name in ('cab_graphite', 'cab_vents', 'cab_screen', 'cab_brass', 'cab_lamp_amber', 'cab_grille', 'cab_rubber',
+                 'cab_obsidian', 'cab_obsidian_side', 'cab_gold', 'cab_lamp_white', 'cab_lamp_red'):
         TEXTURE_SET[name]().save(TEXTURES / f'{name}.png', optimize=True)
     boxes = monitor()
     textures = textures_of(boxes)

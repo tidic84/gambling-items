@@ -1,14 +1,15 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "cab_brass": "gamblingitems:block/cab_brass",
-    "cab_graphite": "gamblingitems:block/cab_graphite",
+    "cab_gold": "gamblingitems:block/cab_gold",
     "cab_grille": "gamblingitems:block/cab_grille",
-    "cab_lamp_amber": "gamblingitems:block/cab_lamp_amber",
-    "cab_rubber": "gamblingitems:block/cab_rubber",
+    "cab_lamp_red": "gamblingitems:block/cab_lamp_red",
+    "cab_lamp_white": "gamblingitems:block/cab_lamp_white",
+    "cab_obsidian": "gamblingitems:block/cab_obsidian",
+    "cab_obsidian_side": "gamblingitems:block/cab_obsidian_side",
     "cab_screen": "gamblingitems:block/cab_screen",
     "cab_vents": "gamblingitems:block/cab_vents",
-    "particle": "gamblingitems:block/cab_graphite"
+    "particle": "gamblingitems:block/cab_obsidian"
   },
   "elements": [
     {
@@ -24,7 +25,7 @@
       ],
       "faces": {
         "down": {
-          "texture": "#cab_graphite",
+          "texture": "#cab_obsidian",
           "uv": [
             0,
             12,
@@ -33,7 +34,7 @@
           ]
         },
         "up": {
-          "texture": "#cab_graphite",
+          "texture": "#cab_obsidian",
           "uv": [
             0,
             0.5,
@@ -42,7 +43,7 @@
           ]
         },
         "north": {
-          "texture": "#cab_graphite",
+          "texture": "#cab_obsidian",
           "uv": [
             0,
             0,
@@ -60,7 +61,7 @@
           ]
         },
         "west": {
-          "texture": "#cab_graphite",
+          "texture": "#cab_obsidian",
           "uv": [
             0.5,
             0,
@@ -69,7 +70,7 @@
           ]
         },
         "east": {
-          "texture": "#cab_graphite",
+          "texture": "#cab_obsidian",
           "uv": [
             12,
             0,
@@ -160,7 +161,7 @@
       ],
       "faces": {
         "down": {
-          "texture": "#cab_graphite",
+          "texture": "#cab_obsidian",
           "uv": [
             0,
             0,
@@ -169,7 +170,7 @@
           ]
         },
         "up": {
-          "texture": "#cab_graphite",
+          "texture": "#cab_obsidian",
           "uv": [
             0,
             0,
@@ -178,7 +179,7 @@
           ]
         },
         "north": {
-          "texture": "#cab_graphite",
+          "texture": "#cab_obsidian",
           "uv": [
             0,
             14,
@@ -187,7 +188,7 @@
           ]
         },
         "south": {
-          "texture": "#cab_graphite",
+          "texture": "#cab_obsidian",
           "uv": [
             0,
             14,
@@ -196,7 +197,7 @@
           ]
         },
         "west": {
-          "texture": "#cab_graphite",
+          "texture": "#cab_obsidian",
           "uv": [
             0,
             0,
@@ -205,7 +206,7 @@
           ]
         },
         "east": {
-          "texture": "#cab_graphite",
+          "texture": "#cab_obsidian",
           "uv": [
             0,
             0,
@@ -228,7 +229,7 @@
       ],
       "faces": {
         "down": {
-          "texture": "#cab_brass",
+          "texture": "#cab_gold",
           "uv": [
             0,
             0,
@@ -237,7 +238,7 @@
           ]
         },
         "up": {
-          "texture": "#cab_brass",
+          "texture": "#cab_gold",
           "uv": [
             0,
             0,
@@ -246,7 +247,7 @@
           ]
         },
         "north": {
-          "texture": "#cab_brass",
+          "texture": "#cab_gold",
           "uv": [
             0,
             14,
@@ -255,7 +256,7 @@
           ]
         },
         "south": {
-          "texture": "#cab_brass",
+          "texture": "#cab_gold",
           "uv": [
             0,
             14,
@@ -264,7 +265,7 @@
           ]
         },
         "west": {
-          "texture": "#cab_brass",
+          "texture": "#cab_gold",
           "uv": [
             0,
             0,
@@ -273,7 +274,7 @@
           ]
         },
         "east": {
-          "texture": "#cab_brass",
+          "texture": "#cab_gold",
           "uv": [
             0,
             0,

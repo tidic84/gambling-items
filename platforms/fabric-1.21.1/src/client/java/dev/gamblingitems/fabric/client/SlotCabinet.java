@@ -38,6 +38,12 @@ public final class SlotCabinet {
     private static boolean jackpot;
     /** The dyed theme of the cabinet being drawn, as it stores it; same shortcut as jackpot. */
     private static int theme;
+    /**
+     * Whether the camera stands close enough to the cabinet being drawn to read its fine print (paytable,
+     * odds, the call to play); from further away the cabinet shows its artwork instead. Same shortcut as jackpot.
+     */
+    static boolean near;
+    private static final double READING_DISTANCE = 5.5;
     private static final float REEL_WIDTH = 27, REEL_GAP = 4, REEL_LEFT = -44.5f, REEL_TOP = -164, REEL_BOTTOM = -97;
 
     private SlotCabinet() {}
@@ -58,6 +64,8 @@ public final class SlotCabinet {
         float light = 0.3f + 0.7f * raw / 15f;
         jackpot = celebrating(station, now);
         theme = station.theme;
+        var camera = net.minecraft.client.Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        near = camera.distanceToSqr(station.getBlockPos().getCenter()) < READING_DISTANCE * READING_DISTANCE;
         CabinetSounds.follow(station, now, progress, playing);
         AmbientMusic.heard(station);
         CabinetAmbience.neons(station, pose, buffers, now);
@@ -71,6 +79,7 @@ public final class SlotCabinet {
             pose.popPose();
             jackpot = false;
             theme = 0;
+            near = false;
         }
         if (celebrating(station, now)) celebrate(station);
     }
@@ -126,9 +135,10 @@ public final class SlotCabinet {
         boolean rolling = playing && progress < 1;
         boolean won = !station.idle() && !rolling && station.highlight;
         lever(pose, buffers, progress, playing);
+        marqueeBulbs(pose, buffers, now, rolling, won);
 
         surface(pose, 0.3f);
-        sign(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.mode.slot_machine"),
+        sign(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.slot_marquee"),
                 -59, -227, 59, -197, rolling, won, now);
         pose.popPose();
 
@@ -150,6 +160,24 @@ public final class SlotCabinet {
         pose.popPose();
     }
 
+    /**
+     * The bulbs set into the model (tools/generate_cabinet_models.py, slot_machine): the two columns beside
+     * the window and the ring of the crown, lit in turn so the light runs up the columns and round the arch.
+     */
+    private static void marqueeBulbs(PoseStack pose, WorldCanvas buffers, double now, boolean rolling, boolean won) {
+        for (int index = 0; index < 8; index++) {
+            float y = 15.5f + (31 - 15.5f) * index / 7;
+            int colour = lamp(7 - index, now, rolling, won);
+            cube(pose, buffers, 0.1f, y - 0.4f, 0.95f, 0.9f, y + 0.4f, 1.32f, colour, 1);
+            cube(pose, buffers, 15.1f, y - 0.4f, 0.95f, 15.9f, y + 0.4f, 1.32f, colour, 1);
+        }
+        for (int index = 0; index < 11; index++) {
+            double angle = Math.PI * (index + 0.5) / 11;
+            float u = (float) (8 + Math.cos(angle) * 7), y = (float) (37 + Math.sin(angle) * 7);
+            cube(pose, buffers, u - 0.5f, y - 0.5f, 1.1f, u + 0.5f, y + 0.5f, 1.52f, lamp(index + 8, now, rolling, won), 1);
+        }
+    }
+
     /** A lamp of a chase: steady red at rest, running while the game plays, all green on a win. */
     static int lamp(int index, double now, boolean rolling, boolean won) {
         if (jackpot) return JACKPOT_LAMPS[(int) ((long) (now / 1.5) + index) % JACKPOT_LAMPS.length];
@@ -157,7 +185,8 @@ public final class SlotCabinet {
         if (rolling) return ((long) (now / 2) + index) % 3 == 0 ? TEXT : LAMP_OFF;
         int[] palette = CabinetAmbience.palette(theme, now, index);
         if (palette != null) return index % 2 == 0 || CabinetTheme.of(theme) == CabinetTheme.VEGAS ? palette[0] : palette[1];
-        return index % 2 == 0 ? 0xffe0a24a : LAMP_OFF;
+        // At rest the lamps chase slowly, warm gold on dark, to draw players in.
+        return ((long) (now / 6) + index) % 3 == 0 ? 0xfffff0c0 : index % 2 == 0 ? 0xffe0a24a : 0xff8a5a2a;
     }
 
     /** A lit sign: a glowing band, the name in gold, and bulbs above and below it. */
@@ -193,6 +222,7 @@ public final class SlotCabinet {
             text = WorldCanvas.translate("gui.gamblingitems." + rollingKey);
             colour = TEXT;
         } else if (station.idle()) {
+            if (!near) return;
             text = WorldCanvas.translate("gui.gamblingitems.station_ready");
             colour = SILVER;
         } else {
@@ -222,12 +252,36 @@ public final class SlotCabinet {
             quad(pose, buffers, left, REEL_TOP + 9, right, REEL_TOP + 14, 0xffd8d2c3, 0.15f);
             quad(pose, buffers, left, REEL_BOTTOM - 14, right, REEL_BOTTOM - 9, 0xffd8d2c3, 0.15f);
             quad(pose, buffers, left, REEL_BOTTOM - 9, right, REEL_BOTTOM, 0xffb8b2a4, 0.15f);
-            boolean stopped = !playing || progress >= 1 - STAGGER * (SlotRules.REELS - 1 - reel);
+            double stopsAt = 1 - STAGGER * (SlotRules.REELS - 1 - reel);
+            boolean stopped = !playing || progress >= stopsAt;
             double travel = now * 0.7 + reel * 2.3;
             int symbol = stopped ? line[reel] : Math.floorMod((long) Math.floor(travel), SlotRules.SYMBOLS);
-            float offset = stopped ? 0 : (float) (travel - Math.floor(travel)) * 30;
-            reelSymbol(pose, buffers, symbol, left + REEL_WIDTH / 2, middle + offset);
-            if (!stopped) reelSymbol(pose, buffers, (symbol + 1) % SlotRules.SYMBOLS, left + REEL_WIDTH / 2, middle - 30 + offset);
+            float centre = left + REEL_WIDTH / 2;
+            if (stopped) {
+                // The reel catches on its stop, overshoots and settles back: a damped bounce over a few ticks.
+                double since = playing ? (progress - stopsAt) * Math.max(1, station.animationTicks) : 99;
+                float bounce = since < 10 && !ClientOptions.reducedMotion()
+                        ? (float) (7 * Math.exp(-since / 2.6) * Math.cos(since * 1.25)) : 0;
+                reelSymbol(pose, buffers, symbol, centre, middle + bounce, 0xff);
+                if (bounce > 1) reelSymbol(pose, buffers, (symbol + SlotRules.SYMBOLS - 1) % SlotRules.SYMBOLS, centre, middle + bounce + 30, 0xff);
+                if (bounce < -1) reelSymbol(pose, buffers, (symbol + 1) % SlotRules.SYMBOLS, centre, middle + bounce - 30, 0xff);
+            } else {
+                float offset = (float) (travel - Math.floor(travel)) * 30;
+                // Motion blur: each symbol trails fainter copies of itself along the way it runs.
+                for (int ghost = 2; ghost >= 0; ghost--) {
+                    int alpha = ghost == 0 ? 0xc0 : ghost == 1 ? 0x60 : 0x30;
+                    float trail = -ghost * 6;
+                    reelSymbol(pose, buffers, symbol, centre, middle + offset + trail, alpha);
+                    reelSymbol(pose, buffers, (symbol + 1) % SlotRules.SYMBOLS, centre, middle - 30 + offset + trail, alpha);
+                    reelSymbol(pose, buffers, (symbol + 2) % SlotRules.SYMBOLS, centre, middle - 60 + offset + trail, alpha);
+                }
+                // Streaks of the drum running past under the light.
+                quad(pose, buffers, left, REEL_TOP, right, REEL_BOTTOM, 0x30fffaf0, 0.45f);
+                for (int streak = 0; streak < 3; streak++) {
+                    float x = left + 5 + streak * 8.5f;
+                    quad(pose, buffers, x, REEL_TOP + 3, x + 1.2f, REEL_BOTTOM - 3, 0x22000000, 0.46f);
+                }
+            }
         }
         int payline = won ? GREEN : 0xccd2434f;
         quad(pose, buffers, -45, middle - 0.6f, 45, middle + 0.6f, payline, 0.5f);
@@ -235,15 +289,17 @@ public final class SlotCabinet {
         quad(pose, buffers, 42, middle - 3, 45.6f, middle + 3, GOLD, 0.6f);
     }
 
-    private static void reelSymbol(PoseStack pose, WorldCanvas buffers, int symbol, float x, float y) {
+    private static void reelSymbol(PoseStack pose, WorldCanvas buffers, int symbol, float x, float y, int alpha) {
         SlotSymbols.draw(symbol, x, y, 22, (x1, y1, x2, y2, colour) -> {
             float top = Math.max(REEL_TOP + 2, y1), bottom = Math.min(REEL_BOTTOM - 2, y2);
-            if (top < bottom) quad(pose, buffers, x1, top, x2, bottom, colour, 0.3f);
+            int faded = alpha >= 0xff ? colour : (((colour >>> 24) * alpha / 0xff) << 24) | (colour & 0xffffff);
+            if (top < bottom) quad(pose, buffers, x1, top, x2, bottom, faded, 0.3f);
         });
     }
 
     /** The best lines of the paytable, printed on the belly of the cabinet. */
     private static void paytable(PoseStack pose, WorldCanvas buffers, Font font) {
+        if (!near) return;
         quad(pose, buffers, -44, -20, 44, 28, 0xff0b111a, 0);
         label(pose, buffers, font, WorldCanvas.translate("gui.gamblingitems.slot_paytable"),
                 0, -13, GOLD, 0.55f, 80, 0.2f);

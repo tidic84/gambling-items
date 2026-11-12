@@ -12,6 +12,7 @@ x = 24 - cx / 8, z = 16 - cy / 8. Needs Pillow for the textures.
 """
 import json
 import math
+import os
 import random
 from pathlib import Path
 
@@ -29,29 +30,36 @@ TEXTURES = dict(wood='gamblingitems:block/table_wood', panel='gamblingitems:bloc
 # The bingo table takes a blue cloth, so it reads apart from the green card tables.
 FELT = {'roulette': 'gamblingitems:block/table_felt_green', 'blackjack': 'gamblingitems:block/table_felt_green',
         'bingo': 'gamblingitems:block/table_felt_blue'}
+# The roulette is the Monte-Carlo table (1). The others are kept for skins to come (see
+# TableLayout.DIRECTION): 0 Vegas, 2 electronic, 3 saloon. ROULETTE_DIRECTION builds one of them instead.
+DIRECTION = int(os.environ.get('ROULETTE_DIRECTION', '1'))
+ROULETTE_TEXTURES = dict(wood='gamblingitems:block/roulette_wood', panel='gamblingitems:block/roulette_panel',
+                         dark='gamblingitems:block/roulette_dark', leather='gamblingitems:block/roulette_leather',
+                         brass='gamblingitems:block/roulette_metal', glow='gamblingitems:block/roulette_glow',
+                         felt='gamblingitems:block/roulette_felt')
 # Where the game draws its pieces on the felt, in model space (see the canvas mapping above).
-WHEEL = (39.5, 18.25)        # the roulette wheel, canvas (-124, -18), radius 8
 CUP = (41.5, 11.75)          # the bingo cup, canvas (-140, 34), radius 3.75
 TOP = 13.28                  # the felt StationTables draws on, 0.83 of a block
 
 
 # --- Textures ---------------------------------------------------------------------------------
 
-def leather(seed):
-    """Tufted oxblood leather: diamond creases between deep buttons, a soft sheen on each cushion."""
+def leather(seed, base=(104, 28, 32), stitch=(150, 96, 70)):
+    """Padded leather, oxblood unless told otherwise: a fine pebbled grain, a soft sheen drifting across
+    the hide, and a saddle stitch running along it. Every term repeats over the tile, so a long rail
+    shows no seam."""
     rng = random.Random(seed)
     image = Image.new('RGB', (16, 16))
     for y in range(16):
         for x in range(16):
-            dx, dy = (x + .5) % 8 - 4, (y + .5) % 8 - 4
-            cushion = 1 - (abs(dx) + abs(dy)) / 8
-            c = mix((46, 12, 14), (118, 34, 38), cushion)
-            if abs(abs(dx) + abs(dy) - 4) < .7:
-                c = (30, 8, 10)
-            image.putpixel((x, y), clamp(tuple(v + rng.uniform(-3, 3) for v in c)))
-    for bx, by in ((0, 0), (8, 0), (0, 8), (8, 8), (4, 4), (12, 4), (4, 12), (12, 12)):
-        if (bx + by) % 8 == 0:
-            image.putpixel((bx, by), (196, 156, 80))
+            sheen = math.sin(math.tau * (x + 2 * y) / 16) * 5 + math.sin(math.tau * (3 * x - y) / 16) * 3
+            pebble = rng.uniform(-6, 6) if (x * 7 + y * 3) % 5 else -9
+            c = tuple(v + sheen + pebble for v in base)
+            if y == 13 and x % 3 != 2:
+                c = stitch
+            elif y in (12, 14):
+                c = tuple(v - 10 for v in c)
+            image.putpixel((x, y), clamp(c))
     return image
 
 
@@ -65,15 +73,109 @@ def lacquer():
     return image
 
 
-def cloth(base, seed):
-    """Casino baize: a fine twill, a little lighter along every other diagonal."""
+def cloth(base, seed, size=64):
+    """Casino baize, four times finer than a block texture: a tight twill, loose fibres catching the
+    light, and a soft mottling where the nap lies one way or the other. Every term repeats over the
+    tile, so the cloth runs on from one block of the table to the next without a seam."""
+    rng = random.Random(seed)
+    waves = [(rng.randint(1, 3), rng.randint(-3, 3), rng.uniform(0, math.tau), rng.uniform(1.5, 3)) for _ in range(5)]
+    image = Image.new('RGB', (size, size))
+    for y in range(size):
+        for x in range(size):
+            # The weave: a diagonal rib every other thread, and a fainter cross thread under it.
+            twill = 3.5 if (x + y) % 4 < 2 else -2.5
+            cross = 1 if (x - y) % 8 == 0 else 0
+            # The nap: broad soft patches, lighter and darker.
+            nap = sum(amp * math.sin(math.tau * (kx * x + ky * y) / size + phase) for kx, ky, phase, amp in waves)
+            # A few stray fibres, lighter than the cloth.
+            fibre = rng.uniform(5, 9) if rng.random() < .025 else 0
+            grain = rng.uniform(-2.5, 2.5)
+            image.putpixel((x, y), clamp(tuple(v + twill + cross + nap + fibre + grain for v in base)))
+    return image
+
+
+def metal(base, seed):
+    """Brushed metal: fine scratches along it and a soft band of light across."""
     rng = random.Random(seed)
     image = Image.new('RGB', (16, 16))
     for y in range(16):
+        scratch = rng.uniform(-7, 7)
         for x in range(16):
-            twill = 5 if (x + y) % 4 < 2 else -3
-            image.putpixel((x, y), clamp(tuple(v + twill + rng.uniform(-3, 3) for v in base)))
+            band = 22 * math.cos((x + y * 0.3) / 16 * math.tau)
+            image.putpixel((x, y), clamp(tuple(v + scratch + band + rng.uniform(-2, 2) for v in base)))
     return image
+
+
+def framed(image, line):
+    """A panel cut from a plain texture: a line round it, the field inside left as it is."""
+    image = image.copy()
+    for i in range(16):
+        for at in ((i, 1), (i, 14), (1, i), (14, i)):
+            if 1 <= at[0] <= 14 and 1 <= at[1] <= 14:
+                image.putpixel(at, line)
+    return image
+
+
+def glass(seed, size=64):
+    """The black glass of an electronic table: a faint grid of light under it and a sheen across it."""
+    rng = random.Random(seed)
+    image = Image.new('RGB', (size, size))
+    for y in range(size):
+        for x in range(size):
+            c = (7, 9, 14)
+            if x % 8 == 0 or y % 8 == 0:
+                c = (13, 22, 32)
+            if x % 16 == 0 and y % 16 == 0:
+                c = (30, 70, 90)
+            sheen = 5 * math.sin(math.tau * (x + y) / size)
+            image.putpixel((x, y), clamp(tuple(v + sheen + rng.uniform(-1, 1) for v in c)))
+    return image
+
+
+def planks(seed, size=64):
+    """A table top of oak boards: each a tone of its own, grain along it, a dark joint, a nail at the ends."""
+    rng = random.Random(seed)
+    image = Image.new('RGB', (size, size))
+    for board in range(size // 16):
+        tone = rng.uniform(-12, 12)
+        shift = rng.randint(0, size)
+        for y in range(16):
+            streak = math.sin(y * 1.9 + board) * 5
+            for x in range(size):
+                c = tuple(v + tone + streak + rng.uniform(-5, 5) for v in (134, 96, 54))
+                if y == 15:
+                    c = (46, 30, 16)
+                elif (x + shift) % size == 0:
+                    c = (58, 38, 20)
+                elif y in (3, 11) and (x + shift) % size in (2, size - 3):
+                    c = (40, 40, 44)
+                image.putpixel((x, board * 16 + y), clamp(c))
+    return image
+
+
+def roulette_textures():
+    """The seven textures of the roulette, for the table it is asked to be."""
+    if DIRECTION == 1:
+        # Monte-Carlo: blond walnut, cream leather, a midnight cloth.
+        blond = wood(81, (128, 88, 44))
+        return dict(wood=blond, panel=framed(blond, (84, 54, 24)), dark=wood(82, (60, 36, 18)),
+                    leather=leather(83, (214, 196, 160), (150, 120, 80)), metal=polished_brass(),
+                    glow=polished_brass(), felt=cloth((16, 28, 70), 84))
+    if DIRECTION == 2:
+        # Electronic: black lacquer, steel, glass, and a line of light.
+        black = lacquer()
+        light = Image.new('RGB', (16, 16), (53, 224, 255))
+        return dict(wood=black, panel=framed(black, (53, 224, 255)), dark=black,
+                    leather=leather(93, (26, 26, 32), (53, 224, 255)), metal=metal((150, 160, 175), 94),
+                    glow=light, felt=glass(95))
+    if DIRECTION == 3:
+        # Saloon: oak, a brown hide, iron, and boards for a top.
+        oak = wood(101, (112, 78, 42))
+        return dict(wood=oak, panel=framed(oak, (58, 38, 20)), dark=wood(102, (52, 34, 18)),
+                    leather=leather(103, (112, 72, 40), (200, 170, 110)), metal=metal((84, 84, 90), 104),
+                    glow=metal((84, 84, 90), 104), felt=planks(105))
+    return dict(wood=wood(71, (70, 30, 16)), panel=raised_panel(72), dark=lacquer(), leather=leather(73),
+                metal=polished_brass(), glow=polished_brass(), felt=cloth((18, 84, 50), 74))
 
 
 def write_textures():
@@ -86,6 +188,8 @@ def write_textures():
     save_png('table_dark', lacquer())
     save_png('table_felt_green', cloth((18, 84, 50), 74))
     save_png('table_felt_blue', cloth((22, 52, 112), 75))
+    for name, image in roulette_textures().items():
+        save_png(f'roulette_{name}', image)
 
 
 # --- Furniture --------------------------------------------------------------------------------
@@ -111,12 +215,6 @@ class Furniture:
         self.box((cx - along / 2, y1, cz - across / 2), (cx + along / 2, y2, cz + across / 2), material,
                  {'angle': angle, 'axis': 'y', 'origin': (cx, (y1 + y2) / 2, cz)} if angle else None)
 
-    def disc(self, centre, radius, y1, y2, material):
-        """A sixteen-sided plate lying flat: eight bands through the centre, each as thick as one side."""
-        half = radius * math.tan(math.pi / 16)
-        for angle in (0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5):
-            self.turned(centre, 2 * radius, 2 * half, y1, y2, angle, material)
-
     def ring(self, centre, radius, width, y1, y2, material, sides=16):
         """A flat ring of straight segments round a centre, as a bowl's rim or a cage's hoop."""
         side = 2 * (radius + width / 2) * math.tan(math.pi / sides) + .05
@@ -137,7 +235,7 @@ def common(f):
     f.box((.7, 8.6, .7), (47.3, 11.2, 31.3), ('wood', {'north': 'panel', 'south': 'panel', 'west': 'panel', 'east': 'panel'}))
     f.box((.6, 10.9, .6), (47.4, 11.2, 31.4), 'dark')
     f.box((1, 8.3, 1), (47, 8.6, 31), 'dark')
-    # The armrest along the players' edge: a rounded cushion of tufted leather, brass studs along its face.
+    # The armrest along the players' edge: a rounded cushion of padded leather, brass studs along its face.
     f.box((0, 13, -.6), (48, 13.7, 2.4), 'leather')
     f.box((.15, 13.7, -.45), (47.85, 14.4, 2.2), 'leather')
     f.box((.4, 14.4, -.1), (47.6, 14.75, 1.7), 'leather')
@@ -146,8 +244,19 @@ def common(f):
     # Narrow rails up the sides, clear of the controls printed on the felt, and the dealer's straight back edge.
     for x1, x2 in ((0, .55), (47.45, 48)):
         f.box((x1, 13, 2.4), (x2, 14, 32), 'leather')
+        f.box((x1 - .1, 14, 2.4), (x2 + .1, 14.2, 32), 'brass')
     f.box((.55, 13, 31.45), (47.45, 13.9, 32), 'wood')
     f.box((.55, 13.9, 31.6), (47.45, 14.05, 31.9), 'brass')
+    # A stepped gold moulding round the slab, under the felt, and a gold kick at the foot of the apron.
+    f.box((-.3, 12.6, -.3), (48.3, 13, 32.3), 'brass')
+    f.box((-.15, 11.6, -.15), (48.15, 11.9, 32.15), 'brass')
+    f.box((.5, 8, .5), (47.5, 8.3, 31.5), 'brass')
+    # Studs along the apron's sides and back, matching the armrest's.
+    for x in range(2, 47, 3):
+        f.box((x, 9.7, 31.3), (x + .5, 10.2, 31.45), 'brass')
+    for z in range(3, 31, 3):
+        for x1 in (.55, 47.3):
+            f.box((x1, 9.7, z), (x1 + .15, 10.2, z + .5), 'brass')
 
 
 def blackjack(f):
@@ -170,7 +279,32 @@ def blackjack(f):
 
 
 def roulette(f):
-    """Four turned legs under stretchers, and a wooden bowl round the wheel with a brass lip."""
+    """What the roulette stands on: four turned legs at Vegas, one great pedestal at Monte-Carlo, a
+    plinth with a line of light at its foot for the electronic table, two barrels at the saloon.
+    The bowl, the wheel and all that lies on the felt are StationTables' voxels."""
+    if DIRECTION == 1:
+        f.box((9, 0, 6), (39, .9, 26), 'dark')
+        f.box((10.5, .9, 7.5), (37.5, 1.6, 24.5), 'brass')
+        f.box((15, 1.6, 10), (33, 7.4, 22), ('wood', {s: 'panel' for s in ('north', 'south', 'west', 'east')}))
+        f.box((13, 7.4, 8), (35, 8.3, 24), 'brass')
+        # A scrolled foot at each end of the plinth.
+        for x in (4, 40):
+            f.box((x, 0, 12), (x + 4, 1.4, 20), 'wood')
+            f.box((x + .5, 1.4, 13), (x + 3.5, 2.2, 19), 'brass')
+        return
+    if DIRECTION == 2:
+        f.box((3, 0, 3), (45, 8.3, 29), 'dark')
+        f.box((2.8, .5, 2.8), (45.2, .9, 29.2), 'glow')
+        f.box((2.8, 7.5, 2.8), (45.2, 7.9, 29.2), 'glow')
+        return
+    if DIRECTION == 3:
+        for x in (11, 37):
+            for w, y1, y2 in ((9, 0, 2.5), (10.6, 2.5, 5.8), (9, 5.8, 8.3)):
+                f.box((x - w / 2, y1, 16 - w / 2), (x + w / 2, y2, 16 + w / 2), 'wood')
+            for y in (2.3, 5.6):
+                f.box((x - 5.5, y, 10.5), (x + 5.5, y + .4, 21.5), 'brass')
+        f.box((11, 3.6, 15.5), (37, 4.4, 16.5), 'dark')
+        return
     for x in (4, 44):
         for z in (4, 28):
             for w, y1, y2, material in ((3.4, 0, .8, 'dark'), (2.6, .8, 1.5, 'brass'), (1.6, 1.5, 4.6, 'wood'),
@@ -179,12 +313,6 @@ def roulette(f):
     for z in (4, 28):
         f.box((5, 3, z - .5), (43, 3.8, z + .5), 'wood')
     f.box((23.5, 3.1, 4.5), (24.5, 3.7, 27.5), 'wood')
-    # The bowl: StationTables draws the wheel inside radius 8; the rim stands round it.
-    f.disc(WHEEL, 8.4, 13, 14, 'wood')
-    f.ring(WHEEL, 8.45, .3, 13.9, 14.15, 'brass')
-    # A brass chip rake laid along the dealer's edge.
-    f.box((14, 13.95, 29.4), (30, 14.2, 29.8), 'brass')
-    f.box((12.8, 13.95, 28.8), (14, 14.3, 30.4), 'dark')
 
 
 def bingo(f):
@@ -221,12 +349,40 @@ def bingo(f):
 GAMES = {'blackjack': blackjack, 'roulette': roulette, 'bingo': bingo}
 
 
-def element(a, b, material, rotation=None, offset=(0, 0, 0)):
+# Faces that carry a whole picture (a moulded panel) keep it entire; every other material is cut to
+# the size of the face, so a thin rail shows a strip of leather rather than the whole hide squeezed flat.
+PICTURES = {'panel'}
+
+
+def window(lo, hi, scale):
+    """The stretch of a 16 pixel texture a face from lo to hi shows, at the texture's own scale."""
+    size = min((hi - lo) * scale, 16)
+    start = (lo * scale) % 16
+    if start + size > 16:
+        start = 16 - size
+    return round(start, 4), round(start + size, 4)
+
+
+def face_uv(side, lo, hi, texture, scale):
+    if texture in PICTURES:
+        return [0, 0, 16, 16]
+    # Each face reads the two axes lying in its plane; the vertical runs down the texture.
+    axes = {'down': (0, 2), 'up': (0, 2), 'north': (0, 1), 'south': (0, 1), 'west': (2, 1), 'east': (2, 1)}[side]
+    u1, u2 = window(lo[axes[0]], hi[axes[0]], scale)
+    if axes[1] == 1:
+        v1, v2 = window(16 - hi[1], 16 - lo[1], scale)
+    else:
+        v1, v2 = window(lo[2], hi[2], scale)
+    return [u1, v1, u2, v2]
+
+
+def element(a, b, material, rotation=None, offset=(0, 0, 0), scale=1):
     base, faces = material if isinstance(material, tuple) else (material, {})
     lo = [a[i] - offset[i] for i in range(3)]
     hi = [b[i] - offset[i] for i in range(3)]
     result = {'from': [round(v, 4) for v in lo], 'to': [round(v, 4) for v in hi],
-              'faces': {side: {'texture': '#' + faces.get(side, base), 'uv': [0, 0, 16, 16]} for side in SIDES}}
+              'faces': {side: {'texture': '#' + faces.get(side, base),
+                               'uv': face_uv(side, lo, hi, faces.get(side, base), scale)} for side in SIDES}}
     if rotation:
         origin = [rotation['origin'][i] - offset[i] for i in range(3)]
         result['rotation'] = {'angle': rotation['angle'], 'axis': rotation['axis'], 'origin': [round(v, 4) for v in origin]}
@@ -235,6 +391,8 @@ def element(a, b, material, rotation=None, offset=(0, 0, 0)):
 
 def model(elements, game):
     textures = dict(TEXTURES, felt=FELT[game], particle='gamblingitems:block/table_wood')
+    if game == 'roulette':
+        textures.update(ROULETTE_TEXTURES)
     return {'parent': 'minecraft:block/block', 'textures': textures, 'elements': elements}
 
 
@@ -282,7 +440,7 @@ def generate():
             turned = None
             if rotation:
                 turned = dict(rotation, origin=small(rotation['origin']))
-            miniature.append(element(small(a), small(b), material, turned))
+            miniature.append(element(small(a), small(b), material, turned, scale=3))
         save(f'models/block/{game}_table.json', model(miniature, game))
         count = sum(len(json.loads((ASSETS / f'models/block/{game}_table_part{p}.json').read_text())['elements']) for p in range(6))
         print(f'{game}: six joined parts, {count} elements')

@@ -1,0 +1,250 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "skin": "gamblingitems:block/croupier_skin",
+    "shirt": "gamblingitems:block/croupier_shirt",
+    "vest": "gamblingitems:block/cab_crimson",
+    "dark": "gamblingitems:block/croupier_dark",
+    "particle": "gamblingitems:block/cab_crimson"
+  },
+  "elements": [
+    {
+      "from": [
+        5.6,
+        0,
+        7
+      ],
+      "to": [
+        7.8,
+        6,
+        9
+      ],
+      "faces": {
+        "down": {
+          "texture": "#dark"
+        },
+        "up": {
+          "texture": "#dark"
+        },
+        "north": {
+          "texture": "#dark"
+        },
+        "south": {
+          "texture": "#dark"
+        },
+        "west": {
+          "texture": "#dark"
+        },
+        "east": {
+          "texture": "#dark"
+        }
+      }
+    },
+    {
+      "from": [
+        8.2,
+        0,
+        7
+      ],
+      "to": [
+        10.4,
+        6,
+        9
+      ],
+      "faces": {
+        "down": {
+          "texture": "#dark"
+        },
+        "up": {
+          "texture": "#dark"
+        },
+        "north": {
+          "texture": "#dark"
+        },
+        "south": {
+          "texture": "#dark"
+        },
+        "west": {
+          "texture": "#dark"
+        },
+        "east": {
+          "texture": "#dark"
+        }
+      }
+    },
+    {
+      "from": [
+        4.6,
+        6,
+        6.6
+      ],
+      "to": [
+        11.4,
+        11,
+        9.4
+      ],
+      "faces": {
+        "down": {
+          "texture": "#vest"
+        },
+        "up": {
+          "texture": "#vest"
+        },
+        "north": {
+          "texture": "#vest"
+        },
+        "south": {
+          "texture": "#vest"
+        },
+        "west": {
+          "texture": "#vest"
+        },
+        "east": {
+          "texture": "#vest"
+        }
+      }
+    },
+    {
+      "from": [
+        3.4,
+        6.4,
+        7
+      ],
+      "to": [
+        4.6,
+        11,
+        9
+      ],
+      "faces": {
+        "down": {
+          "texture": "#shirt"
+        },
+        "up": {
+          "texture": "#shirt"
+        },
+        "north": {
+          "texture": "#shirt"
+        },
+        "south": {
+          "texture": "#shirt"
+        },
+        "west": {
+          "texture": "#shirt"
+        },
+        "east": {
+          "texture": "#shirt"
+        }
+      }
+    },
+    {
+      "from": [
+        11.4,
+        6.4,
+        7
+      ],
+      "to": [
+        12.6,
+        11,
+        9
+      ],
+      "faces": {
+        "down": {
+          "texture": "#shirt"
+        },
+        "up": {
+          "texture": "#shirt"
+        },
+        "north": {
+          "texture": "#shirt"
+        },
+        "south": {
+          "texture": "#shirt"
+        },
+        "west": {
+          "texture": "#shirt"
+        },
+        "east": {
+          "texture": "#shirt"
+        }
+      }
+    },
+    {
+      "from": [
+        5.5,
+        11,
+        5.5
+      ],
+      "to": [
+        10.5,
+        15,
+        10.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#skin"
+        },
+        "up": {
+          "texture": "#skin"
+        },
+        "north": {
+          "texture": "#skin"
+        },
+        "south": {
+          "texture": "#skin"
+        },
+        "west": {
+          "texture": "#skin"
+        },
+        "east": {
+          "texture": "#skin"
+        }
+      }
+    },
+    {
+      "from": [
+        5.3,
+        14,
+        5.3
+      ],
+      "to": [
+        10.7,
+        15.4,
+        10.7
+      ],
+      "faces": {
+        "down": {
+          "texture": "#dark"
+        },
+        "up": {
+          "texture": "#dark"
+        },
+        "north": {
+          "texture": "#dark"
+        },
+        "south": {
+          "texture": "#dark"
+        },
+        "west": {
+          "texture": "#dark"
+        },
+        "east": {
+          "texture": "#dark"
+        }
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [
+        30,
+        225,
+        0
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ]
+    }
+  }
+}

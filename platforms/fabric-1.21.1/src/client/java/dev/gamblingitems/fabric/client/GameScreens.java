@@ -11,35 +11,110 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * The casino look shared by every window of the mod: a night-blue room, raised cards, green for
- * the action that stakes something, gold for what is won.
+ * The casino look shared by every window of the mod: a night-blue room with brass trim, graphite
+ * cards, casino green for the action that stakes something, brass for what is won.
  */
 public final class GameScreens {
     /** Surfaces, from the room to the raised controls. */
-    public static final int INK = 0xff0f212e, PANEL = 0xff1a2c38, RAISED = 0xff213743, HOVER = 0xff2f4553;
-    public static final int BORDER = 0xff2f4553, HOLE = 0xff0a1822, HEADER = 0xff0b1923;
-    public static final int TEXT = 0xffffffff, MUTED = 0xffb1bad3, DIM = 0xff6f8396;
-    /** Green stakes, gold pays, red loses, blue marks what is selected. */
-    public static final int GREEN = 0xff00e701, GREEN_HOVER = 0xff3dff3e, ON_GREEN = 0xff04210a;
-    public static final int GOLD = 0xffffc83d, RED = 0xffed4163, ACCENT = 0xff1475e1;
+    public static final int INK = 0xff0e1622, PANEL = 0xff18212d, RAISED = 0xff222c39, HOVER = 0xff2e3a4a;
+    public static final int BORDER = 0xff6b5631, HOLE = 0xff080d14, HEADER = 0xff0a1019;
+    public static final int TEXT = 0xfff3eee2, MUTED = 0xffbfb8a8, DIM = 0xff7f7a70;
+    /** Green stakes, brass pays, red loses, cyan marks what is selected. Text on green keeps 4.5:1. */
+    public static final int GREEN = 0xff17784a, GREEN_HOVER = 0xff1f8f58, ON_GREEN = 0xfff3eee2;
+    public static final int GOLD = 0xffd9b25a, RED = 0xffd2434f, ACCENT = 0xff4cc3d9;
     public static final int ACCENT_FILL = GREEN, ACCENT_HOVER = GREEN_HOVER, ON_ACCENT = ON_GREEN;
-    public static final int SELECTION = 0xff557086;
+    public static final int SELECTION = 0xff3f5266;
     public static final int RADIUS = 4;
 
     private GameScreens() {}
 
-    /** A game window: the room, and a darker band for its title or tabs. */
+    /** A game window: a brass-rimmed cabinet, night blue deepening downwards, under a darker band for its title or tabs. */
     public static void window(GuiGraphics g, int x, int y, int width, int height) {
-        ArenaShapes.rounded(g, x - 1, y + 2, width + 2, height + 1, 7, 0x70000000);
+        ArenaShapes.rounded(g, x - 3, y + 3, width + 6, height + 3, 9, 0x80000000);
+        ArenaShapes.rounded(g, x - 2, y - 2, width + 4, height + 4, 8, 0xff8a6d36);
+        ArenaShapes.rounded(g, x - 1, y - 1, width + 2, height + 2, 7, 0xff3a2e18);
         ArenaShapes.rounded(g, x, y, width, height, 6, INK);
+        gradient(g, x + 1, y + 29, x + width - 1, y + height - 6, 0xff142030, INK);
         ArenaShapes.rounded(g, x, y, width, 28, 6, HEADER);
-        g.fill(x, y + 22, x + width, y + 28, HEADER);
-        g.fill(x, y + 28, x + width, y + 29, BORDER);
+        gradient(g, x, y + 6, x + width, y + 28, 0xff141e2c, HEADER);
+        g.fill(x + 6, y + 1, x + width - 6, y + 2, 0x30ffffff);
+        g.fill(x, y + 28, x + width, y + 29, GOLD);
+        g.fill(x, y + 29, x + width, y + 30, 0xff3a2e18);
     }
 
-    /** A raised card holding one part of a game. */
+    /** A raised card holding one part of a game: lit along its top edge, shadowed along the bottom. */
     public static void card(GuiGraphics g, int x, int y, int width, int height) {
-        ArenaShapes.rounded(g, x, y, width, height, RADIUS, PANEL);
+        ArenaShapes.rounded(g, x, y + 1, width, height, RADIUS, 0xff070b11);
+        ArenaShapes.rounded(g, x, y, width, height, RADIUS, 0xff2a3646);
+        ArenaShapes.rounded(g, x + 1, y + 1, width - 2, height - 2, RADIUS - 1, PANEL);
+        gradient(g, x + 1, y + RADIUS, x + width - 1, y + Math.min(height - RADIUS, 24), 0xff1d2836, PANEL);
+    }
+
+    /** The housing of a machine: lacquer under a brass rim, lit along its top, round a dark glass. */
+    public static void cabinet(GuiGraphics g, int x, int y, int width, int height, int lacquer) {
+        ArenaShapes.rounded(g, x - 1, y - 1, width + 2, height + 2, 6, GOLD);
+        ArenaShapes.rounded(g, x, y, width, height, 5, lacquer);
+        gradient(g, x + 2, y + 1, x + width - 2, y + 6, SlotCabinet.shade(lacquer, 1.3f), lacquer);
+        ArenaShapes.rounded(g, x + 4, y + 6, width - 8, height - 10, 3, HOLE);
+    }
+
+    /** The title band of a card, brass on dark bronze. */
+    public static void cardHeader(GuiGraphics g, int x, int y, int width) {
+        ArenaShapes.rounded(g, x, y, width, 15, RADIUS, 0xff3a2e18);
+        g.fill(x, y + 11, x + width, y + 15, 0xff3a2e18);
+        g.fill(x, y + 15, x + width, y + 16, GOLD);
+    }
+
+    /**
+     * A big win over a game: gold coins raining down the area and a pulsing banner with the multiplier,
+     * fading out over {@link MachineMotion#CELEBRATION} ticks from {@code age} 0.
+     */
+    public static void celebrate(GuiGraphics g, Font font, int x, int y, int width, int height, float age, int multiplier) {
+        if (age < 0 || age >= MachineMotion.CELEBRATION) return;
+        float fade = Math.min(1, (MachineMotion.CELEBRATION - age) / 15f);
+        int alpha = (int) (fade * 255) << 24;
+        if (!ClientOptions.reducedMotion()) {
+            for (int coin = 0; coin < 22; coin++) {
+                // Each coin has its own column, speed and start, the same every frame.
+                int seed = coin * 7919;
+                float cx = x + 6 + (seed % 97) / 97f * (width - 12), speed = 1.4f + (seed % 13) / 6f;
+                float cy = y + (age * speed + (seed % 53)) % height;
+                float radius = 2.2f + (seed % 3) * 0.6f;
+                ArenaShapes.disc(g, cx, cy, radius, alpha | (GOLD & 0xffffff));
+                ArenaShapes.disc(g, cx - radius * 0.25f, cy - radius * 0.25f, radius * 0.45f, alpha | 0xfff4d0);
+            }
+        }
+        float pulse = 1.6f + 0.15f * (float) Math.sin(age * 0.5);
+        Component title = Component.translatable("gui.gamblingitems.big_win");
+        int bannerWidth = Math.min(width - 8, Math.round(font.width(title) * pulse) + 24);
+        int top = y + height / 2 - 18;
+        ArenaShapes.rounded(g, x + (width - bannerWidth) / 2f - 1, top - 1, bannerWidth + 2, 38, RADIUS + 1, alpha | (GOLD & 0xffffff));
+        ArenaShapes.rounded(g, x + (width - bannerWidth) / 2f, top, bannerWidth, 36, RADIUS, alpha | 0x1a0d10);
+        GuiPose.push(g);
+        GuiPose.translate(g, x + width / 2f, top + 12);
+        GuiPose.scale(g, pulse);
+        g.drawString(font, title, -font.width(title) / 2, -4, alpha | (GOLD & 0xffffff), true);
+        GuiPose.pop(g);
+        String times = multiplier(multiplier);
+        g.drawString(font, times, x + (width - font.width(times)) / 2, top + 24, alpha | (TEXT & 0xffffff), true);
+    }
+
+    /** A vertical gradient, drawn in one-pixel bands so it looks the same on every version. */
+    public static void gradient(GuiGraphics g, int x1, int y1, int x2, int y2, int top, int bottom) {
+        int height = y2 - y1;
+        for (int row = 0; row < height; row++) {
+            float t = height <= 1 ? 0 : row / (float) (height - 1);
+            g.fill(x1, y1 + row, x2, y1 + row + 1, mix(top, bottom, t));
+        }
+    }
+
+    public static int mix(int a, int b, float t) {
+        int result = 0;
+        for (int shift = 0; shift <= 24; shift += 8) {
+            int ca = a >>> shift & 0xff, cb = b >>> shift & 0xff;
+            result |= Math.round(ca + (cb - ca) * t) << shift;
+        }
+        return result;
     }
 
     public static void rounded(GuiGraphics g, int x, int y, int width, int height, int colour) {
@@ -111,14 +186,20 @@ public final class GameScreens {
     }
 
     public static void slot(GuiGraphics graphics, int x, int y) {
-        // One pixel of the room between two slots keeps every cell readable in a full grid.
+        // One pixel of the room between two slots keeps every cell readable in a full grid; the cell is sunk,
+        // shadowed along its top and left, lit along its bottom.
         graphics.fill(x - 1, y - 1, x + 16, y + 16, HOLE);
-        graphics.fill(x - 1, y + 15, x + 16, y + 16, 0xff15293a);
+        graphics.fill(x, y, x + 15, y + 15, 0xff0c131c);
+        graphics.fill(x - 1, y - 1, x + 16, y, 0xff04070b);
+        graphics.fill(x - 1, y, x, y + 16, 0xff04070b);
+        graphics.fill(x - 1, y + 15, x + 16, y + 16, 0xff1d3247);
     }
 
     /** A larger well for the slot a game is played with; an empty one shows a plus. */
     public static void well(GuiGraphics g, Font font, int x, int y, boolean empty, int frame) {
+        ArenaShapes.rounded(g, x - 5, y - 5, 26, 26, RADIUS + 1, 0xff6b5631);
         rounded(g, x - 4, y - 4, 24, 24, HOLE);
+        g.fill(x - 2, y - 3, x + 18, y - 2, 0xff04070b);
         if (frame != 0) ArenaShapes.rounded(g, x - 4, y + 18, 24, 2, 1, frame);
         if (empty) g.drawCenteredString(font, "+", x + 8, y + 4, 0xff2f4553);
     }

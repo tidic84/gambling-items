@@ -1,0 +1,100 @@
+{
+  "variants": {
+    "facing=north,part=0,right=false": {
+      "model": "gamblingitems:block/video_poker_part0",
+      "y": 0
+    },
+    "facing=north,part=0,right=true": {
+      "model": "gamblingitems:block/video_poker_part0",
+      "y": 0
+    },
+    "facing=north,part=1,right=false": {
+      "model": "gamblingitems:block/video_poker_part1",
+      "y": 0
+    },
+    "facing=north,part=1,right=true": {
+      "model": "gamblingitems:block/video_poker_part1",
+      "y": 0
+    },
+    "facing=north,part=2,right=false": {
+      "model": "gamblingitems:block/video_poker_part2",
+      "y": 0
+    },
+    "facing=north,part=2,right=true": {
+      "model": "gamblingitems:block/video_poker_part2",
+      "y": 0
+    },
+    "facing=east,part=0,right=false": {
+      "model": "gamblingitems:block/video_poker_part0",
+      "y": 90
+    },
+    "facing=east,part=0,right=true": {
+      "model": "gamblingitems:block/video_poker_part0",
+      "y": 90
+    },
+    "facing=east,part=1,right=false": {
+      "model": "gamblingitems:block/video_poker_part1",
+      "y": 90
+    },
+    "facing=east,part=1,right=true": {
+      "model": "gamblingitems:block/video_poker_part1",
+      "y": 90
+    },
+    "facing=east,part=2,right=false": {
+      "model": "gamblingitems:block/video_poker_part2",
+      "y": 90
+    },
+    "facing=east,part=2,right=true": {
+      "model": "gamblingitems:block/video_poker_part2",
+      "y": 90
+    },
+    "facing=south,part=0,right=false": {
+      "model": "gamblingitems:block/video_poker_part0",
+      "y": 180
+    },
+    "facing=south,part=0,right=true": {
+      "model": "gamblingitems:block/video_poker_part0",
+      "y": 180
+    },
+    "facing=south,part=1,right=false": {
+      "model": "gamblingitems:block/video_poker_part1",
+      "y": 180
+    },
+    "facing=south,part=1,right=true": {
+      "model": "gamblingitems:block/video_poker_part1",
+      "y": 180
+    },
+    "facing=south,part=2,right=false": {
+      "model": "gamblingitems:block/video_poker_part2",
+      "y": 180
+    },
+    "facing=south,part=2,right=true": {
+      "model": "gamblingitems:block/video_poker_part2",
+      "y": 180
+    },
+    "facing=west,part=0,right=false": {
+      "model": "gamblingitems:block/video_poker_part0",
+      "y": 270
+    },
+    "facing=west,part=0,right=true": {
+      "model": "gamblingitems:block/video_poker_part0",
+      "y": 270
+    },
+    "facing=west,part=1,right=false": {
+      "model": "gamblingitems:block/video_poker_part1",
+      "y": 270
+    },
+    "facing=west,part=1,right=true": {
+      "model": "gamblingitems:block/video_poker_part1",
+      "y": 270
+    },
+    "facing=west,part=2,right=false": {
+      "model": "gamblingitems:block/video_poker_part2",
+      "y": 270
+    },
+    "facing=west,part=2,right=true": {
+      "model": "gamblingitems:block/video_poker_part2",
+      "y": 270
+    }
+  }
+}

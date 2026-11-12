@@ -16,9 +16,7 @@ import java.util.stream.Collectors;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.LootTableLoadEvent;
 import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -82,9 +80,6 @@ public final class GamblingItemsForge {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         // Every registry is open during the registration events, so the first one registers it all.
         modBus.addListener((RegisterEvent event) -> registerAll());
-        modBus.addListener((BuildCreativeModeTabContentsEvent event) -> {
-            if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) ModContent.creativeEntries().forEach(event::accept);
-        });
         if (FMLEnvironment.dist.isClient()) dev.gamblingitems.forge.client.GamblingItemsForgeClient.register(modBus);
 
         IEventBus game = MinecraftForge.EVENT_BUS;
@@ -105,6 +100,7 @@ public final class GamblingItemsForge {
             BlackjackTables.tick(server);
             BattleLobbies.tick(server);
             BingoGames.tick(server);
+            dev.gamblingitems.fabric.arcade.HorseRaces.tick(server);
             StationInteractions.tick(server);
             dev.gamblingitems.fabric.cheat.CasinoSecurity.tick(server);
             dev.gamblingitems.fabric.prediction.PredictionMarkets.tick(server);
@@ -118,6 +114,7 @@ public final class GamblingItemsForge {
             BlackjackTables.stopping(server);
             BattleLobbies.stopping(server);
             BingoGames.stopping(server);
+            dev.gamblingitems.fabric.arcade.HorseRaces.stopping(server);
         });
         game.addListener((ServerStoppedEvent event) -> {
             CrashGames.clear();
@@ -126,6 +123,7 @@ public final class GamblingItemsForge {
             BattleLobbies.clear();
             BingoGames.clear();
             dev.gamblingitems.fabric.cheat.CasinoSecurity.clear();
+            dev.gamblingitems.fabric.arcade.HorseRaces.clear();
         });
         String availableModes = GameMenus.AVAILABLE.stream().map(GameMode::id).collect(Collectors.joining(", "));
         String plannedModes = Arrays.stream(GameMode.values())
@@ -138,8 +136,10 @@ public final class GamblingItemsForge {
                                     "Gambling Items | Forge | Playable: " + availableModes
                                     + " | Use a terminal or a station. Roadmap: " + plannedModes), false);
                             return 1;
-                        }))));
+                        }))
+                        .then(dev.gamblingitems.fabric.arcade.CabinetCommands.cabinet())));
         game.addListener((RegisterCommandsEvent event) -> dev.gamblingitems.fabric.CasinoCommands.register(event.getDispatcher()));
+
         LOGGER.info("Gambling Items loaded. Playable: {}. Planned: {}", availableModes, plannedModes);
         // Release checks start a real server once per Minecraft version; it stops when the world is up.
         if (Boolean.getBoolean("gamblingitems.smoke")) game.addListener((ServerStartedEvent event) -> {

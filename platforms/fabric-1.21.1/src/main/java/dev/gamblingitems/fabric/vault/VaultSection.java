@@ -14,6 +14,22 @@ public enum VaultSection {
     CASE_BATTLE("case_battle", dev.gamblingitems.fabric.battle.BattleSettings.VAULT_SIZE),
     BINGO("bingo", dev.gamblingitems.fabric.bingo.BingoSettings.VAULT_SIZE),
     SLOT_MACHINE("slot_machine", dev.gamblingitems.fabric.slots.SlotSettings.VAULT_SIZE),
+    LUCKY_WHEEL("lucky_wheel", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    COIN_PUSHER("coin_pusher", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    PRIZE_CLAW("prize_claw", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    PACHINKO("pachinko", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    CAPSULE_GACHA("capsule_gacha", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    HIGH_STAKES("high_stakes", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    PLINKO("plinko", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    BIG_SIX("big_six", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    VIDEO_POKER("video_poker", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    HORSE_RACE("horse_race", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    CRAPS("craps", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    BACCARAT("baccarat", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    KENO("keno", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    SCRATCH_CARD("scratch_card", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
+    /** The cashier's exchange tray, where items wait to be changed. */
+    CASHIER("cashier", dev.gamblingitems.fabric.arcade.CashierMenu.TRAY_SLOTS),
     PREDICTION("prediction_market", dev.gamblingitems.fabric.prediction.PredictionSettings.VAULT_SIZE);
 
     private final String id;

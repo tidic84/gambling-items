@@ -53,15 +53,15 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
         imageWidth = width;
         imageHeight = height;
         //#endif
-        rules = new GameRules(gameId());
+        rules = new GameRules(key());
     }
 
     /** The game this window plays, for its icon, its rules and its tab; null for the prediction market. */
     protected abstract GameMode mode();
     /** Whether the window was opened from a portable item, which shows the tabs of its games. */
     protected abstract boolean portable();
-    /** The identifier its rules, its title and its tab are written under. */
-    protected String gameId() { return mode().id(); }
+    /** The name of the window in the translations: its game, unless it is a counter of its own. */
+    protected String key() { return mode().id(); }
     protected ItemStack headerIcon() { return icon(mode()); }
     /** The games shown as tabs when the window comes from a portable item. */
     protected java.util.List<GameMode> tabFamily() { return GameMenus.family(mode()); }
@@ -92,6 +92,20 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
             case BLACKJACK -> Items.PAPER;
             case BINGO -> Items.BOOK;
             case SLOT_MACHINE -> Items.GOLD_INGOT;
+            case LUCKY_WHEEL -> Items.SUNFLOWER;
+            case COIN_PUSHER -> Items.GOLD_NUGGET;
+            case PRIZE_CLAW -> Items.TRIPWIRE_HOOK;
+            case PACHINKO -> Items.SNOWBALL;
+            case CAPSULE_GACHA -> Items.HEART_OF_THE_SEA;
+            case HIGH_STAKES -> Items.NETHER_STAR;
+            case PLINKO -> Items.SLIME_BALL;
+            case BIG_SIX -> Items.COMPASS;
+            case VIDEO_POKER -> Items.MAP;
+            case HORSE_RACE -> Items.SADDLE;
+            case CRAPS -> Items.BONE_BLOCK;
+            case BACCARAT -> Items.FILLED_MAP;
+            case KENO -> Items.WRITABLE_BOOK;
+            case SCRATCH_CARD -> Items.NAME_TAG;
         });
     }
 
@@ -235,8 +249,8 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
         GameScreens.window(g, x, y, imageWidth, imageHeight);
         if (!portable()) {
             GameScreens.item(g, headerIcon(), x + 9, y + 6, 1);
-            GameScreens.heading(g, font, tr("mode." + gameId()), x + 30, y + 10, 1);
-            int after = x + 38 + font.width(tr("mode." + gameId()));
+            GameScreens.heading(g, font, tr("mode." + key()), x + 30, y + 10, 1, GameScreens.GOLD);
+            int after = x + 38 + font.width(tr("mode." + key()));
             GameScreens.fitted(g, font, subtitle(), after, y + 10, x + imageWidth - 56 - headerReserved - after, GameScreens.DIM);
         }
         renderGame(g, tick, mouseX, mouseY);
@@ -348,7 +362,7 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
             GameScreens.item(g, tabIcon(), getX() + (compact ? 6 : 5), getY() + 3.5f, .75f);
             if (!compact) g.drawString(font, getMessage(), getX() + 22, getY() + 5,
                     current() || hot ? GameScreens.TEXT : GameScreens.MUTED, false);
-            if (current()) ArenaShapes.rounded(g, getX() + 6, getY() + height + 2, width - 12, 2, 1, GameScreens.GREEN);
+            if (current()) ArenaShapes.rounded(g, getX() + 6, getY() + height + 2, width - 12, 2, 1, GameScreens.GOLD);
         }
     }
 }

@@ -52,13 +52,7 @@ public final class SlotRules {
 
     /** Everything a line pays, stake included, rounded down as announced. */
     public static long payout(long stake, int multiplier, BigDecimal returnRate) {
-        if (stake <= 0 || multiplier < 0) throw new IllegalArgumentException("Invalid slot settlement");
-        if (returnRate == null || returnRate.signum() <= 0 || returnRate.compareTo(BigDecimal.ONE) > 0) {
-            throw new IllegalArgumentException("Invalid return rate");
-        }
-        if (multiplier == 0) return 0;
-        return BigDecimal.valueOf(stake).multiply(BigDecimal.valueOf(multiplier)).multiply(returnRate)
-                .divide(BigDecimal.valueOf(100), 0, RoundingMode.FLOOR).longValueExact();
+        return dev.gamblingitems.core.machines.MachineTable.payout(stake, multiplier, returnRate);
     }
 
     /** The largest line of the paytable, so a cabinet can refuse a bet it could not pay. */

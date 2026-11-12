@@ -138,11 +138,35 @@ public class StationGameTests implements FabricGameTest {
             game.tick();
             helper.assertTrue(station.publicBets.contains("red") && station.publicBets.contains("black"), "Bets are broadcast to spectators");
             first.setPos(station.getBlockPos().getCenter().add(20, 0, 0));
+            StationInteractions.tick(helper.getLevel().getServer());
             StationInteractions.click(first, station, 1);
             helper.assertTrue(first.getMainHandItem().getCount() == 9, "Distant clicks cannot deposit");
         } finally {
             StationInteractions.close(first.getUUID());
             StationInteractions.close(second.getUUID());
+            game.cancel();
+            RouletteGames.clear();
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void aFloodOfClicksInOneTickIsCapped(GameTestHelper helper) {
+        BlockPos relative = new BlockPos(1, 1, 1);
+        helper.setBlock(relative, ModContent.ROULETTE_STATION);
+        var station = (GameStationEntity) helper.getLevel().getBlockEntity(helper.absolutePos(relative));
+        var player = helper.makeMockServerPlayerInLevel();
+        player.setPos(station.getBlockPos().getCenter());
+        player.setItemInHand(InteractionHand.MAIN_HAND, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_INGOT, 12));
+        var game = RouletteGames.host(helper.getLevel(), station.getBlockPos());
+        try {
+            for (int i = 0; i < 10; i++) StationInteractions.click(player, station, 0);
+            helper.assertTrue(player.getMainHandItem().getCount() == 4, "Only eight clicks are served in one tick");
+            StationInteractions.tick(helper.getLevel().getServer());
+            StationInteractions.click(player, station, 0);
+            helper.assertTrue(player.getMainHandItem().getCount() == 3, "The next tick serves clicks again");
+        } finally {
+            StationInteractions.close(player.getUUID());
             game.cancel();
             RouletteGames.clear();
         }

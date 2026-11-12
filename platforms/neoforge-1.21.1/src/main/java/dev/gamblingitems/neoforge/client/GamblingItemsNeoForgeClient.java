@@ -41,6 +41,7 @@ public final class GamblingItemsNeoForgeClient {
         //$     net.minecraft.client.gui.screens.MenuScreens.register(ModContent.BINGO_MENU, BingoScreen::new);
         //$     net.minecraft.client.gui.screens.MenuScreens.register(ModContent.SLOT_MENU, SlotScreen::new);
         //$     net.minecraft.client.gui.screens.MenuScreens.register(ModContent.PREDICTION_MENU, dev.gamblingitems.fabric.client.PredictionScreen::new);
+        //$     net.minecraft.client.gui.screens.MenuScreens.register(ModContent.CASHIER_MENU, dev.gamblingitems.fabric.client.CashierScreen::new);
         //$ }));
         //$ modBus.addListener(EntityRenderersEvent.RegisterRenderers.class, event -> {
         //$     event.registerBlockEntityRenderer(ModContent.STATION_ENTITY, GameStationRenderer::new);
@@ -62,6 +63,7 @@ public final class GamblingItemsNeoForgeClient {
             event.register(ModContent.BINGO_MENU, BingoScreen::new);
             event.register(ModContent.SLOT_MENU, SlotScreen::new);
             event.register(ModContent.PREDICTION_MENU, dev.gamblingitems.fabric.client.PredictionScreen::new);
+            event.register(ModContent.CASHIER_MENU, dev.gamblingitems.fabric.client.CashierScreen::new);
         });
         modBus.addListener(EntityRenderersEvent.RegisterRenderers.class, event -> {
             event.registerBlockEntityRenderer(ModContent.STATION_ENTITY, GameStationRenderer::new);

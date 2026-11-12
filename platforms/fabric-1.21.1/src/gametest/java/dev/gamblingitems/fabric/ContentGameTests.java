@@ -14,11 +14,10 @@ import net.minecraft.world.item.ItemStack;
 
 /** Everything this mod adds has to be reachable in creative, or it does not exist for a builder. */
 public class ContentGameTests implements FabricGameTest {
-    private static List<ItemStack> functionalBlocks(GameTestHelper helper) {
+    private static List<ItemStack> tab(GameTestHelper helper, net.minecraft.resources.ResourceKey<CreativeModeTab> key) {
         CreativeModeTabs.tryRebuildTabContents(FeatureFlags.REGISTRY.allFlags(), true,
                 helper.getLevel().registryAccess());
-        CreativeModeTab tab = BuiltInRegistries.CREATIVE_MODE_TAB.get(CreativeModeTabs.FUNCTIONAL_BLOCKS);
-        return List.copyOf(tab.getDisplayItems());
+        return List.copyOf(BuiltInRegistries.CREATIVE_MODE_TAB.get(key).getDisplayItems());
     }
 
     private static boolean holds(List<ItemStack> items, Item wanted) {
@@ -29,25 +28,16 @@ public class ContentGameTests implements FabricGameTest {
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
-    public void everyStationAndKeyIsInTheFunctionalBlocksTab(GameTestHelper helper) {
-        List<ItemStack> items = functionalBlocks(helper);
-        Item[] expected = {
-                ModContent.TERMINAL,
-                ModContent.UPGRADE_STATION_ITEM, ModContent.TRADE_UP_STATION_ITEM,
-                ModContent.CASE_STATION_ITEM, ModContent.CRASH_STATION_ITEM,
-                ModContent.ROULETTE_STATION_ITEM, ModContent.BLACKJACK_STATION_ITEM,
-                ModContent.BATTLE_STATION_ITEM,
-                ModContent.BLACKJACK_TABLE_ITEM, ModContent.ROULETTE_TABLE_ITEM,
-                ModContent.BINGO_STATION_ITEM, ModContent.BINGO_TABLE_ITEM,
-                ModContent.SLOT_MACHINE_ITEM,
-        };
+    public void everythingOfTheModIsInItsOwnTab(GameTestHelper helper) {
+        List<ItemStack> casino = tab(helper, BuiltInRegistries.CREATIVE_MODE_TAB.getResourceKey(ModContent.TAB).orElseThrow());
+        List<ItemStack> functional = tab(helper, CreativeModeTabs.FUNCTIONAL_BLOCKS);
+        java.util.List<Item> expected = new java.util.ArrayList<>(ModContent.creativeEntries());
+        for (CaseRarity rarity : CaseRarity.values()) expected.add(ModContent.key(rarity));
+        expected.addAll(List.of(ModContent.TERMINAL, ModContent.SLOT_MACHINE_ITEM, ModContent.CASHIER_ITEM,
+                ModContent.PLINKO_ITEM, ModContent.NEON_TUBE_ITEM, ModContent.chip(100)));
         for (Item item : expected) {
-            helper.assertTrue(holds(items, item),
-                    BuiltInRegistries.ITEM.getKey(item) + " must be in the functional blocks tab");
-        }
-        for (CaseRarity rarity : CaseRarity.values()) {
-            helper.assertTrue(holds(items, ModContent.key(rarity)),
-                    "The " + rarity.id() + " key must be in the functional blocks tab");
+            helper.assertTrue(holds(casino, item), BuiltInRegistries.ITEM.getKey(item) + " must be in the Gambling Items tab");
+            helper.assertFalse(holds(functional, item), BuiltInRegistries.ITEM.getKey(item) + " must not be in the functional blocks tab");
         }
         helper.succeed();
     }

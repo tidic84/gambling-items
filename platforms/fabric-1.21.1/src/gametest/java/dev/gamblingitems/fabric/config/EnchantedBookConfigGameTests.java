@@ -11,6 +11,7 @@ public class EnchantedBookConfigGameTests implements FabricGameTest {
     public void migrationAddsBooksAndPreservesCustomSettings(GameTestHelper helper) {
         var json = JsonParser.parseString("""
                 {"schemaVersion":19,"values":{"minecraft:diamond":12345},
+                 "currency":{"enabled":false},
                  "upgrader":{"returnBasisPoints":8123,"maximumChanceBasisPoints":7654}}
                 """).getAsJsonObject();
         helper.assertTrue(ModConfig.migrate(json), "Old configuration migrates");

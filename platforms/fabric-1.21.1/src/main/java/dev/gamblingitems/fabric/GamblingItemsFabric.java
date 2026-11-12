@@ -7,7 +7,6 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 //#if MC >= 1.21
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 //#else
@@ -23,7 +22,6 @@ import dev.gamblingitems.fabric.loot.KeyDrops;
 import dev.gamblingitems.fabric.menu.GameMenus;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.CreativeModeTabs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +36,6 @@ public final class GamblingItemsFabric implements ModInitializer {
         //#if MC == 1.20.1
         //$ dev.gamblingitems.fabric.platform.Platform.initializeMenuNetworking();
         //#endif
-        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS)
-                .register(entries -> ModContent.creativeEntries().forEach(entries::accept));
         // Keys are found on mobs, so the cases have a price that is played for, not bought.
         //#if MC >= 1.21
         LootTableEvents.MODIFY.register((key, builder, source, registries) -> {
@@ -64,6 +60,7 @@ public final class GamblingItemsFabric implements ModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(BlackjackTables::tick);
         ServerTickEvents.END_SERVER_TICK.register(BattleLobbies::tick);
         ServerTickEvents.END_SERVER_TICK.register(BingoGames::tick);
+        ServerTickEvents.END_SERVER_TICK.register(dev.gamblingitems.fabric.arcade.HorseRaces::tick);
         ServerTickEvents.END_SERVER_TICK.register(dev.gamblingitems.fabric.block.StationInteractions::tick);
         ServerTickEvents.END_SERVER_TICK.register(dev.gamblingitems.fabric.cheat.CasinoSecurity::tick);
         ServerTickEvents.END_SERVER_TICK.register(dev.gamblingitems.fabric.prediction.PredictionMarkets::tick);
@@ -74,6 +71,7 @@ public final class GamblingItemsFabric implements ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPING.register(BlackjackTables::stopping);
         ServerLifecycleEvents.SERVER_STOPPING.register(BattleLobbies::stopping);
         ServerLifecycleEvents.SERVER_STOPPING.register(BingoGames::stopping);
+        ServerLifecycleEvents.SERVER_STOPPING.register(dev.gamblingitems.fabric.arcade.HorseRaces::stopping);
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             CrashGames.clear();
             RouletteGames.clear();
@@ -81,6 +79,7 @@ public final class GamblingItemsFabric implements ModInitializer {
             BattleLobbies.clear();
             BingoGames.clear();
             dev.gamblingitems.fabric.cheat.CasinoSecurity.clear();
+            dev.gamblingitems.fabric.arcade.HorseRaces.clear();
         });
         String availableModes = GameMenus.AVAILABLE.stream().map(GameMode::id).collect(Collectors.joining(", "));
         String plannedModes = Arrays.stream(GameMode.values())
@@ -93,8 +92,10 @@ public final class GamblingItemsFabric implements ModInitializer {
                                     "Gambling Items | Fabric | Playable: " + availableModes
                                     + " | Use a terminal or a station. Roadmap: " + plannedModes), false);
                             return 1;
-                        }))));
+                        }))
+                        .then(dev.gamblingitems.fabric.arcade.CabinetCommands.cabinet())));
         CommandRegistrationCallback.EVENT.register((dispatcher, registries, environment) -> CasinoCommands.register(dispatcher));
+
         LOGGER.info("Gambling Items loaded. Playable: {}. Planned: {}", availableModes, plannedModes);
         // Release checks start a real server once per Minecraft version; it stops when the world is up.
         if (Boolean.getBoolean("gamblingitems.smoke")) ServerLifecycleEvents.SERVER_STARTED.register(server -> {

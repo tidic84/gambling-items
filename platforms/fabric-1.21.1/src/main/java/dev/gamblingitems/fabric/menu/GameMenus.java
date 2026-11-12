@@ -24,7 +24,15 @@ public final class GameMenus {
     /** Games that are actually implemented today; the others are only announced. */
     public static final Set<GameMode> AVAILABLE = EnumSet.of(GameMode.UPGRADER, GameMode.TRADE_UP, GameMode.CASE_OPENING, GameMode.CRASH,
             GameMode.ROULETTE, GameMode.BLACKJACK, GameMode.CASE_BATTLE,
-            GameMode.BINGO, GameMode.SLOT_MACHINE);
+            GameMode.BINGO, GameMode.SLOT_MACHINE, GameMode.LUCKY_WHEEL, GameMode.COIN_PUSHER,
+            GameMode.PRIZE_CLAW, GameMode.PACHINKO, GameMode.CAPSULE_GACHA, GameMode.HIGH_STAKES,
+            GameMode.PLINKO, GameMode.BIG_SIX, GameMode.VIDEO_POKER, GameMode.HORSE_RACE,
+            GameMode.CRAPS, GameMode.BACCARAT, GameMode.KENO, GameMode.SCRATCH_CARD);
+    /** The prize machines: each is played on the model of its own cabinet, with no window. */
+    public static final List<GameMode> MACHINES = List.of(GameMode.LUCKY_WHEEL, GameMode.COIN_PUSHER,
+            GameMode.PRIZE_CLAW, GameMode.PACHINKO, GameMode.CAPSULE_GACHA, GameMode.HIGH_STAKES,
+            GameMode.PLINKO, GameMode.BIG_SIX, GameMode.VIDEO_POKER, GameMode.HORSE_RACE,
+            GameMode.CRAPS, GameMode.BACCARAT, GameMode.KENO, GameMode.SCRATCH_CARD);
     /** The item games of the exchange terminal, in the order of its tabs. */
     public static final List<GameMode> TERMINAL = List.of(GameMode.TRADE_UP, GameMode.UPGRADER,
             GameMode.CASE_OPENING, GameMode.CASE_BATTLE);
@@ -53,7 +61,7 @@ public final class GameMenus {
      */
     public static boolean open(ServerPlayer player, GameMode mode, ContainerLevelAccess access) {
         boolean portable = access == ContainerLevelAccess.NULL;
-        if (player.isSpectator() || !AVAILABLE.contains(mode)) return false;
+        if (player.isSpectator() || !AVAILABLE.contains(mode) || MACHINES.contains(mode)) return false;
         // A caught cheater is shown the door of every game until the ban runs out.
         if (dev.gamblingitems.fabric.cheat.CasinoSecurity.refuses(player)) return false;
         dev.gamblingitems.fabric.block.StationInteractions.close(player.getUUID());

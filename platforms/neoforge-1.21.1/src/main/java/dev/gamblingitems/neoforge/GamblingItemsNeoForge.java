@@ -16,11 +16,9 @@ import java.util.stream.Collectors;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.LootTableLoadEvent;
 import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -47,11 +45,6 @@ public final class GamblingItemsNeoForge {
         //$ // A second mod entry point for the client side only exists since NeoForge 20.5.
         //$ if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) dev.gamblingitems.neoforge.client.GamblingItemsNeoForgeClient.register(modBus);
         //#endif
-        modBus.addListener(BuildCreativeModeTabContentsEvent.class, event -> {
-            if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
-                ModContent.creativeEntries().forEach(event::accept);
-            }
-        });
 
         IEventBus game = NeoForge.EVENT_BUS;
         // Keys are found on mobs, so the cases have a price that is played for, not bought.
@@ -77,6 +70,7 @@ public final class GamblingItemsNeoForge {
             BlackjackTables.tick(server);
             BattleLobbies.tick(server);
             BingoGames.tick(server);
+            dev.gamblingitems.fabric.arcade.HorseRaces.tick(server);
             StationInteractions.tick(server);
             dev.gamblingitems.fabric.cheat.CasinoSecurity.tick(server);
             dev.gamblingitems.fabric.prediction.PredictionMarkets.tick(server);
@@ -90,6 +84,7 @@ public final class GamblingItemsNeoForge {
             BlackjackTables.stopping(server);
             BattleLobbies.stopping(server);
             BingoGames.stopping(server);
+            dev.gamblingitems.fabric.arcade.HorseRaces.stopping(server);
         });
         game.addListener(ServerStoppedEvent.class, event -> {
             CrashGames.clear();
@@ -98,6 +93,7 @@ public final class GamblingItemsNeoForge {
             BattleLobbies.clear();
             BingoGames.clear();
             dev.gamblingitems.fabric.cheat.CasinoSecurity.clear();
+            dev.gamblingitems.fabric.arcade.HorseRaces.clear();
         });
 
         String availableModes = GameMenus.AVAILABLE.stream().map(GameMode::id).collect(Collectors.joining(", "));
@@ -111,9 +107,11 @@ public final class GamblingItemsNeoForge {
                                     "Gambling Items | NeoForge | Playable: " + availableModes
                                     + " | Use a terminal or a station. Roadmap: " + plannedModes), false);
                             return 1;
-                        }))));
+                        }))
+                        .then(dev.gamblingitems.fabric.arcade.CabinetCommands.cabinet())));
         game.addListener(RegisterCommandsEvent.class, event ->
                 dev.gamblingitems.fabric.CasinoCommands.register(event.getDispatcher()));
+
         LOGGER.info("Gambling Items loaded. Playable: {}. Planned: {}", availableModes, plannedModes);
         // Release checks start a real server once per Minecraft version; it stops when the world is up.
         if (Boolean.getBoolean("gamblingitems.smoke")) game.addListener(net.neoforged.neoforge.event.server.ServerStartedEvent.class, event -> {

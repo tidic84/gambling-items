@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "CNC"
+  ],
+  "key": {
+    "C": {
+      "item": "minecraft:blue_carpet"
+    },
+    "N": {
+      "item": "minecraft:gold_nugget"
+    }
+  },
+  "result": {
+    "id": "gamblingitems:casino_carpet_blue",
+    "count": 2
+  }
+}

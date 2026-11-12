@@ -123,7 +123,7 @@ public final class CrashScreen extends CasinoScreen<CrashMenu> {
         // A watch that vibrated frames the curve in red, for this seat only.
         if (menu.watch() == 2 && phase == CrashGame.Phase.FLYING) GameScreens.ring(g, left, top, right - left, bottom - top, GameScreens.RED);
         GameScreens.rounded(g, left, top, right - left, bottom - top, GameScreens.HOLE);
-        for (int row = 1; row <= 3; row++) g.fill(left + 4, top + row * 21, right - 4, top + row * 21 + 1, 0xff12283a);
+        for (int row = 1; row <= 3; row++) g.fill(left + 4, top + row * 21, right - 4, top + row * 21 + 1, 0xff1a2330);
         boolean live = phase == CrashGame.Phase.FLYING || phase == CrashGame.Phase.CRASHED;
         int colour = switch (phase) {
             case FLYING -> GameScreens.GREEN;

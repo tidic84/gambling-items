@@ -1,0 +1,56 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "screen": "gamblingitems:block/cab_screen",
+    "trim": "gamblingitems:block/cab_gold",
+    "particle": "gamblingitems:block/cab_obsidian"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        2,
+        7
+      ],
+      "to": [
+        16,
+        14,
+        9
+      ],
+      "faces": {
+        "down": {
+          "texture": "#trim"
+        },
+        "up": {
+          "texture": "#trim"
+        },
+        "north": {
+          "texture": "#screen"
+        },
+        "south": {
+          "texture": "#screen"
+        },
+        "west": {
+          "texture": "#trim"
+        },
+        "east": {
+          "texture": "#trim"
+        }
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [
+        30,
+        225,
+        0
+      ],
+      "scale": [
+        0.625,
+        0.625,
+        0.625
+      ]
+    }
+  }
+}

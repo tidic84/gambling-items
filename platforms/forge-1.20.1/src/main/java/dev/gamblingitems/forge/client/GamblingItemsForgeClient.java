@@ -36,6 +36,7 @@ public final class GamblingItemsForgeClient {
             MenuScreens.register(ModContent.BINGO_MENU, BingoScreen::new);
             MenuScreens.register(ModContent.SLOT_MENU, SlotScreen::new);
             MenuScreens.register(ModContent.PREDICTION_MENU, dev.gamblingitems.fabric.client.PredictionScreen::new);
+            MenuScreens.register(ModContent.CASHIER_MENU, dev.gamblingitems.fabric.client.CashierScreen::new);
         }));
         modBus.addListener((EntityRenderersEvent.RegisterRenderers event) -> {
             event.registerBlockEntityRenderer(ModContent.STATION_ENTITY, GameStationRenderer::new);

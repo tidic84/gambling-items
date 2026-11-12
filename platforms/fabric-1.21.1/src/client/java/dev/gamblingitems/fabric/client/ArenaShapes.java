@@ -99,6 +99,14 @@ final class ArenaShapes {
         //#endif
     }
 
+    /** Draws the shapes queued so far, so a scissor that follows does not clip them. Since 1.21.6 each shape carries its own area. */
+    static void flush(GuiGraphics g) {
+        //#if MC >= 1.21.6
+        //#else
+        g.flush();
+        //#endif
+    }
+
     /** Flat coloured quads drawn in the world, on the monitors and tables. */
     static RenderType worldQuads() {
         //#if MC >= 1.21.6

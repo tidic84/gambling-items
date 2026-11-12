@@ -71,6 +71,14 @@ public final class Platform {
         });
     }
 
+    /** The mod's own creative tab, listing {@code entries} in order. */
+    public static net.minecraft.world.item.CreativeModeTab creativeTab(Component title,
+            java.util.function.Supplier<net.minecraft.world.item.ItemStack> icon,
+            java.util.function.Supplier<java.util.List<net.minecraft.world.item.Item>> entries) {
+        return net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup.builder().title(title).icon(icon)
+                .displayItems((parameters, output) -> entries.get().forEach(output::accept)).build();
+    }
+
     @FunctionalInterface
     public interface MenuFactory<M extends AbstractContainerMenu, D> {
         M create(int syncId, Inventory inventory, D data);

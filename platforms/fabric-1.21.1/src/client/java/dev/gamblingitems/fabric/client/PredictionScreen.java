@@ -45,7 +45,7 @@ public final class PredictionScreen extends CasinoScreen<PredictionMenu> {
 
     @Override protected GameMode mode() { return null; }
     @Override protected boolean portable() { return menu.portable(); }
-    @Override protected String gameId() { return "prediction_market"; }
+    @Override protected String key() { return "prediction_market"; }
     @Override protected ItemStack headerIcon() { return new ItemStack(ModContent.PREDICTION_TICKET); }
     @Override protected List<GameMode> tabFamily() { return GameMenus.CASINO; }
     @Override protected boolean casinoTabs() { return true; }

@@ -1,8 +1,10 @@
 # Gambling Items
 
-Nine item-based games for Minecraft Java Edition, with portable devices, animated machines and shared multiplayer tables.
+Nine item-based games and fourteen prize machines for Minecraft Java Edition, with portable devices, animated machines and shared multiplayer tables.
 
-[Download on CurseForge](https://www.curseforge.com/minecraft/mc-mods/gambling-items) · [Join the Discord](https://discord.gg/cDzqrK5mN6)
+[Download on CurseForge](https://www.curseforge.com/minecraft/mc-mods/gambling-items) · [Modrinth](https://modrinth.com/mod/gambling-items) · [Join the Discord](https://discord.gg/cDzqrK5mN6)
+
+The prize machines, arcade and casino decoration described below are on `main` and not yet in a release; 0.2.2 contains the nine games.
 
 ## Games
 
@@ -19,6 +21,10 @@ The **Exchange terminal** opens Trade Up, Upgrader, Cases and Case Battles. The 
 | Blackjack | Play against the dealer with Hit, Stand and Double Down. A natural blackjack pays 3:2. |
 | Bingo | Buy a card and follow the shared draw. |
 | Slots | Spin three reels and check the payout table beside them. |
+
+**Prize machines** are blocks played on the spot with their lever, crank or button: Lucky Wheel, Coin Pusher, Prize Claw, Pachinko, Capsule Gacha, High Stakes Terminal, Giant Plinko, Big Six Wheel, Video Poker, Horse Race, Craps, Baccarat, Keno and the Scratch Card machine. Each shows its exact odds and average return; the server draws and settles the play before the animation starts. See [prize machines](docs/MACHINES.md) (in French).
+
+**Arcade.** Machine wins pay out in arcade tickets by default. The **Cashier** changes valued items into casino chips (1, 5, 25 and 100) and back, and runs a prize counter where tickets buy rewards, including a VIP card for reserved machines. A **Croupier** deals at nearby tables, opens the cashier and explains the rules of the closest game. A **Leaderboard**, neon tubes, casino carpets and stools complete the floor.
 
 Games use Minecraft items. The server handles outcomes, stakes and unclaimed rewards. Shared rounds continue when an interface closes.
 
@@ -61,6 +67,8 @@ English and French interfaces are included. Loader availability varies by Minecr
 Server settings live in `config/gamblingitems/games.json`. Adjust item values, game settings and exclusions to suit your modpack. The catalogue can estimate values from vanilla and modded crafting recipes; explicit configured values take priority.
 
 An optional casino currency lets you assign values to one or more vanilla or modded items. It is disabled by default. Selected casino games then accept and pay that currency; exchange games keep using the item catalogue. Restart the server after changing currency settings.
+
+Each player can set the casino sound volume and reduced motion in `config/gamblingitems/client.json`, described in [prize machines](docs/MACHINES.md).
 
 The Upgrader supports enchanted books such as Mending and Sharpness V, including configured combinations. Set their enchantments, levels and prices in `upgrader.enchantedBooks`; eight examples are added automatically to existing configurations. Books can be selected as rewards or used as stakes when they exactly match a configured variant.
 

@@ -25,6 +25,7 @@
     "gamblingitems:keno",
     "gamblingitems:scratch_card",
     "gamblingitems:leaderboard",
-    "gamblingitems:casino_stool"
+    "gamblingitems:casino_stool",
+    "gamblingitems:security_camera"
   ]
 }

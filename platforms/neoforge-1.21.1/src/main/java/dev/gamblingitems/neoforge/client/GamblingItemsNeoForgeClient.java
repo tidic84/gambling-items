@@ -40,10 +40,13 @@ public final class GamblingItemsNeoForgeClient {
         //$     net.minecraft.client.gui.screens.MenuScreens.register(ModContent.BATTLE_MENU, BattleScreen::new);
         //$     net.minecraft.client.gui.screens.MenuScreens.register(ModContent.BINGO_MENU, BingoScreen::new);
         //$     net.minecraft.client.gui.screens.MenuScreens.register(ModContent.SLOT_MENU, SlotScreen::new);
+        //$     net.minecraft.client.gui.screens.MenuScreens.register(ModContent.PREDICTION_MENU, dev.gamblingitems.fabric.client.PredictionScreen::new);
         //$     net.minecraft.client.gui.screens.MenuScreens.register(ModContent.CASHIER_MENU, dev.gamblingitems.fabric.client.CashierScreen::new);
         //$ }));
-        //$ modBus.addListener(EntityRenderersEvent.RegisterRenderers.class, event ->
-        //$         event.registerBlockEntityRenderer(ModContent.STATION_ENTITY, GameStationRenderer::new));
+        //$ modBus.addListener(EntityRenderersEvent.RegisterRenderers.class, event -> {
+        //$     event.registerBlockEntityRenderer(ModContent.STATION_ENTITY, GameStationRenderer::new);
+        //$     event.registerBlockEntityRenderer(ModContent.ODDS_BOARD_ENTITY, dev.gamblingitems.fabric.client.OddsBoardRenderer::new);
+        //$ });
         //$ net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.event.TickEvent.ClientTickEvent.class, event -> {
         //$     if (event.phase == net.neoforged.neoforge.event.TickEvent.Phase.END)
         //$         dev.gamblingitems.fabric.client.ClientSmoke.tick(net.minecraft.client.Minecraft.getInstance());
@@ -59,10 +62,13 @@ public final class GamblingItemsNeoForgeClient {
             event.register(ModContent.BATTLE_MENU, BattleScreen::new);
             event.register(ModContent.BINGO_MENU, BingoScreen::new);
             event.register(ModContent.SLOT_MENU, SlotScreen::new);
+            event.register(ModContent.PREDICTION_MENU, dev.gamblingitems.fabric.client.PredictionScreen::new);
             event.register(ModContent.CASHIER_MENU, dev.gamblingitems.fabric.client.CashierScreen::new);
         });
-        modBus.addListener(EntityRenderersEvent.RegisterRenderers.class, event ->
-                event.registerBlockEntityRenderer(ModContent.STATION_ENTITY, GameStationRenderer::new));
+        modBus.addListener(EntityRenderersEvent.RegisterRenderers.class, event -> {
+            event.registerBlockEntityRenderer(ModContent.STATION_ENTITY, GameStationRenderer::new);
+            event.registerBlockEntityRenderer(ModContent.ODDS_BOARD_ENTITY, dev.gamblingitems.fabric.client.OddsBoardRenderer::new);
+        });
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.client.event.ClientTickEvent.Post.class,
                 event -> dev.gamblingitems.fabric.client.ClientSmoke.tick(net.minecraft.client.Minecraft.getInstance()));
         //#endif

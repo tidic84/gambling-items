@@ -65,11 +65,28 @@ public final class ClientSmoke {
             player.getInventory().add(new ItemStack(ModContent.POCKET_CASINO));
             player.getInventory().add(new ItemStack(Items.DIAMOND, 20));
             player.getInventory().add(new ItemStack(Items.GOLD_INGOT, 10));
+            // Every trick is carried, so each casino window shows its red button too.
+            for (var tool : dev.gamblingitems.core.cheat.CheatRules.Tool.values())
+                player.getInventory().add(new ItemStack(ModContent.cheatTool(tool)));
+            // And the prediction market has a question to list.
+            dev.gamblingitems.fabric.prediction.PredictionMarkets.open(server, player.getUUID(),
+                    player.getGameProfile().getName(), dev.gamblingitems.fabric.prediction.MarketKind.DEATHS, player,
+                    "", 3, "", 60, 10_000);
         });
         int step = (ticks - 40) / STEP, phase = (ticks - 40) % STEP;
         if (ticks < 40) return;
-        if (step >= MODES.size()) {
+        if (step > MODES.size()) {
             minecraft.stop();
+            return;
+        }
+        if (step == MODES.size()) {
+            // The prediction market is a tab of the pocket casino without being a game of its own.
+            if (phase == 0) server.execute(() -> {
+                var player = server.getPlayerList().getPlayer(id);
+                if (player != null) dev.gamblingitems.fabric.prediction.PredictionMenus.open(player, ContainerLevelAccess.NULL);
+            });
+            if (phase == SETTLE) shot(minecraft, "gamblingitems-smoke-prediction_market"
+                    + (minecraft.screen instanceof PredictionScreen ? "" : "-NOSCREEN") + ".png");
             return;
         }
         GameMode mode = MODES.get(step);

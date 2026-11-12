@@ -35,6 +35,10 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
     private boolean opened;
     private float canvasScale = 1;
     protected final GameRules rules;
+    /** The trick of this game, in the header, shown only to a player who carries it. */
+    private static final int CHEAT_WIDTH = 64;
+    private net.minecraft.client.gui.components.Button cheat;
+    private int shownChance = Integer.MIN_VALUE, headerReserved;
 
     protected CasinoScreen(M menu, Inventory inventory, Component title) {
         this(menu, inventory, title, CasinoLayout.WIDTH, CasinoLayout.HEIGHT);
@@ -52,13 +56,27 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
         rules = new GameRules(key());
     }
 
-    /** The game this window plays, for its icon, its rules and its tab. */
+    /** The game this window plays, for its icon, its rules and its tab; null for the prediction market. */
     protected abstract GameMode mode();
     /** Whether the window was opened from a portable item, which shows the tabs of its games. */
     protected abstract boolean portable();
     /** The name of the window in the translations: its game, unless it is a counter of its own. */
     protected String key() { return mode().id(); }
     protected ItemStack headerIcon() { return icon(mode()); }
+    /** The games shown as tabs when the window comes from a portable item. */
+    protected java.util.List<GameMode> tabFamily() { return GameMenus.family(mode()); }
+    /** The pocket casino also holds the prediction market, as a tab after its games. */
+    protected boolean casinoTabs() { return GameMenus.CASINO.contains(mode()); }
+    protected boolean predictionScreen() { return false; }
+
+    /** The trick a player may use at this game, or null. */
+    protected dev.gamblingitems.core.cheat.CheatRules.Tool cheatTool() { return null; }
+    protected int cheatButton() { return -1; }
+    /** How likely the trick is to be spotted, as the server counts it; -1 when the player carries none. */
+    protected int cheatChance() { return -1; }
+    /** 0 while the trick is ready, 1 once it is set or used, 2 when it has something to say. */
+    protected int cheatState() { return 0; }
+    protected boolean cheatUsable() { return false; }
     /** A line about the stakes, shown beside the name of the game at its block. */
     protected Component subtitle() { return tr(GameMenus.TERMINAL.contains(mode()) ? "station" : "casino_table"); }
     protected static Component tr(String key) { return Component.translatable("gui.gamblingitems." + key); }
@@ -106,15 +124,55 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
         close.setTooltip(Tooltip.create(tr("close")));
         var help = rules.button(right - 40, topPos + 5, 18, 18);
         addRenderableWidget(help);
+        headerReserved = 0;
+        cheat = null;
+        if (cheatTool() != null) {
+            cheat = addRenderableWidget(CasinoButton.risk(cheatLabel(), ignored -> send(cheatButton()))
+                    .bounds(right - 44 - CHEAT_WIDTH, topPos + 5, CHEAT_WIDTH, 18).build());
+            headerReserved = CHEAT_WIDTH + 4;
+            shownChance = Integer.MIN_VALUE;
+            refreshCheat();
+        }
         if (portable()) {
             // Where every name does not fit, the other tabs keep only their icon; their tooltip names them.
-            var family = GameMenus.family(mode());
-            int room = imageWidth - 16 - 46, needed = 0;
+            var family = new java.util.ArrayList<GameMode>(tabFamily());
+            if (casinoTabs()) family.add(null);
+            int room = imageWidth - 16 - 46 - headerReserved, needed = 0;
             for (GameMode mode : family) needed += Tab.width(font, mode, false) + 2;
             boolean compact = needed > room;
             int x = leftPos + 8;
-            for (GameMode mode : family)
-                x += addRenderableWidget(new Tab(mode, x, topPos + 5, compact && mode != mode())).getWidth() + 2;
+            for (GameMode mode : family) {
+                boolean current = mode == null ? predictionScreen() : mode == mode();
+                x += addRenderableWidget(new Tab(mode, x, topPos + 5, compact && !current)).getWidth() + 2;
+            }
+        }
+    }
+
+    @Override protected void containerTick() {
+        super.containerTick();
+        refreshCheat();
+    }
+
+    private Component cheatLabel() {
+        String key = "cheat." + cheatTool().id();
+        return switch (cheatState()) {
+            case 1 -> tr(key + ".set");
+            case 2 -> tr(key + ".alert");
+            default -> tr(key);
+        };
+    }
+
+    /** The trick is only offered to a player who carries it; the server says so by sending its chance. */
+    private void refreshCheat() {
+        if (cheat == null) return;
+        int chance = cheatChance();
+        cheat.visible = chance >= 0 || cheatState() != 0;
+        cheat.active = cheatUsable();
+        cheat.setMessage(cheatLabel());
+        if (chance != shownChance) {
+            shownChance = chance;
+            cheat.setTooltip(Tooltip.create(Component.translatable("gui.gamblingitems.cheat." + cheatTool().id() + ".help",
+                    String.format(java.util.Locale.ROOT, "%d%%", Math.round(Math.max(0, chance) / 100.0)))));
         }
     }
 
@@ -193,7 +251,7 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
             GameScreens.item(g, headerIcon(), x + 9, y + 6, 1);
             GameScreens.heading(g, font, tr("mode." + key()), x + 30, y + 10, 1, GameScreens.GOLD);
             int after = x + 38 + font.width(tr("mode." + key()));
-            GameScreens.fitted(g, font, subtitle(), after, y + 10, x + imageWidth - 56 - after, GameScreens.DIM);
+            GameScreens.fitted(g, font, subtitle(), after, y + 10, x + imageWidth - 56 - headerReserved - after, GameScreens.DIM);
         }
         renderGame(g, tick, mouseX, mouseY);
         for (Slot slot : menu.slots)
@@ -258,29 +316,41 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
         return mouseX >= leftPos + x && mouseX < leftPos + x + width && mouseY >= topPos + y && mouseY < topPos + y + height;
     }
 
-    /** One game of a portable item. The open one is lit; the others switch game without closing the window. */
+    /**
+     * One game of a portable item. The open one is lit; the others switch game without closing the window.
+     * A tab without a game is the prediction market of the pocket casino.
+     */
     private final class Tab extends AbstractButton {
         private final GameMode target;
         private final boolean compact;
 
+        static String id(GameMode mode) { return mode == null ? "prediction_market" : mode.id(); }
+
         static int width(net.minecraft.client.gui.Font font, GameMode mode, boolean compact) {
-            return compact ? 24 : 30 + font.width(tr("tab." + mode.id()));
+            return compact ? 24 : 30 + font.width(tr("tab." + id(mode)));
         }
 
         Tab(GameMode target, int x, int y, boolean compact) {
-            super(x, y, width(font, target, compact), 18, tr("tab." + target.id()));
+            super(x, y, width(font, target, compact), 18, tr("tab." + id(target)));
             this.target = target;
             this.compact = compact;
-            setTooltip(Tooltip.create(compact ? tr("mode." + target.id()).copy().append("\n").append(tr("arena.description." + target.id()))
-                    : tr("arena.description." + target.id())));
+            String id = id(target);
+            setTooltip(Tooltip.create(compact ? tr("mode." + id).copy().append("\n").append(tr("arena.description." + id))
+                    : tr("arena.description." + id)));
         }
 
-        private boolean current() { return target == mode(); }
+        private boolean current() { return target == null ? predictionScreen() : target == mode(); }
+
+        private int button() { return target == null ? TerminalTabs.PREDICTION : TerminalTabs.button(target); }
+
+        private ItemStack tabIcon() {
+            return target == null ? new ItemStack(dev.gamblingitems.fabric.ModContent.PREDICTION_TICKET) : icon(target);
+        }
 
         //#if MC >= 1.21.9
-        //$ @Override public void onPress(net.minecraft.client.input.InputWithModifiers input) { if (!current()) send(TerminalTabs.button(target)); }
+        //$ @Override public void onPress(net.minecraft.client.input.InputWithModifiers input) { if (!current()) send(button()); }
         //#else
-        @Override public void onPress() { if (!current()) send(TerminalTabs.button(target)); }
+        @Override public void onPress() { if (!current()) send(button()); }
         //#endif
 
         @Override protected void updateWidgetNarration(NarrationElementOutput output) { defaultButtonNarrationText(output); }
@@ -289,7 +359,7 @@ public abstract class CasinoScreen<M extends AbstractContainerMenu> extends Abst
             boolean hot = isHoveredOrFocused();
             if (current()) GameScreens.rounded(g, getX(), getY(), width, height, GameScreens.RAISED);
             else if (hot) GameScreens.rounded(g, getX(), getY(), width, height, GameScreens.PANEL);
-            GameScreens.item(g, icon(target), getX() + (compact ? 6 : 5), getY() + 3.5f, .75f);
+            GameScreens.item(g, tabIcon(), getX() + (compact ? 6 : 5), getY() + 3.5f, .75f);
             if (!compact) g.drawString(font, getMessage(), getX() + 22, getY() + 5,
                     current() || hot ? GameScreens.TEXT : GameScreens.MUTED, false);
             if (current()) ArenaShapes.rounded(g, getX() + 6, getY() + height + 2, width - 12, 2, 1, GameScreens.GOLD);

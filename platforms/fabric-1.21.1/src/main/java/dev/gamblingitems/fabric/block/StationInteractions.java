@@ -32,6 +32,7 @@ public final class StationInteractions {
 
     /** The seat of this player at this block, opened if they did not have one yet. */
     private static Seat seat(ServerPlayer player, GameStationEntity station) {
+        if (dev.gamblingitems.fabric.cheat.CasinoSecurity.refuses(player)) return null;
         if (player.isSpectator() || !player.isAlive() || player.level() != station.getLevel()
                 || player.distanceToSqr(station.getBlockPos().getCenter()) > 36
                 || player.containerMenu != player.inventoryMenu) return null;

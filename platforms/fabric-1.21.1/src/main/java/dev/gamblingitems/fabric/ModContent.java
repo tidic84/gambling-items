@@ -147,6 +147,31 @@ public final class ModContent {
     public static final Item CASINO_CARPET_ITEM = blockItem("casino_carpet", CASINO_CARPET);
     public static final Block CASINO_CARPET_BLUE = carpet("casino_carpet_blue");
     public static final Item CASINO_CARPET_BLUE_ITEM = blockItem("casino_carpet_blue", CASINO_CARPET_BLUE);
+    /** The tricks of the casino, one per game they are used at, each wearing out with its uses. */
+    private static final java.util.Map<dev.gamblingitems.core.cheat.CheatRules.Tool, Item> CHEAT_TOOLS = cheatTools();
+    /** Every camera within sight of a player makes their tricks riskier. */
+    public static final Block SECURITY_CAMERA = Registry.register(BuiltInRegistries.BLOCK, id("security_camera"),
+            new dev.gamblingitems.fabric.cheat.SecurityCameraBlock(blockProperties("security_camera").strength(2.0F)
+                    .sound(SoundType.METAL).noOcclusion()));
+    public static final Item SECURITY_CAMERA_ITEM = Registry.register(BuiltInRegistries.ITEM, id("security_camera"),
+            new BlockItem(SECURITY_CAMERA, blockItemProperties("security_camera")));
+    /** A position on a question of the prediction market, paid to whoever cashes it. */
+    public static final Item PREDICTION_TICKET = Registry.register(BuiltInRegistries.ITEM, id("prediction_ticket"),
+            new Item(itemProperties("prediction_ticket").stacksTo(1)));
+    public static final dev.gamblingitems.fabric.prediction.OddsBoardBlock ODDS_BOARD = Registry.register(
+            BuiltInRegistries.BLOCK, id("odds_board"), new dev.gamblingitems.fabric.prediction.OddsBoardBlock(
+                    blockProperties("odds_board").strength(2.0F).sound(SoundType.WOOD).noOcclusion()));
+    public static final Item ODDS_BOARD_ITEM = Registry.register(BuiltInRegistries.ITEM, id("odds_board"),
+            new BlockItem(ODDS_BOARD, blockItemProperties("odds_board")));
+    public static final BlockEntityType<dev.gamblingitems.fabric.prediction.OddsBoardEntity> ODDS_BOARD_ENTITY = Registry.register(
+            BuiltInRegistries.BLOCK_ENTITY_TYPE, id("odds_board"),
+            //#if MC >= 1.21.2 && LOADER == fabric
+            //$ net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder.create(dev.gamblingitems.fabric.prediction.OddsBoardEntity::new, ODDS_BOARD).build());
+            //#elif MC >= 1.21.2
+            //$ new BlockEntityType<>(dev.gamblingitems.fabric.prediction.OddsBoardEntity::new, java.util.Set.of(ODDS_BOARD)));
+            //#else
+            BlockEntityType.Builder.of(dev.gamblingitems.fabric.prediction.OddsBoardEntity::new, ODDS_BOARD).build(null));
+            //#endif
     // The identifier of the first station is kept so existing worlds still read their block entities.
     public static final BlockEntityType<GameStationEntity> STATION_ENTITY = Registry.register(
             BuiltInRegistries.BLOCK_ENTITY_TYPE, id("upgrade_station"),
@@ -226,10 +251,34 @@ public final class ModContent {
     public static final CreativeModeTab TAB = Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, id("casino"),
             Platform.creativeTab(Component.translatable("itemGroup.gamblingitems.casino"),
                     () -> new ItemStack(SLOT_MACHINE_ITEM), ModContent::creativeEntries));
+    public static final MenuType<dev.gamblingitems.fabric.prediction.PredictionMenu> PREDICTION_MENU =
+            Registry.register(BuiltInRegistries.MENU, id("prediction_market"),
+                    Platform.menuType(
+                    (id, inventory, opening) -> new dev.gamblingitems.fabric.prediction.PredictionMenu(id, inventory,
+                            opening.setup(), opening.portable()),
+                    Opening.codec(dev.gamblingitems.fabric.prediction.PredictionSetup.CODEC)));
 
     private ModContent() {}
 
     public static Item key(CaseRarity rarity) { return KEYS.get(rarity); }
+
+    public static Item cheatTool(dev.gamblingitems.core.cheat.CheatRules.Tool tool) { return CHEAT_TOOLS.get(tool); }
+
+    private static java.util.Map<dev.gamblingitems.core.cheat.CheatRules.Tool, Item> cheatTools() {
+        var tools = new java.util.EnumMap<dev.gamblingitems.core.cheat.CheatRules.Tool, Item>(
+                dev.gamblingitems.core.cheat.CheatRules.Tool.class);
+        for (var tool : dev.gamblingitems.core.cheat.CheatRules.Tool.values()) {
+            int uses = switch (tool) {
+                case MARKED_LENS -> 12;
+                case ROULETTE_MAGNET -> 8;
+                case REEL_SHIM -> 16;
+                case CRASH_WATCH -> 10;
+            };
+            tools.put(tool, Registry.register(BuiltInRegistries.ITEM, id(tool.id()),
+                    new dev.gamblingitems.fabric.cheat.CheatToolItem(tool, itemProperties(tool.id()).durability(uses))));
+        }
+        return tools;
+    }
 
     /** The chip of a face value of {@link ArcadeSettings#CHIPS}. */
     public static Item chip(int face) { return CHIPS.get(face); }
@@ -336,6 +385,9 @@ public final class ModContent {
                 VIDEO_POKER_ITEM, PLINKO_ITEM, BIG_SIX_ITEM, HORSE_RACE_ITEM, CRAPS_ITEM, BACCARAT_ITEM, KENO_ITEM,
                 SCRATCH_CARD_ITEM, CASHIER_ITEM, LEADERBOARD_ITEM, CROUPIER_ITEM, CASINO_STOOL_ITEM, VIP_CARD, NEON_TUBE_ITEM,
                 CASINO_CARPET_ITEM, CASINO_CARPET_BLUE_ITEM));
+        entries.add(ODDS_BOARD_ITEM);
+        entries.add(SECURITY_CAMERA_ITEM);
+        for (var tool : dev.gamblingitems.core.cheat.CheatRules.Tool.values()) entries.add(cheatTool(tool));
         return entries;
     }
 }

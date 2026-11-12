@@ -42,6 +42,7 @@ public record MenuButton(int containerId, int button) {
     private static boolean isGame(AbstractContainerMenu menu) {
         return menu instanceof UpgradeMenu || menu instanceof TradeUpMenu || menu instanceof CaseMenu
                 || menu instanceof CrashMenu || menu instanceof RouletteMenu || menu instanceof BlackjackMenu
-                || menu instanceof BattleMenu || menu instanceof BingoMenu || menu instanceof SlotMenu;
+                || menu instanceof BattleMenu || menu instanceof BingoMenu || menu instanceof SlotMenu
+                || menu instanceof dev.gamblingitems.fabric.prediction.PredictionMenu;
     }
 }

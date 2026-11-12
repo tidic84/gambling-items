@@ -33,14 +33,14 @@ import net.minecraft.world.item.ItemStack;
 public final class SlotMenu extends AbstractContainerMenu implements dev.gamblingitems.fabric.block.CabinetMenu {
     // Minecraft 1.20.1 sends menu buttons as signed bytes. Keep both actions in
     // 0..127: a larger ID plays the client click sound but is ignored by the server.
-    public static final int SPIN_BUTTON = 0, COLLECT_BUTTON = 1;
+    public static final int SPIN_BUTTON = 0, COLLECT_BUTTON = 1, CHEAT_BUTTON = 2;
     public static final int STAKE_X = 20, INPUT_Y = 146;
     public static final int INVENTORY_START = SlotSettings.STAKE_SLOTS;
     private static final SecureRandom RANDOM = new SecureRandom();
     // The three reels, the ticks left of the pull, then the values, then the state.
     private static final int FIRST_REEL = 0, TICKS = 3, MULTIPLIER = 4, STAKE = 5, WON = 7,
-            WINNINGS = 9, STATE = 11;
-    private static final int DATA_SIZE = 12;
+            WINNINGS = 9, STATE = 11, CHEAT_CHANCE = 12, SHIM = 13;
+    private static final int DATA_SIZE = 14;
     public static final int STATE_IDLE = 0, STATE_SPINNING = 1, STATE_RESULT = 2;
 
     private final Player owner;
@@ -50,6 +50,8 @@ public final class SlotMenu extends AbstractContainerMenu implements dev.gamblin
     private final IntUnaryOperator draw;
     private final SimpleContainerData data = new SimpleContainerData(DATA_SIZE);
     private long animationEnd;
+    /** A shim is slipped into the reels for the next pull only. */
+    private boolean shim;
 
     /** Opened from a portable item, so its window shows the tabs of the other games of that item. */
     private boolean portable;
@@ -104,6 +106,9 @@ public final class SlotMenu extends AbstractContainerMenu implements dev.gamblin
     public long stake() { return ValueSync.read(data, STAKE); }
     public long lastWin() { return ValueSync.read(data, WON); }
     public long winnings() { return ValueSync.read(data, WINNINGS); }
+    /** How likely the shim is to be spotted, in basis points; -1 without a shim. */
+    public int cheatChance() { return data.get(CHEAT_CHANCE); }
+    public boolean shimSet() { return data.get(SHIM) != 0; }
 
     /** The line shown on the reels, or -1 on a reel that has never turned. */
     public int[] reels() {
@@ -139,10 +144,20 @@ public final class SlotMenu extends AbstractContainerMenu implements dev.gamblin
         boolean handled = switch (button) {
             case SPIN_BUTTON -> pull(player);
             case COLLECT_BUTTON -> collect(player);
+            case CHEAT_BUTTON -> toggleShim(player);
             default -> false;
         };
         if (handled) broadcastChanges();
         return handled;
+    }
+
+    /** Setting the shim is free; it is only seen, or not, when the lever is pulled. */
+    private boolean toggleShim(Player player) {
+        if (spinning()) return false;
+        if (!shim && !dev.gamblingitems.fabric.cheat.CasinoSecurity.carries(player,
+                dev.gamblingitems.core.cheat.CheatRules.Tool.REEL_SHIM)) return false;
+        shim = !shim;
+        return true;
     }
 
     /** One pull of the lever: drawn once, paid once, and only then shown. */
@@ -151,6 +166,23 @@ public final class SlotMenu extends AbstractContainerMenu implements dev.gamblin
         long stake = credit();
         int[] reels = SlotRules.spin(draw);
         int multiplier = SlotRules.multiplier(reels);
+        if (shim && player instanceof ServerPlayer cheater) {
+            shim = false;
+            var result = dev.gamblingitems.fabric.cheat.CasinoSecurity.attempt(cheater,
+                    dev.gamblingitems.core.cheat.CheatRules.Tool.REEL_SHIM);
+            if (result == dev.gamblingitems.fabric.cheat.CasinoSecurity.Result.CAUGHT) {
+                // Spotted: the machine is opened, the line does not count and the credit is the house's.
+                multiplier = 0;
+            } else if (result == dev.gamblingitems.fabric.cheat.CasinoSecurity.Result.UNNOTICED) {
+                // The shim stops a reel late: the better of two lines is the one that stays.
+                int[] second = SlotRules.spin(draw);
+                int better = SlotRules.multiplier(second);
+                if (better > multiplier) {
+                    reels = second;
+                    multiplier = better;
+                }
+            }
+        }
         long paid = multiplier == 0 ? 0 : SlotRules.payout(stake, multiplier, settings().returnRate());
         long tickets = 0;
         if (setup.paysTickets()) {
@@ -223,6 +255,10 @@ public final class SlotMenu extends AbstractContainerMenu implements dev.gamblin
             ValueSync.write(data, WINNINGS, ItemBank.valueOf(catalog(), vault,
                     SlotSettings.FIRST_PAYOUT_SLOT, SlotSettings.VAULT_SIZE));
             if (!spinning()) ValueSync.write(data, STAKE, credit());
+            data.set(CHEAT_CHANCE, owner instanceof ServerPlayer player
+                    ? dev.gamblingitems.fabric.cheat.CasinoSecurity.shownChance(player,
+                            dev.gamblingitems.core.cheat.CheatRules.Tool.REEL_SHIM) : -1);
+            data.set(SHIM, shim ? 1 : 0);
         }
         super.broadcastChanges();
     }

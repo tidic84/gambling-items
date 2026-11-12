@@ -29,7 +29,8 @@ public enum VaultSection {
     KENO("keno", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
     SCRATCH_CARD("scratch_card", dev.gamblingitems.fabric.machines.MachineSettings.VAULT_SIZE),
     /** The cashier's exchange tray, where items wait to be changed. */
-    CASHIER("cashier", dev.gamblingitems.fabric.arcade.CashierMenu.TRAY_SLOTS);
+    CASHIER("cashier", dev.gamblingitems.fabric.arcade.CashierMenu.TRAY_SLOTS),
+    PREDICTION("prediction_market", dev.gamblingitems.fabric.prediction.PredictionSettings.VAULT_SIZE);
 
     private final String id;
     private final int size;

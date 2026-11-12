@@ -29,7 +29,12 @@
       "dev.gamblingitems.fabric.menu.MenuButtonGameTests",
       "dev.gamblingitems.fabric.menu.LayoutGameTests",
       "dev.gamblingitems.fabric.ContentGameTests",
-      "dev.gamblingitems.fabric.PortableGameTests"
+      "dev.gamblingitems.fabric.PortableGameTests",
+      "dev.gamblingitems.fabric.blackjack.BlackjackCheatGameTests",
+      "dev.gamblingitems.fabric.roulette.RouletteCheatGameTests",
+      "dev.gamblingitems.fabric.slots.SlotCheatGameTests",
+      "dev.gamblingitems.fabric.crash.CrashCheatGameTests",
+      "dev.gamblingitems.fabric.prediction.PredictionGameTests"
     ]
   }
 }

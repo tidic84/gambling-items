@@ -66,6 +66,8 @@ public final class CrashGame {
     private final CrashSetup setup;
     private final LongSupplier draw;
     private final Map<UUID, Bet> bets = new LinkedHashMap<>();
+    /** Players wearing a rigged watch this round, and whether it has already vibrated. */
+    private final Map<UUID, Boolean> watches = new LinkedHashMap<>();
     private Phase phase = Phase.WAITING;
     private int phaseTicks;
     private int flightTick;
@@ -116,6 +118,35 @@ public final class CrashGame {
 
     public Container vault(UUID player) {
         return PlayerVaults.get(level.getServer()).forPlayer(player, VaultSection.CRASH);
+    }
+
+    /** A watch is put on by a player with a stake in this round, before or during the flight. */
+    public boolean canWatch(UUID player) {
+        Bet bet = bets.get(player);
+        return bet != null && bet.engaged() && !watches.containsKey(player)
+                && (phase == Phase.BETTING || phase == Phase.FLYING);
+    }
+
+    public boolean setWatch(UUID player) {
+        if (!canWatch(player)) return false;
+        watches.put(player, false);
+        return true;
+    }
+
+    /** 0 without a watch, 1 while it waits, 2 once it has vibrated. */
+    public int watch(UUID player) {
+        Boolean vibrated = watches.get(player);
+        return vibrated == null ? 0 : vibrated ? 2 : 1;
+    }
+
+    /** A cheat was caught at this table: the stake is lost as if the round had crashed. */
+    public void forfeit(UUID player) {
+        watches.remove(player);
+        Bet bet = bets.get(player);
+        if (bet == null || !bet.engaged()) return;
+        bet.lost = true;
+        clearEngaged(vault(player));
+        stationTicks = 0;
     }
 
     /** Bets are accepted before the flight only, and one per player and per round. */
@@ -206,7 +237,30 @@ public final class CrashGame {
     private void advance() {
         int next = flightTick + 1;
         if (settings().rules().multiplierAt(next) >= crashPoint) crash();
-        else flightTick = next;
+        else {
+            flightTick = next;
+            vibrate();
+        }
+    }
+
+    /** A rigged watch reads the secret crash point and vibrates on its owner's wrist only. */
+    private void vibrate() {
+        if (watches.isEmpty()) return;
+        int lead = dev.gamblingitems.fabric.cheat.CasinoSecurity.settings().watchLeadTicks();
+        if (!dev.gamblingitems.core.cheat.CheatRules.watchVibrates(
+                settings().rules().multiplierAt(flightTick + lead), crashPoint)) return;
+        for (Map.Entry<UUID, Boolean> watch : watches.entrySet()) {
+            Bet bet = bets.get(watch.getKey());
+            if (watch.getValue() || bet == null || !bet.engaged()) continue;
+            watch.setValue(true);
+            var wearer = level.getServer().getPlayerList().getPlayer(watch.getKey());
+            if (wearer != null) {
+                dev.gamblingitems.fabric.Compat.message(wearer, net.minecraft.network.chat.Component.translatable(
+                        "gui.gamblingitems.cheat.crash_watch.buzz").withStyle(net.minecraft.ChatFormatting.RED), true);
+                wearer.playNotifySound(net.minecraft.sounds.SoundEvents.NOTE_BLOCK_HAT.value(),
+                        net.minecraft.sounds.SoundSource.PLAYERS, 0.6f, 1.8f);
+            }
+        }
     }
 
     private void crash() {
@@ -234,6 +288,7 @@ public final class CrashGame {
         crashPoint = 0;
         idleTicks = 0;
         bets.clear();
+        watches.clear();
     }
 
     private void settle(UUID player, Bet bet, int multiplier) {

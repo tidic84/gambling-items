@@ -4,6 +4,7 @@
     "gamblingitems:blackjack_table",
     "gamblingitems:roulette_table",
     "gamblingitems:bingo_table",
-    "gamblingitems:cashier"
+    "gamblingitems:cashier",
+    "gamblingitems:odds_board"
   ]
 }

@@ -24,7 +24,7 @@ import net.minecraft.world.item.ItemStack;
  * <p>The bet is whatever priced items the player puts in the bet row; only their value is played.
  */
 public final class CrashMenu extends AbstractContainerMenu {
-    public static final int BET_BUTTON = 1000, CASH_OUT_BUTTON = 1001, COLLECT_BUTTON = 1002;
+    public static final int BET_BUTTON = 1000, CASH_OUT_BUTTON = 1001, COLLECT_BUTTON = 1002, CHEAT_BUTTON = 1003;
     /** Where the two rows of the wager sit, read by the screen so both sides cannot drift apart. */
     public static final int STAKE_X = 264, ENGAGED_Y = 92, INPUT_Y = 56;
     public static final int INVENTORY_START = 2 * CrashSettings.STAKE_SLOTS;
@@ -37,8 +37,8 @@ public final class CrashMenu extends AbstractContainerMenu {
     // Small numbers first, then the values, which each need two slots to survive the packet.
     private static final int PHASE = 0, MULTIPLIER = 1, PHASE_TICKS = 2, SETTLEMENT = 3, PLAYERS = 4,
             STATE = 5, LAST_POINT = 6, FLIGHT_TICK = 7, PAYABLE = 8,
-            STAKE = 9, PAID = 11, POT = 13, WINNINGS = 15, PLANNED = 17;
-    private static final int DATA_SIZE = 19;
+            STAKE = 9, PAID = 11, POT = 13, WINNINGS = 15, PLANNED = 17, CHEAT_CHANCE = 19, WATCH = 20;
+    private static final int DATA_SIZE = 21;
     private final SimpleContainerData data = new SimpleContainerData(DATA_SIZE);
 
     /** Opened from a portable item, so its window shows the tabs of the other games of that item. */
@@ -98,6 +98,14 @@ public final class CrashMenu extends AbstractContainerMenu {
     public long plannedStake() { return ValueSync.read(data, PLANNED); }
     public boolean isPayable() { return data.get(PAYABLE) != 0; }
     public boolean isEngaged() { return state() == STATE_ENGAGED; }
+    /** How likely the watch is to be spotted, in basis points; -1 without a watch. */
+    public int cheatChance() { return data.get(CHEAT_CHANCE); }
+    /** 0 without a watch, 1 while it waits, 2 once it has vibrated. */
+    public int watch() { return data.get(WATCH); }
+    public boolean canWatch() {
+        return cheatChance() >= 0 && watch() == 0 && isEngaged()
+                && (phase() == CrashGame.Phase.BETTING || phase() == CrashGame.Phase.FLYING);
+    }
 
     /** The server answers from the round itself, the client from the state it was sent. */
     private boolean engagedNow(Player player) {
@@ -124,10 +132,24 @@ public final class CrashMenu extends AbstractContainerMenu {
             case BET_BUTTON -> game.place(player.getUUID(), game.stagedValue(player.getUUID()));
             case CASH_OUT_BUTTON -> game.cashOut(player.getUUID());
             case COLLECT_BUTTON -> collect(player);
+            case CHEAT_BUTTON -> watch((ServerPlayer) player);
             default -> false;
         };
         if (handled) broadcastChanges();
         return handled;
+    }
+
+    /** Puts on the rigged watch; spotted, the stake is lost as if the round had crashed. */
+    private boolean watch(ServerPlayer player) {
+        if (!game.canWatch(player.getUUID())) return false;
+        var result = dev.gamblingitems.fabric.cheat.CasinoSecurity.attempt(player,
+                dev.gamblingitems.core.cheat.CheatRules.Tool.CRASH_WATCH);
+        switch (result) {
+            case UNNOTICED -> game.setWatch(player.getUUID());
+            case CAUGHT -> game.forfeit(player.getUUID());
+            default -> { return false; }
+        }
+        return true;
     }
 
     /** Moves the winnings into the inventory, keeping in the vault whatever does not fit. */
@@ -164,6 +186,10 @@ public final class CrashMenu extends AbstractContainerMenu {
             ValueSync.write(data, POT, game.pot());
             ValueSync.write(data, WINNINGS, game.winnings(vault));
             ValueSync.write(data, PLANNED, staged);
+            data.set(CHEAT_CHANCE, owner instanceof ServerPlayer player
+                    ? dev.gamblingitems.fabric.cheat.CasinoSecurity.shownChance(player,
+                            dev.gamblingitems.core.cheat.CheatRules.Tool.CRASH_WATCH) : -1);
+            data.set(WATCH, game.watch(owner.getUUID()));
         }
         super.broadcastChanges();
     }

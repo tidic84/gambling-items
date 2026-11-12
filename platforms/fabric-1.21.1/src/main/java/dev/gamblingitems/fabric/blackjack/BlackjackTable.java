@@ -53,6 +53,8 @@ public final class BlackjackTable {
     private long paid;
     private int delay;
     private int idleTicks;
+    /** A marked lens read the backs of the cards during this hand. */
+    private boolean peeked;
 
     BlackjackTable(MinecraftServer server, UUID player, BlackjackSetup setup) {
         this(server, player, setup, RANDOM::nextInt);
@@ -80,6 +82,28 @@ public final class BlackjackTable {
     public List<Integer> visibleDealer() {
         if (phase == Phase.PLAYER && dealer.size() > 1) return List.of(dealer.get(0));
         return Collections.unmodifiableList(dealer);
+    }
+
+    /** A lens works once per hand, while the player still has a decision to make. */
+    public boolean canPeek() { return phase == Phase.PLAYER && !peeked && dealer.size() > 1; }
+    public boolean peeked() { return peeked; }
+    public void markPeeked() { peeked = true; }
+
+    /** The hole card, for the one player whose lens read it; -1 otherwise. */
+    public int peekedHole() { return peeked && dealerHidden() ? dealer.get(1) : -1; }
+
+    /** The next card of the shoe, for the one player whose lens read it; -1 otherwise. */
+    public int peekedNext() { return peeked && phase == Phase.PLAYER && dealt < deck.size() ? deck.get(dealt) : -1; }
+
+    /** A cheat was caught at this table: the hand ends at once and the stake is the house's. */
+    public void forfeit() {
+        if (phase != Phase.PLAYER && phase != Phase.DEALER) return;
+        clearEngaged(vault());
+        paid = 0;
+        outcome = Outcome.LOSS;
+        peeked = false;
+        phase = Phase.DONE;
+        delay = settings().resultTicks();
     }
 
     public int handTotal() { return hand.isEmpty() ? 0 : BlackjackRules.total(hand); }
@@ -119,6 +143,7 @@ public final class BlackjackTable {
                 BlackjackSettings.STAKE_SLOTS);
         stake = staged;
         doubled = false;
+        peeked = false;
         paid = 0;
         outcome = Outcome.PLAYING;
         hand.clear();

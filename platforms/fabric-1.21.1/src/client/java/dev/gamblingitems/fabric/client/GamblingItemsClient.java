@@ -16,11 +16,14 @@ public final class GamblingItemsClient implements ClientModInitializer {
         MenuScreens.register(ModContent.BATTLE_MENU, BattleScreen::new);
         MenuScreens.register(ModContent.BINGO_MENU, BingoScreen::new);
         MenuScreens.register(ModContent.SLOT_MENU, SlotScreen::new);
+        MenuScreens.register(ModContent.PREDICTION_MENU, PredictionScreen::new);
         MenuScreens.register(ModContent.CASHIER_MENU, CashierScreen::new);
         //#if MC >= 1.21.9
         //$ net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry.register(ModContent.STATION_ENTITY, GameStationRenderer::new);
+        //$ net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry.register(ModContent.ODDS_BOARD_ENTITY, OddsBoardRenderer::new);
         //#else
         BlockEntityRenderers.register(ModContent.STATION_ENTITY, GameStationRenderer::new);
+        BlockEntityRenderers.register(ModContent.ODDS_BOARD_ENTITY, OddsBoardRenderer::new);
         //#endif
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(ClientSmoke::tick);
     }
